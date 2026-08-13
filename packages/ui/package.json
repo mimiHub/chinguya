@@ -1,0 +1,59 @@
+{
+  "name": "@chinguya/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./styles/theme.css": "./src/styles/theme.css",
+    "./badge": "./src/components/badge.tsx",
+    "./button": "./src/components/button.tsx",
+    "./calendar": "./src/components/calendar.tsx",
+    "./calendar-icon": "./src/components/calendar-icon.tsx",
+    "./card": "./src/components/card.tsx",
+    "./chip": "./src/components/chip.tsx",
+    "./coming-soon": "./src/components/coming-soon.tsx",
+    "./confirm-popup": "./src/components/confirm-popup.tsx",
+    "./form-message": "./src/components/form-message.tsx",
+    "./hold-timer": "./src/components/hold-timer.tsx",
+    "./icon-x": "./src/components/icon-x.tsx",
+    "./input": "./src/components/input.tsx",
+    "./kv": "./src/components/kv.tsx",
+    "./labeled-box": "./src/components/labeled-box.tsx",
+    "./link": "./src/components/link.tsx",
+    "./notice-box": "./src/components/notice-box.tsx",
+    "./popup": "./src/components/popup.tsx",
+    "./price": "./src/components/price.tsx",
+    "./section": "./src/components/section.tsx",
+    "./skeleton": "./src/components/skeleton.tsx",
+    "./stack": "./src/components/stack.tsx",
+    "./stat": "./src/components/stat.tsx",
+    "./stepper": "./src/components/stepper.tsx",
+    "./tab": "./src/components/tab.tsx",
+    "./table": "./src/components/table.tsx",
+    "./text": "./src/components/text.tsx",
+    "./title": "./src/components/title.tsx",
+    "./toast": "./src/components/toast.tsx",
+    "./toggle": "./src/components/toggle.tsx"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@chinguya/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@chinguya/eslint-config": "workspace:*",
+    "@chinguya/typescript-config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "typescript": "^5.6.2"
+  }
+}

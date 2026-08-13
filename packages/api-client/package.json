@@ -1,0 +1,23 @@
+{
+  "name": "@chinguya/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@chinguya/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@chinguya/eslint-config": "workspace:*",
+    "@chinguya/typescript-config": "workspace:*",
+    "typescript": "^5.6.2"
+  }
+}
