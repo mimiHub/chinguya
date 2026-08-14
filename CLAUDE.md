@@ -92,3 +92,13 @@ pnpm typecheck                        # 전체 타입체크
 4. 색·폰트·radius를 하드코딩하지 않고 `tailwind-config` 토큰을 썼는가?
 5. 화면 구현 시 대응 화면 코드(`id`/S-코드) 주석을 남겼고, 와이어프레임의 화면 이동·상태 흐름과 어긋나지 않는가?
 6. 비즈니스 규칙 값을 바꿨다면 `chinguya-wireframes/docs/README.md` 도 함께 갱신했는가?
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
