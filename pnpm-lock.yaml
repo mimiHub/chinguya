@@ -193,6 +193,8 @@ importers:
         specifier: ^5.6.2
         version: 5.9.3
 
+  packages/api-spec: {}
+
   packages/eslint-config:
     dependencies:
       '@eslint/js':
