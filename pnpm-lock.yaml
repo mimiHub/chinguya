@@ -130,6 +130,9 @@ importers:
       '@chinguya/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@chinguya/mocks':
+        specifier: workspace:*
+        version: link:../../packages/mocks
       '@chinguya/types':
         specifier: workspace:*
         version: link:../../packages/types
