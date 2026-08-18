@@ -7,3 +7,4 @@ dist/
 .DS_Store
 coverage/
 graphify-out/cache
+packages/mocks/src/types.gen.ts
