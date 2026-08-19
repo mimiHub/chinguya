@@ -15,7 +15,7 @@ import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Popup } from "@chinguya/ui/popup";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { adminAccounts, type AdminAccount } from "@/data/authData";
 
@@ -134,7 +134,11 @@ export default function AdminAccountsPage() {
             </Chip.List>
           </LabeledBox>
 
-          <FormMessage type="error">{error}</FormMessage>
+          {error && (
+            <Alert status="error" icon={false}>
+              {error}
+            </Alert>
+          )}
 
           <Button fullWidth onClick={handleAdd}>
             등록

@@ -2,16 +2,18 @@
 
 import type { ButtonHTMLAttributes } from "react";
 
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "lg";
 
 const sizeClass: Record<Size, string> = {
   sm: "h-5 w-5",
   md: "h-6 w-6",
+  lg: "h-7 w-7",
 };
 
 const barSizeClass: Record<Size, string> = {
   sm: "w-2.5",
   md: "w-3",
+  lg: "w-4",
 };
 
 export interface IconXProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {

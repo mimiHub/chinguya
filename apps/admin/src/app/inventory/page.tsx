@@ -164,6 +164,9 @@ export default function AdminInventoryPage() {
             <Toggle on={closed} onChange={setClosed} />
           </Stack>
 
+          {/* 지금은 이 앱 안에서만 저장된다. 고객·여행사 앱의 노출/가용 수량(@chinguya/catalog-data)에는
+              아직 자동 반영되지 않는다 — 실제 API가 생기면 여기서 저장한 값이 그대로 전달되도록 연결한다.
+              (개발자용 메모라 화면에는 노출하지 않는다.) */}
           <Button fullWidth onClick={handleSave}>
             저장
           </Button>

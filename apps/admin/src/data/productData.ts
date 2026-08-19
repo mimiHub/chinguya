@@ -39,7 +39,7 @@ export const CATALOG_TITLES: { slug: string; category: RentalCategoryKey; title:
   { slug: "bike-electric", category: "bike", title: "전기자전거", image: "/elec-bike.png" },
   { slug: "bike-regular", category: "bike", title: "일반자전거", image: "/bike.png" },
   { slug: "fishing-regular", category: "fishing", title: "일반낚시대", image: "/fishing-set.png" },
-  { slug: "fishing-reel", category: "fishing", title: "릴낚시대", image: "/fishing-set.png" },
+  { slug: "fishing-reel", category: "fishing", title: "릴낚시대", image: "/fishing-reel-set.png" },
 ];
 
 const price = (customerWon: number, agencyWon: number): PriceBook => ({ customerPrice: customerWon, agencyPrice: agencyWon });
@@ -87,7 +87,7 @@ export const adminProductVariants: AdminProductVariant[] = [
     "2d": 12000,
     night: 8000,
   }),
-  ...buildVariants("fishing-reel", "fishing", "릴낚시대", "/fishing-set.png", {
+  ...buildVariants("fishing-reel", "fishing", "릴낚시대", "/fishing-reel-set.png", {
     "2h": 5000,
     "1d": 12000,
     "2d": 20000,

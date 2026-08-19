@@ -73,7 +73,7 @@ export const rentalProducts: Product[] = [
     title: "릴낚시대",
     name: "릴낚시대 세트 렌탈",
     description: "릴을 이용한 캐스팅 낚시를 즐기실 수 있는 릴낚시대 세트 대여 상품입니다.",
-    image: "/fishing-set.png",
+    image: "/fishing-reel-set.png",
     priceByOption: {
       "2h": price(5000, 5000),
       "1d": price(12000, 12000),
@@ -86,9 +86,9 @@ export const rentalProducts: Product[] = [
 ];
 
 export const rentalNotice = [
-  "예약 가능 기간: 오늘 +1일 ~ +3개월(현지 기준 '오늘').",
-  "가용 수량은 재고 상황에 따라 매일 달라질 수 있습니다.",
-  "2일 대여 + 타지역 반납 선택 시 다음날 예약이 자동 마감됩니다.",
+  "예약가능기간: 오늘 +1일 ~ +3개월(현지 기준 '오늘')입니다.",
+  "수량은 재고 상황에 따라 매일 달라질 수 있습니다.",
+  "2일 대여 + [타지역 반납]선택 시 다음날 예약이 자동 마감됩니다.",
 ];
 
 /**

@@ -2,17 +2,19 @@
 
 import type { ReactNode } from "react";
 
-type Tone = "gray" | "white" | "warning";
+type Tone = "gray" | "white" | "warning" | "success" | "none";
 
 const toneClass: Record<Tone, string> = {
   gray: "bg-gray-100",
   white: "bg-white",
   warning: "bg-warning-light",
+  success: "bg-success-light",
+  none: "",
 };
 
 export interface NoticeBoxProps {
   title?: ReactNode;
-  /** "gray"(기본, 관리자 답변 등) | "white"(FAQ 답변 등) | "warning"(주의 안내) */
+  /** "gray"(기본, 관리자 답변 등) | "white"(FAQ 답변 등) | "warning"(주의 안내) | "success"(진행 중·정상 상태 안내) | "none"(배경 없음, 완전 투명) */
   tone?: Tone;
   className?: string;
   children?: ReactNode;
@@ -22,7 +24,7 @@ export interface NoticeBoxProps {
 export function NoticeBox({ title, tone = "gray", className = "", children }: NoticeBoxProps) {
   return (
     <div className={`flex flex-col gap-1 rounded-md px-4 py-2 ${toneClass[tone]} ${className}`}>
-      {title && <p className="font-bold">{title}</p>}
+      {title && <div className="font-bold">{title}</div>}
       {children}
     </div>
   );

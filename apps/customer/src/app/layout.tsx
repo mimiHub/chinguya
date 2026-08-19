@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { BottomNav } from "@/components/BottomNav";
+import { TopNav } from "@/components/TopNav";
+import { CartProvider } from "@/context/CartContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-      <body>{children}</body>
+      <body className="pb-16 md:pb-0">
+        <CartProvider>
+          <TopNav />
+          {children}
+          <BottomNav />
+        </CartProvider>
+      </body>
     </html>
   );
 }

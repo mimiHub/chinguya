@@ -8,7 +8,7 @@ import { Stack } from "@chinguya/ui/stack";
 import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { Toast } from "@chinguya/ui/toast";
 
 /**
@@ -61,7 +61,11 @@ export default function AdminAgencyNewPage() {
           <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
         </LabeledBox>
 
-        <FormMessage type="error">{error}</FormMessage>
+        {error && (
+          <Alert status="error" icon={false}>
+            {error}
+          </Alert>
+        )}
 
         <Button fullWidth onClick={handleSave}>
           등록

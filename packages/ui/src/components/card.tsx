@@ -53,9 +53,14 @@ export function Card({
   ...rest
 }: CardProps) {
   const paddingKey = padding ?? (noPadding ? "none" : "md");
+  // 배경색(bg-*)은 항상 딱 하나만 남아야 한다 — "bg-white"를 기본값에 고정으로 넣어두고
+  // tint가 있을 때 "bg-card-*"를 추가로 붙이면, 같은 속성(background-color)을 건드리는
+  // 유틸리티 두 개가 한 className에 동시에 있어서 Tailwind가 최종 CSS를 만들 때 어느 게
+  // 이길지 소스 코드 순서로는 보장이 안 된다(실제로 tint를 줘도 흰 배경이 이겨버리는 버그로
+  // 나타났다). 그래서 tint 유무에 따라 배경 클래스 자리를 통째로 하나만 고른다.
   const classNames = [
-    "relative rounded-lg bg-white border border-white p-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)] md:p-6",
-    tint ? tintClass[tint] : "",
+    "relative rounded-lg border border-white p-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)] md:p-6",
+    tint ? tintClass[tint] : "bg-white",
     onClick ? "cursor-pointer transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]" : "",
     paddingClass[paddingKey],
     widthClass[width],

@@ -128,7 +128,16 @@ export interface CustomerReservation {
   /** 여권 영문명 — 가입이 아닌 예약 시점에 확보 */
   passportName: string;
   useDate: string;
+  /** 2일(2d) 옵션일 때만 있는 종료일(useDate 다음날). 그 외 옵션은 useDate 하루로 끝난다 */
+  useDateEnd?: string;
   quantity: number;
+  /** 2일 대여에서 선택한 타지역 반납 여부 — true면 OFF_SITE_RETURN_FEE_KRW가 amountKrw에 포함돼 있다 */
+  offSiteReturn?: boolean;
+  /**
+   * 예약 확정 시점의 결제 총액(KRW) 스냅샷. priceByOption에서 매번 다시 계산하지 않고 예약 건에
+   * 고정해 남겨서, 나중에 상품 가격이 바뀌어도 과거 예약의 결제 금액은 변하지 않게 한다.
+   */
+  amountKrw: number;
   /**
    * 취소 시점에 적용된 수수료율(0~1) 스냅샷. CancellationFeeRule 표에서 매번 다시 계산하지 않고,
    * 취소 시점 요율을 예약 건에 고정해 남겨서 나중에 요율표가 바뀌어도 과거 예약 내역이 변하지 않게 한다.
@@ -152,7 +161,7 @@ export interface Agency {
   active: boolean;
 }
 
-/** 여행사 예약 */
+/** 여행사 예약. 예약=즉시 완료 / 취소=즉시(입금 흐름 없음)라 고객 예약보다 상태가 단순하다. */
 export interface AgencyReservation {
   id: string;
   agencyId: string;
@@ -162,6 +171,8 @@ export interface AgencyReservation {
   passportName: string;
   useDate: string;
   quantity: number;
+  /** 예약 시점의 결제 총액(KRW, 여행사가 기준) 스냅샷 — 인보이스 라인아이템 금액의 근거가 된다 */
+  amountKrw: number;
   createdAt: string;
 }
 

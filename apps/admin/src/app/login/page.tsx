@@ -9,7 +9,7 @@ import { Stack } from "@chinguya/ui/stack";
 import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { findAdminAccount } from "@/data/authData";
 
 /**
@@ -62,7 +62,11 @@ export default function AdminLoginPage() {
                 />
               </LabeledBox>
 
-              <FormMessage type="error">{error}</FormMessage>
+              {error && (
+                <Alert status="error" icon={false}>
+                  {error}
+                </Alert>
+              )}
 
               <Button type="submit" fullWidth>
                 로그인

@@ -18,7 +18,7 @@ export function Stepper({ value = 0, min = 0, max, onChange }: StepperProps) {
     }`;
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-1.5">
       <span className={btnClass(!canDecrease)} onClick={() => canDecrease && onChange?.(value - 1)}>
         −
       </span>
@@ -26,7 +26,7 @@ export function Stepper({ value = 0, min = 0, max, onChange }: StepperProps) {
       <span className={btnClass(!canIncrease)} onClick={() => canIncrease && onChange?.(value + 1)}>
         ＋
       </span>
-      {max !== undefined && <span className="font-mono text-[10px] text-muted">/ 가용 {max}</span>}
+      {max !== undefined && <span className="text-[12px] text-muted">/ {max}</span>}
     </span>
   );
 }

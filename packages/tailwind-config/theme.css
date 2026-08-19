@@ -57,6 +57,7 @@
   --color-card-tertiary: #ece9e2;
 
   /* Gray scale */
+  --color-gray-0: #ffffff;
   --color-gray-50: #fafafa;
   --color-gray-100: #f5f5f5;
   --color-gray-200: #eeeeee;
@@ -93,10 +94,17 @@
   --radius-lg: 16px;
   --radius-card: 12px;
 
-  /* Font size — 20/28/36/60px는 Tailwind 기본값과 달라 재정의. sm/base는 기본값과 동일 */
+  /* Font size — 20/28/36/44/60px는 Tailwind 기본값과 달라 재정의. sm/base는 기본값과 동일 */
+  /* text-md: Tailwind 표준 스케일엔 없는 값인데(sm 다음이 바로 base) 다른 디자인 시스템에
+     익숙해서 자꾸 text-md로 쓰게 돼서, base(16px)와 같은 값으로 별칭을 추가했다 — 이제
+     text-md도 정상적으로 동작한다. */
+  --text-md: 1rem; /* 16px, text-base와 동일 */
   --text-lg: 1.25rem; /* 20px */
   --text-xl: 1.75rem; /* 28px */
   --text-2xl: 2.25rem; /* 36px */
+  /* Tailwind 기본 3xl(30px)은 위 2xl(36px)보다 작아 순서가 꼬여있었다 — 이용 요금처럼
+     2xl보다 한 단계 더 강조하고 싶은 금액/숫자용으로 44px로 재정의했다. */
+  --text-3xl: 2.75rem; /* 44px */
   --text-4xl: 3.75rem; /* 60px */
 
   --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", ui-sans-serif, system-ui, sans-serif;
@@ -113,4 +121,33 @@
   100% {
     background-position: 0% 50%;
   }
+}
+
+/*
+ * 캘린더 마감/불가 셀의 대각선 줄무늬 패턴.
+ * 예전엔 컴포넌트마다 Tailwind 임의값 문법(예: [background:repeating-linear-gradient(...)])으로
+ * 반복해서 박아 넣었는데, 이 방식은 클래스 이름 자체가 CSS 원문이라 브라우저에서 태그를 보면
+ * 마치 style 속성에 인라인으로 적은 것처럼 보인다(실제로는 클래스이긴 하지만 가독성이 나쁘고,
+ * 값이 3곳에 그대로 중복돼 있었다). 정식 유틸리티 클래스로 한 곳에 모아서 bg-stripe-muted 처럼
+ * 평범한 이름으로 쓸 수 있게 했다.
+ */
+@utility bg-stripe-muted {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-gray-200),
+    var(--color-gray-200) 3px,
+    var(--color-gray-300) 3px,
+    var(--color-gray-300) 6px
+  );
+}
+
+/* 범례(legend)의 작은 아이콘용 — 같은 패턴을 한 톤 더 밝게 */
+@utility bg-stripe-muted-light {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-gray-100),
+    var(--color-gray-100) 2px,
+    var(--color-gray-200) 2px,
+    var(--color-gray-200) 4px
+  );
 }
