@@ -40,12 +40,10 @@ export default function ReservationDetailPage() {
       </Stack>
 
       <Card className="mt-4 text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.image}
-          alt={product.title}
-          className="mx-auto h-14 w-14 rounded-lg object-cover"
-        />
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-lg bg-gray-50 p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={product.image} alt={product.title} className="h-full w-full object-contain" />
+        </div>
         <Text weight="bold" className="mt-2">
           {product.title}
         </Text>
@@ -73,7 +71,7 @@ export default function ReservationDetailPage() {
 
       {canCancel && (
         <NextLink href={`/reservations/${reservation.id}/cancel`} className="mt-6 block">
-          <Button fullWidth variant="outline">
+          <Button fullWidth >
             취소 요청
           </Button>
         </NextLink>

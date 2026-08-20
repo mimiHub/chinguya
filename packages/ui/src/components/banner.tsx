@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 type Size = "lg" | "sm";
 
 const heightClass: Record<Size, string> = {
-  lg: "h-56",
+  lg: "h-56 md:h-[350px]",
   sm: "h-36",
 };
 

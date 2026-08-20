@@ -31,7 +31,7 @@ export function IconX({ size = "md", className = "", "aria-label": ariaLabel = "
       type="button"
       aria-label={ariaLabel}
       className={[
-        "relative inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-gray-100 hover:text-error",
+        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-gray-100 hover:text-error",
         sizeClass[size],
         className,
       ]

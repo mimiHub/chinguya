@@ -29,7 +29,7 @@ export function StatusBadge({ status }: { status: CustomerReservationStatus }) {
   );
 }
 
-type Variant = "primary" | "secondary" | "success" | "warning" | "error" | "gray";
+type Variant = "primary" | "secondary" | "success" | "warning" | "error" | "info" | "gray";
 
 const variantClass: Record<Variant, string> = {
   primary: "bg-primary-100 text-primary-700",
@@ -37,6 +37,7 @@ const variantClass: Record<Variant, string> = {
   success: "bg-success-light text-success",
   warning: "bg-warning-light text-warning",
   error: "bg-error-light text-error",
+  info: "bg-info-light text-info",
   gray: "bg-gray-100 text-gray-700",
 };
 

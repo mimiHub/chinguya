@@ -19,7 +19,7 @@ export function IconHamburger({ open = false, className = "", "aria-label": aria
       type="button"
       aria-label={ariaLabel}
       aria-expanded={open}
-      className={["relative inline-flex h-6 w-6 shrink-0 items-center justify-center", className].filter(Boolean).join(" ")}
+      className={["relative inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center", className].filter(Boolean).join(" ")}
       {...rest}
     >
       <span

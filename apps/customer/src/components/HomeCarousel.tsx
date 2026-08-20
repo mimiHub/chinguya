@@ -104,7 +104,7 @@ export function HomeCarousel() {
         type="button"
         aria-label="이전 배너"
         onClick={goPrev}
-        className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-md text-white hover:bg-black/50"
+        className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/30 text-md text-white hover:bg-black/50"
       >
         ‹
       </button>
@@ -112,19 +112,21 @@ export function HomeCarousel() {
         type="button"
         aria-label="다음 배너"
         onClick={goNext}
-        className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-md text-white hover:bg-black/50"
+        className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/30 text-md text-white hover:bg-black/50"
       >
         ›
       </button>
 
-      {/* 아래로 스크롤 유도 화살표 — 누르면 배너 바로 아래 콘텐츠까지 부드럽게 스크롤된다 */}
+      {/* 아래로 스크롤 유도 — 마우스 모양 테두리 안에서 점이 아래로 튀며 사라지는 애니메이션
+          (codepen.io/daveknispel/pen/aKdWaG 참고). 누르면 배너 바로 아래 콘텐츠까지
+          부드럽게 스크롤된다. */}
       <button
         type="button"
         aria-label="아래로 스크롤"
         onClick={scrollToContent}
-        className="absolute bottom-14 left-1/2 -translate-x-1/2 text-lg text-white/90 drop-shadow hover:text-white"
+        className="group absolute bottom-14 left-1/2 flex h-7 w-4 -translate-x-1/2 cursor-pointer items-start justify-center rounded-full border-2 border-white/90 pt-1.5 drop-shadow transition-colors hover:border-white/60"
       >
-        ↓
+        <span className="h-1 w-0.5 animate-scroll-dot rounded-full bg-white group-hover:[animation-duration:0.7s]" />
       </button>
 
       {/* 점 인디케이터 — 항상 화면 정가운데 */}
@@ -135,7 +137,7 @@ export function HomeCarousel() {
             type="button"
             aria-label={`${i + 1}번째 배너로 이동`}
             onClick={() => setIndex(i)}
-            className={`h-1.5 rounded-full bg-white transition-all ${i === index ? "w-5 opacity-100" : "w-1.5 opacity-50"}`}
+            className={`h-1.5 cursor-pointer rounded-full bg-white transition-all ${i === index ? "w-5 opacity-100" : "w-1.5 opacity-50"}`}
           />
         ))}
       </div>

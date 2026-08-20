@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BottomNav } from "@/components/BottomNav";
+import { Footer } from "@/components/Footer";
 import { TopNav } from "@/components/TopNav";
 import { CartProvider } from "@/context/CartContext";
 import "./globals.css";
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartProvider>
           <TopNav />
           {children}
+          <Footer />
           <BottomNav />
         </CartProvider>
       </body>

@@ -5,8 +5,9 @@ import type { ElementType, HTMLAttributes } from "react";
 type Variant = "body" | "sub" | "caption" | "lg" | "xl";
 type Weight = "light" | "regular" | "medium" | "bold" | "extrabold";
 type Size = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
-/** "ink"는 variant 기본색과 무관하게 확실한 검정(--color-ink)을 쓰고 싶을 때 사용 */
-type Tone = "secondary" | "accent" | "warning" | "success" | "error" | "info" | "ink";
+/** "ink"는 variant 기본색과 무관하게 확실한 검정(--color-ink)을 쓰고 싶을 때 사용.
+ *  "white"/"white-muted"는 Footer처럼 어두운 배경 위에 올릴 때 사용(각각 흰색, 흐린 흰색). */
+type Tone = "secondary" | "accent" | "warning" | "success" | "error" | "info" | "ink" | "white" | "white-muted";
 
 /**
  * variant마다 기본 size/weight/색이 있지만, 이걸 문자열 하나로 합쳐서(예: "text-base font-normal
@@ -52,6 +53,8 @@ const toneClass: Record<Tone, string> = {
   error: "text-error",
   info: "text-info",
   ink: "text-ink",
+  white: "text-white",
+  "white-muted": "text-white/60",
 };
 
 export interface TextProps extends HTMLAttributes<HTMLElement> {

@@ -6,13 +6,15 @@ import { usePathname } from "next/navigation";
 import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
 
-// PC 상단 네비게이션 전용 메뉴. "메뉴" 탭은 불필요해서 뺐다. "회사소개"·"공지사항"은 둘 다
-// 아직 ComingSoon 스텁이라 /news 한 페이지로 합치고, 그 안에서 칩(Chip)으로 전환한다.
+// PC 상단 네비게이션 전용 메뉴. "메뉴" 탭은 불필요해서 뺐다. "회사소개"·"공지사항"은 한때
+// /news 한 페이지로 합쳐서 칩으로 전환했었는데, 파일이 너무 커져서 다시 각자 대메뉴로 뺐다
+// (각 페이지 안에서는 여전히 하위 탭 — 매장안내/브랜드 스토리, 공지사항/이벤트 — 로 나뉜다).
 const NAV_ITEMS = [
   { href: "/rental", label: "상품" },
   { href: "/mypage", label: "예약" },
   { href: "/profile", label: "내정보" },
-  { href: "/news", label: "회사소식" },
+  { href: "/about", label: "회사소개" },
+  { href: "/notice", label: "공지사항" },
   { href: "/contact", label: "고객지원" },
 ];
 
@@ -20,18 +22,14 @@ const NAV_ITEMS = [
 // 따로 배치하기 때문에(닫기 버튼과 나란히), 나머지는 PC 대메뉴(NAV_ITEMS)와 동일하다.
 const MOBILE_NAV_ITEMS = NAV_ITEMS;
 
-// 배너(히어로 이미지) 위에 얹힌 투명 상태에서, 이 값(px)만큼 스크롤하면 불투명 배경으로 바뀐다.
-// 소메뉴 배너(sm, 높이 144px)에서도 자연스럽게 넘어가도록 대메뉴 배너(lg, 224px)보다 약간
-// 작은 값으로 잡았다.
-const SCROLL_THRESHOLD = 80;
+// 배너(히어로 이미지) 위에 얹힌 투명 상태에서, 이 값(px)만큼 스크롤하면 불투명 배경으로
+// 바뀐다. 홈 히어로처럼 배너가 화면 높이만큼 꽉 차는 페이지라도, 배너를 다 지나갈 때까지
+// 기다리지 않고 살짝만 스크롤해도(참고 사이트 기준) 바로 반응하도록 작은 값을 쓴다 — 예전엔
+// 홈에서만 "뷰포트 높이만큼" 큰 값을 썼는데, 그러면 큰 모니터에서는 창을 몇 번이고 내려야
+// 겨우 바뀌는 문제가 있었다.
+const SCROLL_THRESHOLD = 60;
 
-// 홈 화면은 히어로 캐러셀이 화면 높이(h-dvh)만큼 꽉 차 있어서, 다른 페이지와 같은 80px
-// 기준을 쓰면 아직 히어로 이미지가 화면 대부분을 채우고 있는데도 네비가 미리 불투명해져
-// 버린다. 그래서 홈에서는 뷰포트 높이에 가깝게(살짝 못 미치는 값) 스크롤해야 바뀌게 한다.
-function getScrollThreshold(pathname: string): number {
-  if (pathname === "/" && typeof window !== "undefined") {
-    return window.innerHeight - 64;
-  }
+function getScrollThreshold(): number {
   return SCROLL_THRESHOLD;
 }
 
@@ -48,12 +46,11 @@ export function TopNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const threshold = getScrollThreshold(pathname);
-    const onScroll = () => setScrolled(window.scrollY > threshold);
+    const onScroll = () => setScrolled(window.scrollY > getScrollThreshold());
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [pathname]);
+  }, []);
 
   // 라우트가 바뀌면(메뉴에서 링크를 눌러 이동하면) 오버레이 메뉴를 자동으로 닫는다.
   useEffect(() => {
@@ -77,6 +74,16 @@ export function TopNav() {
           solid ? "bg-secondary-100 text-ink shadow-sm" : "bg-transparent text-white"
         }`}
       >
+        {/* 배너 위 투명 상태에서는 배경이 없어서 대메뉴 글자가 사진에 묻혀 잘 안 보일 수 있다.
+            네비 높이(h-16=64px)보다 더 큰 그라데이션을 뒤에 깔아서, 상단은 짙고 아래로
+            내려갈수록 투명해지게 해 메뉴 가독성을 높인다. 스크롤해서 불투명 배경이 되면
+            필요 없어지므로 그때는 안 그린다. */}
+        {!solid && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b from-black/60 via-black/25 to-transparent"
+          />
+        )}
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <NextLink href="/" className="flex items-center">
             {/* 모바일: 잎사귀 아이콘만 보여준다. 배너 위 투명 상태에서는 filter로 흰색
@@ -101,25 +108,28 @@ export function TopNav() {
             />
           </NextLink>
 
-          <nav className="hidden items-center gap-8 text-sm md:flex">
+          <nav className="hidden items-center gap-10 text-[18px] font-medium md:flex">
             {NAV_ITEMS.map((item) => {
               const isActive = item.href !== "/" && pathname.startsWith(item.href);
               return (
                 <NextLink
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-1 transition-opacity hover:opacity-70"
+                  className="relative flex items-center transition-opacity hover:opacity-70"
                 >
-                  {item.label}
-                  {/* 참고 사이트처럼, 지금 보고 있는 메뉴에는 로고와 같은 잎사귀 아이콘을 붙여
-                      선택 상태를 표시한다(굵게 처리 대신). */}
+                  {/* 참고 사이트처럼, 지금 보고 있는 메뉴 위에 로고와 같은 잎사귀 아이콘을 띄워
+                      선택 상태를 표시한다(굵게 처리 대신) — 텍스트 오른쪽이 아니라 메뉴 상단
+                      가운데에 오도록 절대 위치로 뺐다. */}
                   {isActive && (
                     <span
                       aria-hidden="true"
-                      className="h-3.5 w-3.5 shrink-0 bg-contain bg-center bg-no-repeat"
+                      className={`absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 bg-contain bg-center bg-no-repeat transition-[filter] duration-200 ${
+                        solid ? "" : "brightness-0 invert"
+                      }`}
                       style={{ backgroundImage: "url(/logo-mb.png)" }}
                     />
                   )}
+                  {item.label}
                 </NextLink>
               );
             })}

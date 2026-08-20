@@ -14,18 +14,29 @@ export type AlertStatus = "success" | "warning" | "error" | "info";
  * 색상은 packages/tailwind-config/theme.css 의 시맨틱 토큰(--color-success 등)을 그대로 쓴다.
  * 값을 바꾸고 싶으면 이 파일이 아니라 theme.css 쪽을 고친다.
  */
-const statusClass: Record<AlertStatus, { box: string; text: string; icon: string }> = {
+// info 상태는 문자 "ℹ"(글꼴마다 모양이 들쭉날쭉하고 두께도 얇아 잘 안 보임) 대신, 동그라미
+// 안에 i가 든 흔한 인포 아이콘을 SVG로 직접 그려서 쓴다 — 원(stroke)·점(dot)·막대(stem)
+// 세 도형만 조합해서 아이콘 폰트나 외부 라이브러리 없이 만들 수 있다.
+const infoIcon = (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
+    <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="10" cy="6.5" r="1.1" fill="currentColor" />
+    <rect x="9.1" y="9" width="1.8" height="5.5" rx="0.9" fill="currentColor" />
+  </svg>
+);
+
+const statusClass: Record<AlertStatus, { box: string; text: string; icon: ReactNode }> = {
   success: { box: "bg-success-light", text: "text-success", icon: "✓" },
   warning: { box: "bg-warning-light", text: "text-warning", icon: "⚠" },
   error: { box: "bg-error-light", text: "text-error", icon: "✕" },
-  info: { box: "bg-info-light", text: "text-info", icon: "ℹ" },
+  info: { box: "bg-info-light", text: "text-info", icon: infoIcon },
 };
 
 export interface AlertProps {
   /** "success" | "warning" | "error" | "info" — 네 상태 중 하나, 배경·글자·아이콘이 한 번에 맞춰진다 */
   status: AlertStatus;
   title?: ReactNode;
-  /** 기본 true. 상태별 기본 아이콘(✓/⚠/✕/ℹ)을 숨기고 싶으면 false */
+  /** 기본 true. 상태별 기본 아이콘(✓/⚠/✕/동그라미 i)을 숨기고 싶으면 false */
   icon?: boolean;
   className?: string;
   children?: ReactNode;

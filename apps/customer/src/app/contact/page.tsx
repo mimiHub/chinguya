@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner } from "@chinguya/ui/banner";
+import { NoticeBox } from "@chinguya/ui/notice-box";
 import { Tab } from "@chinguya/ui/tab";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
@@ -209,7 +210,7 @@ export default function ContactPage() {
 
   return (
     <main>
-      <Banner size="lg" title="고객지원" image="/banner-notice.png" />
+      <Banner size="lg" title="고객지원" image="/banner-contact.png" />
 
       <div className="mx-auto max-w-2xl p-6">
         <Stack direction="column" gap="lg">
@@ -229,7 +230,7 @@ export default function ContactPage() {
 
           {tab === "faq" ? (
             <Stack direction="column" gap="sm">
-              <Title leaf size="md">
+              <Title size="lg" subtitle="자주묻는 질문을 통해 빠르게 찾아보세요.">
                 자주 묻는 질문
               </Title>
 
@@ -256,7 +257,7 @@ export default function ContactPage() {
                       </button>
 
                       {open && (
-                        <div className="mt-3 flex items-start gap-3 rounded-md bg-white p-3 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+                        <div className="mt-3 flex items-start gap-3 rounded-md bg-white p-3 ">
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg-light text-xs font-bold text-ink">
                             A
                           </span>
@@ -270,13 +271,15 @@ export default function ContactPage() {
                 })}
               </Stack>
 
-              <Text tone="secondary" size="xs" className="mt-1">
-                검색·카테고리 분류는 제공하지 않아요. 원하는 답변이 없으면 질문하기 탭에서 직접 물어봐 주세요.
-              </Text>
+              <NoticeBox tone="none" className="mt-1">
+                <Text variant="sub" size="xs">
+                  검색·카테고리 분류는 제공하지 않아요. 원하는 답변이 없으면 질문하기 탭에서 직접 물어봐 주세요.
+                </Text>
+              </NoticeBox>
             </Stack>
           ) : qnaView === "list" ? (
             <Stack direction="column" gap="sm">
-              <Title leaf size="md">
+              <Title size="lg" subtitle="궁금하신 점을 알려주시면, 답변을 보내드릴게요.">
                 질문 목록
               </Title>
 
@@ -377,14 +380,14 @@ export default function ContactPage() {
                   </Badge>
                   <Text>{selected.content}</Text>
                 
-                  <Card >
-                  <Stack direction="column" gap="sm">
-                    <Badge variant="success" className="w-fit">
-                      관리자 답변
-                    </Badge>
-                    <Text variant="sub">{selected.answer ?? "아직 답변이 등록되지 않았어요. 조금만 기다려 주세요."}</Text>
-                  </Stack>
-                </Card>
+                  <Card shadow={false}>
+                    <Stack direction="column" gap="sm">
+                      <Badge variant="info" className="w-fit">
+                        관리자 답변
+                      </Badge>
+                      <Text variant="sub">{selected.answer ?? "아직 답변이 등록되지 않았어요. 조금만 기다려 주세요."}</Text>
+                    </Stack>
+                  </Card>
                 </Stack>
               </Card>
 

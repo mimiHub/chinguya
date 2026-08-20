@@ -29,12 +29,13 @@ export default function MyPage() {
   return (
     <main>
       {/* 하단 탭 대메뉴 화면(내 예약)이라 배너를 크게 쓴다 */}
-      <Banner size="lg" title="예약 목록" image="/banner-contact.png" />
+      <Banner size="lg" title="예약 목록" image="/banner-mypage.png" />
 
       <div className="mx-auto max-w-2xl p-6">
       <Title size="lg">내 예약</Title>
 
       <Tab
+        variant="capsule"
         items={MY_RESERVATION_TAB_ORDER.map((key) => ({ key, label: MY_RESERVATION_TAB_LABEL[key] }))}
         activeKey={tab}
         onChange={(key) => setTab(key as MyReservationTab)}
@@ -48,7 +49,7 @@ export default function MyPage() {
             <NextLink key={reservation.id} href={`/reservations/${reservation.id}`} className="block">
               <Card className="flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-sm last:border-b-0">
                 <Stack direction="column" gap="xs">
-                  <Text weight="bold">{product?.title ?? reservation.productId}</Text>
+                  <Text weight="medium">{product?.title ?? reservation.productId}</Text>
                   <Text variant="sub">
                     {RENTAL_OPTION_LABEL[reservation.rentalOption]} · {reservation.useDate}
                     {reservation.useDateEnd ? ` ~ ${reservation.useDateEnd}` : ""} · ×{reservation.quantity}

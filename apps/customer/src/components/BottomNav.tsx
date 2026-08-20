@@ -71,19 +71,17 @@ export function BottomNav() {
     // 바(bottom-16)처럼 "이 네비 높이는 64px"라고 가정하고 여백을 잡아둔 곳들이 있어서, 내용
     // 길이에 따라 높이가 자동으로 정해지면(기존엔 py-2 + 내용물 높이) 그 가정과 어긋나 틈이
     // 생긴다. 높이를 고정하고 내용은 justify-center로 가운데 정렬한다.
-    <nav className="fixed inset-x-0 bottom-0 z-[100] flex h-16 border-t border-line bg-white md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-[100] flex h-16 border-t border-line bg-white md:hidden gap-5">
       {ITEMS.map(({ href, label }) => {
         const active = isActive(href);
         return (
           <NextLink
             key={href}
             href={href}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
-              active ? "text-accent-700 font-medium" : "text-muted"
-            }`}
+            aria-label={label}
+            className={`flex flex-1 items-center justify-center ${active ? "text-accent-700" : "text-muted"}`}
           >
             {ICONS[href]}
-            {label}
           </NextLink>
         );
       })}

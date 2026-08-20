@@ -76,7 +76,7 @@
   --color-warning: #a67c4d;
   --color-warning-light: #f1e9dc;
   --color-error: #a8564a;
-  --color-error-light: #f2e3e0;
+  --color-error-light: #ebd1cc;
   --color-info: #5f6b7a;
   --color-info-light: #e6e9ec;
 
@@ -112,6 +112,14 @@
 
   /* Skeleton 컴포넌트 shimmer 애니메이션 */
   --animate-skeleton-shimmer: skeleton-shimmer 1.4s ease infinite;
+
+  /* 홈 히어로 "아래로 스크롤" 마우스 아이콘 안에서 위아래로 튀는 점 애니메이션
+     (codepen.io/daveknispel/pen/aKdWaG 참고) */
+  --animate-scroll-dot: scroll-dot 1.5s cubic-bezier(0.65, -0.55, 0.25, 1.5) infinite;
+
+  /* 카테고리 카드(홈 Rental 스티커 카드) 사진 위에서 별처럼 반짝이는 점 —
+     cafe-next(CategoryCard.module.css)와 동일한 타이밍을 그대로 옮겼다. */
+  --animate-twinkle: twinkle 2.6s ease-in-out infinite;
 }
 
 @keyframes skeleton-shimmer {
@@ -120,6 +128,30 @@
   }
   100% {
     background-position: 0% 50%;
+  }
+}
+
+@keyframes scroll-dot {
+  0%,
+  20% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(7px) scaleY(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

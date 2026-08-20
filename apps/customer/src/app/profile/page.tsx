@@ -74,7 +74,7 @@ export default function ProfilePage() {
                       className="flex items-center justify-between gap-2 border-b border-line py-3 last:border-b-0"
                     >
                       <Stack direction="column" gap="xs">
-                        <Text weight="bold">{reservation.id}</Text>
+                        <Text weight="medium">{reservation.id}</Text>
                         <Text variant="sub">
                           {product ? `${product.title} · ${RENTAL_OPTION_LABEL[reservation.rentalOption]}` : ""}
                         </Text>
@@ -102,20 +102,20 @@ export default function ProfilePage() {
                   const product = findRentalProductById(line.productId);
                   if (!product) return null;
                   return (
-                    <div
+                    <Stack
                       key={line.cartLineId}
-                      className="flex items-center justify-between gap-2 border-b border-line py-3 last:border-b-0"
+                      direction="column"
+                      gap="xs"
+                      className="border-b border-line py-3 last:border-b-0"
                     >
-                      <Stack direction="column" gap="xs">
-                        <Text weight="bold">{product.name}</Text>
-                        <Text variant="sub">
-                          {RENTAL_OPTION_LABEL[line.option]} · {line.qty}{product.category === "bike" ? "대" : "개"}
-                        </Text>
-                      </Stack>
-                      <Text weight="bold" mono as="span">
+                      <Text weight="medium">{product.name}</Text>
+                      <Text variant="sub">
+                        {RENTAL_OPTION_LABEL[line.option]} · {line.qty}{product.category === "bike" ? "대" : "개"}
+                      </Text>
+                      <Text weight="bold" className="text-right">
                         ₩ {lineAmount(line).toLocaleString()}
                       </Text>
-                    </div>
+                    </Stack>
                   );
                 })
               )}
