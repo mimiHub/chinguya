@@ -52,6 +52,16 @@ chinguya/
 - 규칙 원문(값·정책)의 근거는 `chinguya-wireframes/docs/README.md` 의 '공통 비즈니스 규칙'이다. 값이 바뀌면 그 문서와 `packages/types` 를 함께 갱신한다.
 - 예시값/미확정 항목은 JSDoc 으로 표시한다.
 
+## ★ 핵심 규칙: API 계약은 `packages/api-spec` 이 단일 출처
+
+Slice 1 Core API 계약(엔드포인트·요청/응답 스키마)은 **`packages/api-spec/openapi/chinguya-slice1-openapi.yaml`** 이 유일한 원천이다. `packages/api-client`, MSW mock, 화면 구현은 모두 이 파일을 따라가며, 반대로 구현이나 mock이 계약을 임의로 정하지 않는다.
+
+- 엔드포인트/응답 스키마를 구현·수정하기 전에 이 yaml을 먼저 확인하고 필드명·상태값·경로를 맞춘다.
+- 스펙이 바뀌어야 하면 **이 yaml을 먼저 고치고** 나서 `api-client`/화면 구현을 맞춘다(반대 순서 금지).
+- yaml 하단 `TODO(협의)` 항목은 임의로 확정하지 않고 기획/백엔드와 먼저 협의한다.
+- 이 파일(계약)과 `packages/types`(도메인 타입·비즈니스 규칙 값)가 겹치는 값(예: 예약 상태 enum)은 `api-spec`이 먼저 바뀌고 `packages/types`가 반영하는 방향으로 맞춘다.
+- 자세한 작업 규칙은 `packages/api-spec/README.md` 참고.
+
 요약(자세히는 `chinguya-wireframes/docs/README.md`):
 
 - 재고 산식: `총 보유 − 여행사 할당 = 고객 가용` (Slice 2부터 자동, Slice 1은 관리자 수동).

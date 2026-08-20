@@ -1,0 +1,727 @@
+openapi: 3.1.0
+
+# =============================================================================
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [초안]
+#
+# 범위: 고객 화면 8종 (S1-C1 상품조회 / S3-C1 상품 상세 / S1-C2 예약·캘린더 /
+#       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
+#       S1-C6 예약 상세·바우처 / S1-C7 취소 요청)
+#
+# 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
+#           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
+#           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# ⚠ 확정 전 협의 항목은 본문에 TODO(협의)로 표시했다. 목록은 파일 하단 참고.
+# =============================================================================
+
+info:
+  title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
+  version: 0.1.0-draft
+  description: |
+    고객 자전거 예약 MVP의 Core API 초안.
+    - 통화: KRW 정수(원). 소수점 없음.
+    - 언어: 한국어 단일(i18n 미사용).
+    - 날짜: `YYYY-MM-DD`. 예약 가능 기간 판정의 '오늘'은 **일본 시간(JST)** 기준.
+    - 상태 enum·전이 순서, 임시 홀드 TTL, 취소 수수료 요율은 협의 미확정(하단 참고).
+
+servers:
+  - url: https://api.chinguya.co.kr/v1
+    description: 운영(prod)
+  - url: http://localhost:8080/v1
+    description: 로컬 개발
+
+tags:
+  - name: products
+    description: 상품 조회·상세 (S1-C1, S3-C1)
+  - name: availability
+    description: 가용성 조회 (S1-C2)
+  - name: cart
+    description: 장바구니·임시 홀드 (S1-C2 담기 → S1-C3)
+  - name: bookings
+    description: 예약 생성·조회·입금요청 (S1-C3, S1-C4, S1-C5, S1-C6)
+  - name: cancellation
+    description: 취소 견적·요청 (S1-C7)
+
+# -----------------------------------------------------------------------------
+paths:
+
+  /products:
+    get:
+      tags: [products]
+      summary: 상품 목록 조회 (S1-C1)
+      description: |
+        관리자가 '표출 ON'한 상품만, 카테고리별로 조회. 가격은 고객가 기준.
+        비로그인 열람 허용(예약 단계부터 인증 필요).
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/ProductCategory' }
+          description: 카테고리 필터. Slice 1은 사실상 bicycle.
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 상품 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListPage'
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /products/{productId}:
+    get:
+      tags: [products]
+      summary: 상품 상세 조회 (S3-C1)
+      description: |
+        선택 상품의 대여 옵션(2시간/1일/2일/야간)별 요금을 반환한다.
+        2일 옵션에는 '타지역 반납(추가요금)' 가용 여부·추가요금이 포함된다.
+        여기서 고른 옵션이 예약 캘린더(S1-C2)의 날짜 선택 규칙을 결정한다.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdPath'
+      responses:
+        '200':
+          description: 상품 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /products/{productId}/availability:
+    get:
+      tags: [availability]
+      summary: 가용성 조회 (S1-C2 캘린더)
+      description: |
+        선택 옵션 기준으로 예약 가능 날짜와 날짜별 가용 수량 상한을 반환한다.
+        규칙:
+        - 예약 가능 기간: 오늘(+1일) ~ +3개월. '오늘'은 JST 기준.
+        - 가용성 = 재고 × 슬롯 겹침으로 판정.
+        - 옵션별 선택 단위: 2시간·1일 → 1일 / 2일 → 연속 2일 / 야간 → 야간 가능일 중 1일.
+        - `daysRequired=2`(2일 옵션)에서 각 date는 **연속 2일 예약의 시작일**을 의미한다.
+        - 2일 + 타지역 반납 선택 시 익일·익익일 자동 마감(엔진 내부 처리).
+          TODO(협의): 자동 마감 결과를 응답 dates에 어떻게 표기할지(예: reason 필드).
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdPath'
+        - name: optionType
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/RentalOptionType' }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: 조회 시작일(JST). 미지정 하한은 서버가 오늘+1로 보정.
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: 조회 종료일(JST). 상한 초과분은 서버가 +3개월로 보정.
+        - name: crossRegionReturn
+          in: query
+          schema: { type: boolean, default: false }
+          description: 타지역 반납 여부(2일 옵션에서만 유효).
+      responses:
+        '200':
+          description: 날짜별 가용성
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Availability' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /cart:
+    get:
+      tags: [cart]
+      summary: 장바구니 조회 (S1-C3)
+      description: 담긴 항목·임시 홀드 만료시각·합계를 반환한다.
+      responses:
+        '200':
+          description: 현재 장바구니
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /cart/items:
+    post:
+      tags: [cart]
+      summary: 장바구니 담기 = 임시 홀드 생성 (S1-C2 '장바구니 담기')
+      description: |
+        선택 상품·옵션·날짜·수량으로 재고에 **임시 홀드**를 걸어 중복 예약을 방지한다.
+        응답의 `holdExpiresAt`까지 유효하며, 만료 시 홀드는 해제된다.
+        TODO(협의): 홀드 TTL(예: 10분) 확정 필요.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CartItemCreate' }
+      responses:
+        '201':
+          description: 홀드 성공(장바구니 항목 생성)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CartItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: 재고 부족 등으로 홀드 불가
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /cart/items/{cartItemId}:
+    delete:
+      tags: [cart]
+      summary: 장바구니 항목 제거(홀드 해제)
+      parameters:
+        - name: cartItemId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: 제거됨 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings:
+    post:
+      tags: [bookings]
+      summary: 예약 확정 (S1-C3 '예약하고 입금 안내 받기')
+      description: |
+        장바구니(홀드)로부터 예약을 확정 생성한다.
+        선행조건: 여권 영문명 필수(저장값 없으면 요청 본문으로 전달).
+        생성 시 예약번호가 발급되고 입금 안내 정보를 함께 반환한다(S1-C4).
+        TODO(협의): 생성 직후 상태값. 와이어프레임 흐름상 '입금대기'로 시작하고
+        고객의 입금확인요청 시 '접수'로 전이하는 것으로 해석되나, 확정 상태
+        머신 표기(접수 → 입금대기 → 완료)와 순서가 어긋남. 하단 참고 1 확정 필요.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingCreate' }
+      responses:
+        '201':
+          description: 예약 생성됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: 홀드 만료·재고 변동으로 확정 불가
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    get:
+      tags: [bookings]
+      summary: 내 예약 목록 조회 (S1-C5)
+      description: 상태 탭(전체/접수/완료/취소) 필터. 본인 예약만 반환.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ALL, RECEIVED, AWAITING_DEPOSIT, COMPLETED, CANCEL_REQUESTED, CANCELLED]
+            default: ALL
+          description: |
+            목록 탭 필터. 와이어프레임 탭은 전체/접수/완료/취소 4종.
+            TODO(협의): 입금대기(AWAITING_DEPOSIT)·취소요청(CANCEL_REQUESTED)을
+            고객 목록에서 어느 탭에 노출할지(접수/취소에 합칠지) 확정 필요.
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 예약 목록
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingListPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /bookings/{bookingId}:
+    get:
+      tags: [bookings]
+      summary: 예약 상세·바우처 조회 (S1-C6)
+      description: |
+        예약번호(현장 이용 증빙), 상품·옵션, 이용일, 여권명, 상태를 반환한다.
+        `cancellable`은 상태·기간 조건 충족 시 true.
+      parameters:
+        - $ref: '#/components/parameters/BookingIdPath'
+      responses:
+        '200':
+          description: 예약 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings/{bookingId}/deposit-info:
+    get:
+      tags: [bookings]
+      summary: 입금 안내 조회 (S1-C4)
+      description: |
+        PG 미사용. 관리자 설정 안내 계좌 1개와 입금액·입금 기한을 반환한다.
+        입금 기한(dueBy)은 24시간 내 미입금 시 관리자 강제취소 정책 기준.
+      parameters:
+        - $ref: '#/components/parameters/BookingIdPath'
+      responses:
+        '200':
+          description: 입금 안내
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DepositInfo' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings/{bookingId}/deposit-request:
+    post:
+      tags: [bookings]
+      summary: 입금 확인 요청 (S1-C4 CTA)
+      description: |
+        고객이 무통장 입금 후 확인을 요청한다. 처리 결과로 상태가 '접수'로 전이된다.
+        (관리자 입금확인 시 별도로 '완료'로 전이 — 관리자 API, Slice 1 범위 밖)
+      parameters:
+        - $ref: '#/components/parameters/BookingIdPath'
+      responses:
+        '200':
+          description: 요청 접수, 갱신된 예약 반환
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 현재 상태에서 요청 불가
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings/{bookingId}/cancellation-quote:
+    get:
+      tags: [cancellation]
+      summary: 취소 견적 조회 (S1-C7 진입 시)
+      description: |
+        결제 금액·취소 수수료·환불 예정액을 반환한다.
+        수수료는 이용일 기준 차등 요율(관리자 세팅)로 산정한다.
+        TODO(협의): 요율표 원천·계산 규칙(관리자 세팅 스키마) 확정 필요.
+      parameters:
+        - $ref: '#/components/parameters/BookingIdPath'
+      responses:
+        '200':
+          description: 취소 견적
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CancellationQuote' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 취소 불가 상태
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings/{bookingId}/cancel-request:
+    post:
+      tags: [cancellation]
+      summary: 취소 요청 제출 (S1-C7 '취소 요청 보내기')
+      description: |
+        환불 계좌를 입력받아 취소를 요청한다. 상태가 '취소요청'으로 전이된다.
+        실제 환불 이체는 관리자 수동 처리(Slice 1 범위 밖).
+      parameters:
+        - $ref: '#/components/parameters/BookingIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelRequest' }
+      responses:
+        '200':
+          description: 취소 요청 접수, 갱신된 예약 반환
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 취소 불가 상태
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+# -----------------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: HttpOnly 쿠키의 액세스 토큰(JWT). 서브도메인별 발급, 유효 30분.
+
+  parameters:
+    ProductIdPath:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string }
+    BookingIdPath:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: 인증 필요/만료
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: 리소스 없음
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+
+    ProductCategory:
+      type: string
+      enum: [BICYCLE, FISHING_ROD]
+      description: 자전거 / 낚싯대
+
+    RentalOptionType:
+      type: string
+      enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+      description: 2시간 / 1일 / 2일 / 야간
+
+    BookingStatus:
+      type: string
+      enum: [RECEIVED, AWAITING_DEPOSIT, COMPLETED, CANCEL_REQUESTED, CANCELLED]
+      description: |
+        접수(RECEIVED) / 입금대기(AWAITING_DEPOSIT) / 완료(COMPLETED) /
+        취소요청(CANCEL_REQUESTED) / 취소(CANCELLED).
+        TODO(협의): 생성 상태 및 전이 순서 확정(하단 참고 1).
+
+    Money:
+      type: integer
+      minimum: 0
+      description: KRW 정수(원).
+
+    ProductSummary:
+      type: object
+      required: [productId, name, category, priceFrom]
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        category: { $ref: '#/components/schemas/ProductCategory' }
+        thumbnailUrl: { type: string, format: uri }
+        priceFrom:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          description: 요약 표기용 최저가(고객가).
+
+    ProductListPage:
+      type: object
+      required: [content, page, size, totalElements]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ProductSummary' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+
+    RentalOption:
+      type: object
+      required: [optionType, price, daysRequired]
+      properties:
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        price:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 옵션 기본 요금(고객가).
+        daysRequired:
+          type: integer
+          enum: [1, 2]
+          description: 선택 단위 일수. 2시간·1일·야간=1, 2일=2.
+        crossRegionReturnAvailable:
+          type: boolean
+          description: 타지역 반납 가능 여부(2일 옵션에서만 true 가능).
+        crossRegionReturnExtraFee:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 타지역 반납 추가요금(가능한 경우).
+
+    ProductDetail:
+      type: object
+      required: [productId, name, category, options]
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        category: { $ref: '#/components/schemas/ProductCategory' }
+        description: { type: string }
+        imageUrls:
+          type: array
+          items: { type: string, format: uri }
+        options:
+          type: array
+          items: { $ref: '#/components/schemas/RentalOption' }
+
+    AvailabilityDate:
+      type: object
+      required: [date, selectable, remaining]
+      properties:
+        date: { type: string, format: date }
+        selectable:
+          type: boolean
+          description: 해당 date를 (옵션 단위의) 선택 시작일로 고를 수 있는지.
+        remaining:
+          type: integer
+          minimum: 0
+          description: 선택 가능 수량 상한.
+
+    Availability:
+      type: object
+      required: [productId, optionType, daysRequired, bookableFrom, bookableTo, dates]
+      properties:
+        productId: { type: string }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        daysRequired: { type: integer, enum: [1, 2] }
+        crossRegionReturn: { type: boolean }
+        bookableFrom:
+          type: string
+          format: date
+          description: 오늘+1(JST).
+        bookableTo:
+          type: string
+          format: date
+          description: 오늘+3개월(JST).
+        dates:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilityDate' }
+
+    CartItemCreate:
+      type: object
+      required: [productId, optionType, startDate, quantity]
+      properties:
+        productId: { type: string }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        startDate:
+          type: string
+          format: date
+          description: 선택 시작일. 2일 옵션이면 연속 2일이 자동 산정된다.
+        quantity: { type: integer, minimum: 1 }
+        crossRegionReturn: { type: boolean, default: false }
+
+    CartItem:
+      type: object
+      required: [cartItemId, productId, productName, optionType, dates, quantity, lineTotal, holdExpiresAt]
+      properties:
+        cartItemId: { type: string }
+        productId: { type: string }
+        productName: { type: string }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        dates:
+          type: array
+          items: { type: string, format: date }
+          description: 실제 이용일(2일 옵션이면 연속 2일).
+        quantity: { type: integer }
+        crossRegionReturn: { type: boolean }
+        unitPrice: { $ref: '#/components/schemas/Money' }
+        extraFee:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 타지역 반납 추가요금 등.
+        lineTotal: { $ref: '#/components/schemas/Money' }
+        holdExpiresAt:
+          type: string
+          format: date-time
+          description: 임시 홀드 만료 시각(TTL 협의 미확정).
+
+    Cart:
+      type: object
+      required: [items, totalAmount]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CartItem' }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        earliestHoldExpiresAt:
+          type: string
+          format: date-time
+          description: 담긴 항목 중 가장 이른 홀드 만료(타이머 표기용).
+
+    BookingCreate:
+      type: object
+      required: [passportName]
+      properties:
+        passportName:
+          type: string
+          description: 여권 영문명(확정 선행조건). 저장값이 있으면 생략 가능.
+        cartItemIds:
+          type: array
+          items: { type: string }
+          description: 확정할 장바구니 항목. 생략 시 장바구니 전체.
+
+    BookingItem:
+      type: object
+      required: [productId, productName, optionType, dates, quantity, lineTotal]
+      properties:
+        productId: { type: string }
+        productName: { type: string }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        dates:
+          type: array
+          items: { type: string, format: date }
+        quantity: { type: integer }
+        crossRegionReturn: { type: boolean }
+        lineTotal: { $ref: '#/components/schemas/Money' }
+
+    Booking:
+      type: object
+      required: [bookingId, bookingNumber, status, items, totalAmount, passportName, createdAt]
+      properties:
+        bookingId: { type: string }
+        bookingNumber:
+          type: string
+          description: 예약번호. 현장 이용 시 증빙(바우처) 역할.
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/BookingItem' }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        passportName: { type: string }
+        cancellable:
+          type: boolean
+          description: 상태·기간 조건 충족 시 true(S1-C6 취소 버튼 노출 판단).
+        depositInfo:
+          $ref: '#/components/schemas/DepositInfo'
+        createdAt: { type: string, format: date-time }
+
+    BookingSummary:
+      type: object
+      required: [bookingId, bookingNumber, status, productName, useDates, totalAmount, createdAt]
+      properties:
+        bookingId: { type: string }
+        bookingNumber: { type: string }
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        productName:
+          type: string
+          description: 대표 상품명(복수 항목이면 "외 N건" 표기 등은 프론트 처리).
+        useDates:
+          type: array
+          items: { type: string, format: date }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        createdAt: { type: string, format: date-time }
+
+    BookingListPage:
+      type: object
+      required: [content, page, size, totalElements]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/BookingSummary' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+
+    DepositInfo:
+      type: object
+      required: [bankName, accountNumber, accountHolder, amount]
+      properties:
+        bankName: { type: string }
+        accountNumber: { type: string }
+        accountHolder: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        dueBy:
+          type: string
+          format: date-time
+          description: 입금 기한(생성+24h). 초과 시 관리자 강제취소 대상.
+
+    CancellationQuote:
+      type: object
+      required: [paidAmount, cancellationFee, refundAmount]
+      properties:
+        paidAmount: { $ref: '#/components/schemas/Money' }
+        cancellationFee: { $ref: '#/components/schemas/Money' }
+        feeRate:
+          type: number
+          description: 적용 요율(0~1). 이용일 기준 차등(관리자 세팅).
+        refundAmount: { $ref: '#/components/schemas/Money' }
+        basedOnUseDate:
+          type: string
+          format: date
+          description: 요율 산정 기준 이용일.
+
+    RefundAccount:
+      type: object
+      required: [bankName, accountNumber, accountHolder]
+      properties:
+        bankName: { type: string }
+        accountNumber: { type: string }
+        accountHolder: { type: string }
+
+    CancelRequest:
+      type: object
+      required: [refundAccount]
+      properties:
+        refundAccount: { $ref: '#/components/schemas/RefundAccount' }
+        reason:
+          type: string
+          description: 취소 사유(선택).
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: 도메인 에러 코드(예 HOLD_EXPIRED, OUT_OF_STOCK, PASSPORT_NAME_REQUIRED).
+        message: { type: string }
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              reason: { type: string }
+
+security:
+  - cookieAuth: []
+
+# =============================================================================
+# 협의 미확정(TODO) 목록 — 개발자·사장님 확정 필요
+#
+# 1. 예약 상태 전이 순서 (최우선)
+#    - 확정 머신 표기: 접수 → 입금대기 → 완료 ; 취소요청 → 취소
+#    - 와이어프레임 흐름: 예약 생성 → (입금대기) → 고객 입금확인요청 → 접수
+#      → 관리자 입금확인 → 완료
+#    - 두 서술의 '접수/입금대기' 순서가 상충. POST /bookings 생성 직후 상태와
+#      /deposit-request 후 상태를 확정해야 enum·전이·목록 탭이 고정됨.
+#
+# 2. 임시 홀드 TTL
+#    - /cart/items 홀드 유효시간(예: 10분) 미확정. holdExpiresAt 산정 근거.
+#
+# 3. 취소 수수료 요율표
+#    - 이용일 기준 차등 요율의 관리자 세팅 스키마·계산 규칙 미확정.
+#      /cancellation-quote 계산 로직에 직결.
+#
+# 4. 상품/가용성 표기 세부
+#    - 상품 목록 URL·카테고리 파라미터 최종화(프론트 URL 스킴 결정과 연동).
+#    - 2일+타지역 반납의 '익일·익익일 자동 마감'을 availability 응답에
+#      어떻게 표기할지(reason 필드 추가 등).
+# =============================================================================
