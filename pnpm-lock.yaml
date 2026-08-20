@@ -26,6 +26,9 @@ importers:
       '@chinguya/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@chinguya/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@chinguya/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -78,6 +81,9 @@ importers:
       '@chinguya/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@chinguya/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@chinguya/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -130,6 +136,9 @@ importers:
       '@chinguya/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@chinguya/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@chinguya/mocks':
         specifier: workspace:*
         version: link:../../packages/mocks
@@ -197,6 +206,22 @@ importers:
         version: 5.9.3
 
   packages/api-spec: {}
+
+  packages/catalog-data:
+    dependencies:
+      '@chinguya/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@chinguya/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@chinguya/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.6.2
+        version: 5.9.3
 
   packages/eslint-config:
     dependencies:

@@ -237,35 +237,40 @@ export default function ContactPage() {
               <Stack direction="column" gap="sm">
                 {FAQ_ITEMS.map((faq) => {
                   const open = openFaqId === faq.id;
+                  // padding="sm"(p-2 md:p-4)은 모바일에서 PC보다 여백이 좁아지는데, 여기는
+                  // 모바일에서도 PC와 같은 여백(16px)을 쓰고 싶어서 Card padding은 끄고(=none)
+                  // 안쪽 div에 고정 p-4를 준다.
                   return (
-                    <Card key={faq.id} padding="sm" tint="primary">
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaqId(open ? null : faq.id)}
-                        className="flex w-full items-center gap-3 bg-transparent text-left focus:outline-none"
-                        style={{ WebkitTapHighlightColor: "transparent" }}
-                      >
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-bold text-white">
-                          Q
-                        </span>
-                        <Text as="span" weight="medium" className="flex-1">
-                          {faq.question}
-                        </Text>
-                        <span aria-hidden="true" className="shrink-0 text-sm text-muted">
-                          {open ? "−" : "+"}
-                        </span>
-                      </button>
-
-                      {open && (
-                        <div className="mt-3 flex items-start gap-3 rounded-md bg-white p-3 ">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg-light text-xs font-bold text-ink">
-                            A
+                    <Card key={faq.id} padding="none" tint="primary">
+                      <div className="p-4">
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaqId(open ? null : faq.id)}
+                          className="flex w-full items-center gap-3 bg-transparent text-left focus:outline-none"
+                          style={{ WebkitTapHighlightColor: "transparent" }}
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-bold text-white">
+                            Q
                           </span>
-                          <Text variant="sub" className="flex-1">
-                            {faq.answer}
+                          <Text as="span" weight="medium" className="flex-1">
+                            {faq.question}
                           </Text>
-                        </div>
-                      )}
+                          <span aria-hidden="true" className="shrink-0 text-sm text-muted">
+                            {open ? "−" : "+"}
+                          </span>
+                        </button>
+
+                        {open && (
+                          <div className="mt-3 flex items-start gap-3 rounded-md bg-white p-3 ">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg-light text-xs font-bold text-ink">
+                              A
+                            </span>
+                            <Text variant="sub" className="flex-1">
+                              {faq.answer}
+                            </Text>
+                          </div>
+                        )}
+                      </div>
                     </Card>
                   );
                 })}
@@ -285,21 +290,23 @@ export default function ContactPage() {
 
               <Stack direction="column" gap="sm">
                 {qnaItems.map((item) => (
-                  <Card key={item.id} padding="sm" onClick={() => openQna(item)}>
-                    <Stack justify="between" align="center">
-                      <Text as="span" weight="medium">
-                        {item.title}
-                      </Text>
-                      {!item.isPublic ? (
-                        <span aria-hidden="true" className="text-muted">
-                          🔒
-                        </span>
-                      ) : item.answer ? (
-                        <Badge variant="success">답변완료</Badge>
-                      ) : (
-                        <Badge variant="gray">대기</Badge>
-                      )}
-                    </Stack>
+                  <Card key={item.id} padding="none" onClick={() => openQna(item)}>
+                    <div className="p-4">
+                      <Stack justify="between" align="center">
+                        <Text as="span" weight="medium">
+                          {item.title}
+                        </Text>
+                        {!item.isPublic ? (
+                          <span aria-hidden="true" className="text-muted">
+                            🔒
+                          </span>
+                        ) : item.answer ? (
+                          <Badge variant="success">답변완료</Badge>
+                        ) : (
+                          <Badge variant="gray">대기</Badge>
+                        )}
+                      </Stack>
+                    </div>
                   </Card>
                 ))}
               </Stack>             
