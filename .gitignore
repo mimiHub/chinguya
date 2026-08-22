@@ -10,3 +10,4 @@ graphify-out/cache
 *.tsbuildinfo
 _tmp_*
 packages/mocks/src/types.gen.ts
+.idea/
