@@ -13,7 +13,7 @@ const sizeClass: Record<Size, string> = {
 };
 
 const baseFieldClass =
-  "w-full rounded-sm border border-line bg-white text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed";
+  "w-full rounded-sm border border-line bg-white text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-secondary-800 disabled:bg-gray-100 disabled:cursor-not-allowed";
 
 const checkboxClass =
   "relative inline-flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded-sm border-[1.5px] border-line bg-white transition-colors hover:border-primary-500 checked:bg-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +

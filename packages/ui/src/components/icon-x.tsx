@@ -2,16 +2,18 @@
 
 import type { ButtonHTMLAttributes } from "react";
 
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "lg";
 
 const sizeClass: Record<Size, string> = {
   sm: "h-5 w-5",
   md: "h-6 w-6",
+  lg: "h-7 w-7",
 };
 
 const barSizeClass: Record<Size, string> = {
   sm: "w-2.5",
   md: "w-3",
+  lg: "w-4",
 };
 
 export interface IconXProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
@@ -29,7 +31,7 @@ export function IconX({ size = "md", className = "", "aria-label": ariaLabel = "
       type="button"
       aria-label={ariaLabel}
       className={[
-        "relative inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-gray-100 hover:text-error",
+        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-gray-100 hover:text-error",
         sizeClass[size],
         className,
       ]

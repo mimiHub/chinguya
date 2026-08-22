@@ -61,7 +61,7 @@ function buildClassName({
   className = "",
 }: CommonProps) {
   return [
-    "inline-flex items-center justify-center gap-1 rounded-md font-medium whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+    "inline-flex items-center justify-center gap-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
     variantClass[variant],
     padding === "none" ? "h-auto p-0" : sizeClass[size],
     fullWidth ? "w-full" : "",

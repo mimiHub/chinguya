@@ -2,23 +2,26 @@
 
 import { Suspense, useMemo, useState } from "react";
 import NextLink from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { RentalOptionKey } from "@chinguya/types";
 import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { Badge } from "@chinguya/ui/badge";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
 import { Stepper } from "@chinguya/ui/stepper";
 import { Kv } from "@chinguya/ui/kv";
-import { Price } from "@chinguya/ui/price";
 import { Button } from "@chinguya/ui/button";
 import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { Popup } from "@chinguya/ui/popup";
 import { Toast } from "@chinguya/ui/toast";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
+import { Banner } from "@chinguya/ui/banner";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { useCart } from "@/context/CartContext";
 
 /**
  * 데모용: 실제로는 GET /api/products/{id}/availability?month=YYYY-MM 응답으로 이 함수를 대체한다.
@@ -49,8 +52,17 @@ const MAX_MONTHS_AHEAD = 3;
 // 실제 연동 시엔 이 상수 대신 서버 응답의 실제 충돌(409 등)로만 판단하도록 교체한다.
 const CONFLICT_DEMO_DAY = 20;
 
+// 데모용 가용 수량. 실제로는 선택한 날짜·옵션 기준 재고 응답(Inventory.customerAvailable)으로 교체한다.
+const AVAILABLE_QTY_DEMO = 5;
+
+function toDateKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function ReserveForm() {
   const params = useSearchParams();
+  const router = useRouter();
+  const { addItem } = useCart();
   const productId = params.get("product");
   const option = (params.get("option") as RentalOptionKey | null) ?? "1d";
   const isMultiDay = option === "2d";
@@ -63,11 +75,9 @@ function ReserveForm() {
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [range, setRange] = useState<{ start: number | null; end: number | null }>({ start: null, end: null });
-  // 수량 상한(재고): 지금 데이터 모델은 상품 개체 하나당 레코드 하나(자전거 1호기, 2호기 ...)라
-  // "이 화면에서 몇 대를 함께 예약할지"에 대한 상한 값이 아직 없다. 재고 모델이 정해지면 max를 채운다.
   const [qty, setQty] = useState(1);
   const [conflictOpen, setConflictOpen] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
+  const [addedToast, setAddedToast] = useState(false);
   // "2일" 옵션에서 연속 이틀 예약이 불가능한 시작일을 골랐을 때 보여줄 안내 문구
   const [multiDayNotice, setMultiDayNotice] = useState<string | null>(null);
 
@@ -139,25 +149,46 @@ function ReserveForm() {
   const total = unitPrice * qty * rentalDays + offSiteReturnFee;
   const canSubmit = Boolean(range.start && range.end);
 
-  const handleReserve = () => {
+  const buildCartLine = () => {
+    if (!range.start || !range.end) return null;
+    return {
+      productId: product.id,
+      option,
+      useDateStart: toDateKey(viewYear, viewMonth, range.start),
+      useDateEnd: toDateKey(viewYear, viewMonth, range.end),
+      qty,
+      offSiteReturn,
+    };
+  };
+
+  const handleAddToCart = (navigateToCart: boolean) => {
     if (!canSubmit) return;
 
     // 캘린더에서 이미 막고 있지만, 갱신 지연 등으로 화면이 최신 상태가 아닐 수 있어
-    // 제출 시점에 한 번 더 확인한다(데모: 고정된 날짜를 선택하면 항상 충돌로 재현).
+    // 담는 시점에 한 번 더 확인한다(데모: 고정된 날짜를 선택하면 항상 충돌로 재현).
     if (range.start === CONFLICT_DEMO_DAY) {
       setConflictOpen(true);
       setRange({ start: null, end: null });
       return;
     }
 
-    // TODO: 실제 연동 시 POST /api/reservations 호출로 교체하고, 로그인 여부 확인(미로그인 시
-    // 로그인 팝업 → /login?from=... 리다이렉트)을 이 자리에 추가한다. 지금 스캐폴드엔 로그인/장바구니
-    // 기능이 아직 없어서 예약 접수 완료 토스트만 보여준다.
-    setSuccessOpen(true);
+    const line = buildCartLine();
+    if (!line) return;
+    addItem(line);
+
+    if (navigateToCart) {
+      router.push("/cart");
+    } else {
+      setAddedToast(true);
+    }
   };
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
+    <main>
+      {/* 소메뉴 배너는 소속된 대메뉴("상품/대여서비스")의 이름을 그대로 쓴다 */}
+      <Banner size="sm" title="대여서비스" image="/banner-rental.png" />
+
+      <div className="mx-auto max-w-2xl p-6">
       <Stack direction="column" gap="sm">
         <NextLink href={`/rental/${product.id}`} className="text-sm text-muted hover:underline">
           ← 이전으로
@@ -174,9 +205,15 @@ function ReserveForm() {
             <Text weight="bold">{product.name}</Text>
             <Text variant="sub">
               {RENTAL_OPTION_LABEL[option]} 기준 {unitPrice.toLocaleString()}원~
-            </Text>
+            </Text>            
+            <Stack direction="row" gap="sm" align="center">
+              <Badge variant="secondary">선택옵션</Badge>
+              <Text as="b" weight="bold" size="sm" >
+                {RENTAL_OPTION_LABEL[option]}
+              </Text>              
+            </Stack>
           </Stack>
-        </Stack>
+        </Stack>        
       </Card>
 
       <Stack direction="column" gap="sm" className="mt-4">
@@ -199,7 +236,11 @@ function ReserveForm() {
           <FormMessage type="helper">이 달은 예약 가능한 날짜가 없습니다. 다른 달을 확인해 주세요.</FormMessage>
         )}
 
-        {multiDayNotice && <FormMessage type="error">{multiDayNotice}</FormMessage>}
+        {multiDayNotice && (
+          <Alert status="error" icon={false}>
+            {multiDayNotice}
+          </Alert>
+        )}
 
         {range.start &&
           range.end &&
@@ -211,12 +252,7 @@ function ReserveForm() {
             <Text variant="sub">
               {viewMonth}월 {range.start}일 · {RENTAL_OPTION_LABEL[option]} 대여
             </Text>
-          ))}
-
-        <FormMessage type="helper">
-          테스트용: {CONFLICT_DEMO_DAY}일을 선택하고 예약하면 &apos;방금 마감되었습니다&apos; 상황을 확인할 수
-          있어요.
-        </FormMessage>
+          ))}        
       </Stack>
 
       <Stack direction="column" gap="md" className="mt-6">
@@ -224,20 +260,38 @@ function ReserveForm() {
           <Text variant="sub" as="span">
             수량
           </Text>
-          <Stepper value={qty} onChange={setQty} min={1} />
+          <Stepper value={qty} onChange={setQty} min={1} max={AVAILABLE_QTY_DEMO} />
         </Stack>
-
+        <div className="border-t border-line" />
         {offSiteReturn && (
-          <Text variant="sub" tone="accent">
+          <Stack justify="end">
+            <Text variant="sub" tone="accent">
             타지역 반납 포함 (+ {offSiteReturnFee.toLocaleString()}원)
-          </Text>
+            </Text>
+          </Stack>
         )}
 
-        <Kv items={[{ key: "합계", value: <Price value={total} /> }]} />
+        <Kv
+          items={[
+            {
+              key: "합계",
+              value: (
+                <Text as="span" size="sm" weight="bold">
+                  ₩ {total.toLocaleString()}
+                </Text>
+              ),
+            },
+          ]}
+        />
 
-        <Button fullWidth disabled={!canSubmit} onClick={handleReserve}>
-          예약하기
-        </Button>
+        <Stack gap="sm">
+          <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
+            장바구니 담기
+          </Button>
+          <Button className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(true)}>
+            바로 예약
+          </Button>
+        </Stack>
         {!canSubmit && (
           <FormMessage type="helper">
             {isMultiDay ? "대여 시작일과 종료일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
@@ -257,12 +311,13 @@ function ReserveForm() {
       </Popup>
 
       <Toast
-        open={successOpen}
-        onClose={() => setSuccessOpen(false)}
-        message="예약이 접수되었습니다"
-        actionLabel="목록으로"
-        actionHref="/rental"
+        open={addedToast}
+        onClose={() => setAddedToast(false)}
+        message="장바구니에 추가되었습니다"
+        actionLabel="장바구니 보기"
+        actionHref="/cart"
       />
+      </div>
     </main>
   );
 }

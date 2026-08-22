@@ -1,4 +1,4 @@
-import type { Product, RentalCategoryKey } from "@chinguya/types";
+import type { Product, RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
 
 /**
  * 렌탈 상품 목업 데이터 (agency 앱용).
@@ -68,7 +68,7 @@ export const rentalProducts: Product[] = [
     title: "릴낚시대",
     name: "릴낚시대 세트 렌탈",
     description: "릴을 이용한 캐스팅 낚시를 즐기실 수 있는 릴낚시대 세트 대여 상품입니다.",
-    image: "/fishing-set.png",
+    image: "/fishing-reel-set.png",
     priceByOption: {
       "2h": price(5000, 5000),
       "1d": price(12000, 12000),
@@ -90,3 +90,13 @@ export const CATEGORY_LABEL: Record<RentalCategoryKey, string> = {
 export function findRentalProductById(id: string): Product | undefined {
   return rentalProducts.find((p) => p.id === id);
 }
+
+export const RENTAL_OPTION_LABEL: Record<RentalOptionKey, string> = {
+  "2h": "2시간",
+  "1d": "1일",
+  "2d": "2일",
+  night: "야간",
+};
+
+/** 옵션 칩/표를 순서대로 그릴 때 쓰는 고정 순서 목록 */
+export const RENTAL_OPTION_ORDER: RentalOptionKey[] = ["2h", "1d", "2d", "night"];

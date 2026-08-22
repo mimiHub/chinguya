@@ -9,7 +9,6 @@ import { StatusBadge, Badge } from "@chinguya/ui/badge";
 import { Button } from "@chinguya/ui/button";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Text } from "@chinguya/ui/text";
-import { Price } from "@chinguya/ui/price";
 import { Toast } from "@chinguya/ui/toast";
 import { FormMessage } from "@chinguya/ui/form-message";
 import { findAdminReservationById, getElapsedHours, UNPAID_AFTER_HOURS } from "@/data/reservationData";
@@ -17,6 +16,16 @@ import { findAdminReservationById, getElapsedHours, UNPAID_AFTER_HOURS } from "@
 // 취소 수수료율은 실제로는 이용일까지 남은 일수 기준 차등 요율표(CancellationFeeRule, 관리자 설정)에서
 // 가져와야 한다 — 여기서는 화면 데모용으로 20% 고정값을 쓴다.
 const DEMO_CANCEL_FEE_RATE = 0.2;
+
+/** 금액 표시(전용 Price 컴포넌트 제거 후 Kv 안에서 직접 포맷). sign은 취소 수수료처럼
+ * 마이너스 금액 앞에 "− " 등을 붙이고 싶을 때만 넘긴다. */
+function priceText(value: number, sign = "") {
+  return (
+    <Text as="span" size="sm" weight="bold" mono>
+      {sign}₩ {value.toLocaleString()}
+    </Text>
+  );
+}
 
 export default function AdminReservationDetailPage() {
   const params = useParams<{ id: string }>();
@@ -70,7 +79,7 @@ export default function AdminReservationDetailPage() {
           { key: "고객 / 여권명", value: `${reservation.customer} / ${reservation.passportName}` },
           { key: "상품 · 수량", value: reservation.product },
           { key: "이용일", value: reservation.useDate },
-          { key: "결제액", value: <Price value={reservation.amountKrw} /> },
+          { key: "결제액", value: priceText(reservation.amountKrw) },
         ]}
       />
 
@@ -98,9 +107,9 @@ export default function AdminReservationDetailPage() {
           <Kv
             className="mt-2"
             items={[
-              { key: "결제액", value: <Price value={reservation.amountKrw} /> },
-              { key: "취소 수수료(차등)", value: <Price value={cancelFee} sign="− " /> },
-              { key: "환불 예정액", value: <Price value={refundAmount} /> },
+              { key: "결제액", value: priceText(reservation.amountKrw) },
+              { key: "취소 수수료(차등)", value: priceText(cancelFee, "− ") },
+              { key: "환불 예정액", value: priceText(refundAmount) },
               { key: "고객 환불계좌", value: "○○ 000-000" },
             ]}
           />

@@ -14,6 +14,7 @@ import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
 import { IconX } from "@chinguya/ui/icon-x";
 import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { Toast } from "@chinguya/ui/toast";
 import { assets } from "@/data/assetData";
 import { agencies } from "@/data/agencyData";
@@ -258,12 +259,15 @@ export default function AdminAllocationsPage() {
           <Kv items={[{ key: "할당 합계", value: `${allocatedSum}개` }]} />
 
           {allocatedSum !== agencyAllocatedTarget && (
-            <FormMessage type="error">
+            <Alert status="error" icon={false}>
               할당 합계가 재고 세팅상 여행사 할당({agencyAllocatedTarget}개)과 다릅니다. 재고 세팅 화면에서 값을
               맞추거나 여기서 합계를 맞춰 주세요.
-            </FormMessage>
+            </Alert>
           )}
 
+          {/* 지금은 이 앱 안에서만 저장된다. 여행사 앱 예약 화면의 가용(할당) 수량은 아직
+              @chinguya/catalog-data의 고정값을 그대로 보여준다 — 실제 API가 생기면 여기서 저장한
+              값으로 자동 반영되도록 연결한다. (개발자용 메모라 화면에는 노출하지 않는다.) */}
           <Button fullWidth onClick={handleSave}>
             저장
           </Button>

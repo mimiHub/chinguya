@@ -11,9 +11,9 @@ import { Chip } from "@chinguya/ui/chip";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Toggle } from "@chinguya/ui/toggle";
-import { Price } from "@chinguya/ui/price";
 import { Button } from "@chinguya/ui/button";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
+import { Banner } from "@chinguya/ui/banner";
 import { findRentalProductById, RENTAL_OPTION_LABEL, RENTAL_OPTION_ORDER } from "@/data/rentalData";
 
 export default function RentalDetailPage() {
@@ -49,7 +49,11 @@ export default function RentalDetailPage() {
     (product.name.startsWith(product.title) ? product.name.slice(product.title.length).trim() : product.name);
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
+    <main>
+      {/* 소메뉴 배너는 상품명이 아니라 소속된 대메뉴("상품/대여서비스")의 이름을 그대로 쓴다 */}
+      <Banner size="sm" title="대여서비스" image="/banner-rental.png" />
+
+      <div className="mx-auto max-w-2xl p-6">
       <Stack direction="column" gap="sm">
         <NextLink href="/rental" className="text-sm text-muted hover:underline">
           ← 목록으로
@@ -59,12 +63,16 @@ export default function RentalDetailPage() {
         <Text variant="sub">{subtitle || `${product.title}와 함께하는 여유로운 시간`}</Text>
       </Stack>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={product.image}
-        alt={product.title}
-        className="mt-4 aspect-square w-full rounded-lg object-cover"
-      />
+      {/*
+        이전엔 정사각형(aspect-square)이라 폭이 넓은 화면에서 이미지 높이가 너무 커져
+        아래 이용 요금·예약하기 버튼이 스크롤 없이는 안 보였다. 높이를 고정값으로 줄여서
+        내용이 짧은 상품은 스크롤 없이 버튼까지 한 화면에 보이게 한다.
+      */}
+      {/* 상자에 padding(p-6)을 줘서 사진이 가장자리까지 꽉 차지 않고 여백이 보이게 한다 */}
+      <div className="mt-4 h-60 w-full rounded-lg bg-gray-50 p-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={product.image} alt={product.title} className="h-full w-full object-contain" />
+      </div>
 
       <Stack direction="column" gap="sm" className="mt-6">
         <Title size="sm" leaf tone="secondary">
@@ -93,12 +101,14 @@ export default function RentalDetailPage() {
         )}
       </Stack>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex-column">
         <Title size="sm" leaf tone="secondary">
           이용 요금
         </Title>
         <div className="text-right">
-          <Price as="span" value={totalPrice} size="2xl" currency="원" mono={false} />
+          <Text as="span" size="2xl" weight="extrabold">
+            {totalPrice.toLocaleString()}원
+          </Text>
           {isMultiDay && offSiteReturn && (
             <Text variant="sub" className="mt-1">
               기본 {basePrice.toLocaleString()}원 + 타지역 반납 {OFF_SITE_RETURN_FEE_KRW.toLocaleString()}원
@@ -121,6 +131,7 @@ export default function RentalDetailPage() {
       >
         예약하기
       </Button>
+      </div>
     </main>
   );
 }

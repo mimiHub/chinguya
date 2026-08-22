@@ -31,15 +31,22 @@ export interface CalendarProps {
 
 // 기획서 기준 캘린더 상태는 예약가능 / 선택 / 마감·불가 세 가지뿐 — 과거 날짜(disabled),
 // 마감(zero), 해당 월 예약 불가(holiday)는 사유는 달라도 화면에는 전부 "마감·불가"로 동일하게 표시함.
+// 각 항목은 bg/text/border/cursor를 전부 포함한 "완결된" 클래스 묶음이다 — 아래 셀 렌더링에서
+// 이 중 정확히 하나만 골라 쓰고 다른 상태 클래스와 절대 섞지 않는다(섞으면 서로 배경/글자색을
+// 덮어쓰려는 유틸리티 클래스가 같은 className 안에 공존하게 되어, 실제로 어느 쪽이 이길지
+// Tailwind 빌드 결과 순서에 좌우되는 버그가 난다 — 선택 색이 안 보이던 문제의 원인이었다).
 const dayClass: Record<DayStatus, string> = {
-  ok: "bg-success-light text-success",
-  zero: "text-gray-400 [background:repeating-linear-gradient(45deg,var(--color-gray-200),var(--color-gray-200)_3px,var(--color-gray-300)_3px,var(--color-gray-300)_6px)] cursor-not-allowed",
-  disabled:
-    "text-gray-400 [background:repeating-linear-gradient(45deg,var(--color-gray-200),var(--color-gray-200)_3px,var(--color-gray-300)_3px,var(--color-gray-300)_6px)] cursor-not-allowed",
-  holiday:
-    "text-gray-400 [background:repeating-linear-gradient(45deg,var(--color-gray-200),var(--color-gray-200)_3px,var(--color-gray-300)_3px,var(--color-gray-300)_6px)] cursor-not-allowed",
-  off: "bg-transparent cursor-default",
+  ok: "bg-success-light text-success border-transparent cursor-pointer",
+  zero: "text-gray-400 border-transparent bg-stripe-muted cursor-not-allowed",
+  disabled: "text-gray-400 border-transparent bg-stripe-muted cursor-not-allowed",
+  holiday: "text-gray-400 border-transparent bg-stripe-muted cursor-not-allowed",
+  off: "bg-transparent text-ink border-transparent cursor-default",
 };
+
+// 선택된 날짜(단일 선택이든, 기간의 시작·끝이든) 색은 하나로 통일한다.
+const SELECTED_CLASS = "bg-secondary-800 text-white border-secondary-800 cursor-pointer";
+// 기간 선택에서 시작~끝 "사이" 날짜(끝은 아니지만 범위에 포함됨을 보여주는 톤)
+const RANGE_MIDDLE_CLASS = "bg-primary-100 text-ink border-transparent cursor-pointer rounded-none";
 
 const NOT_SELECTABLE: DayStatus[] = ["off", "disabled", "zero", "holiday"];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -86,13 +93,15 @@ export function Calendar({
     }
   };
 
-  const getRangeClass = (date: number | "") => {
-    if (mode !== "range" || !range?.start || date === "") return "";
-    if (!range.end) return date === range.start ? "bg-primary-500 text-white rounded-l-sm" : "";
-    if (date === range.start) return "bg-primary-500 text-white rounded-l-sm";
-    if (date === range.end) return "bg-primary-500 text-white rounded-r-sm";
-    if (date > range.start && date < range.end) return "bg-primary-100 rounded-none";
-    return "";
+  // 그 날짜가 기간 선택에서 어떤 역할인지("시작"/"끝"/"사이"/해당 없음)만 알려준다.
+  // 실제 클래스 조립은 렌더링하는 쪽에서 dayClass/SELECTED_CLASS 중 딱 하나만 골라 한다.
+  const getRangeRole = (date: number | ""): "start" | "end" | "middle" | "none" => {
+    if (mode !== "range" || !range?.start || date === "") return "none";
+    if (!range.end) return date === range.start ? "start" : "none";
+    if (date === range.start) return "start";
+    if (date === range.end) return "end";
+    if (date > range.start && date < range.end) return "middle";
+    return "none";
   };
 
   return (
@@ -125,16 +134,23 @@ export function Calendar({
         {days.map((day, i) => {
           const status = day.status ?? "ok";
           const isSingleSelected = mode === "single" && selected === day.date;
+          const rangeRole = getRangeRole(day.date);
+          const isSelectedCell = isSingleSelected || rangeRole === "start" || rangeRole === "end";
+
+          // bg/text/border/cursor를 함께 담은 상태 클래스 묶음을 "딱 하나"만 고른다
+          // (선택됨 > 기간 사이 > 상태별 기본). 서로 다른 묶음을 섞어 쓰지 않는다.
+          const stateClass = isSelectedCell
+            ? [SELECTED_CLASS, rangeRole === "start" ? "rounded-l-sm" : rangeRole === "end" ? "rounded-r-sm" : ""]
+                .filter(Boolean)
+                .join(" ")
+            : rangeRole === "middle"
+              ? RANGE_MIDDLE_CLASS
+              : (dayClass[status] ?? dayClass.ok);
 
           return (
             <div
               key={i}
-              className={[
-                "flex aspect-square flex-col items-center justify-center rounded-sm border border-transparent bg-gray-100 text-[11px] text-ink cursor-pointer",
-                dayClass[status] ?? dayClass.ok,
-                isSingleSelected ? "bg-secondary-800 text-white border-secondary-800" : "",
-                getRangeClass(day.date),
-              ]
+              className={["flex aspect-square flex-col items-center justify-center rounded-sm border text-[11px]", stateClass]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => isSelectable(status) && handleClick(day.date)}
@@ -156,7 +172,7 @@ export function Calendar({
             선택
           </span>
           <span>
-            <i className="mr-[3px] inline-block h-[9px] w-[9px] rounded-[3px] align-[-1px] [background:repeating-linear-gradient(45deg,var(--color-gray-100),var(--color-gray-100)_2px,var(--color-gray-200)_2px,var(--color-gray-200)_4px)]" />
+            <i className="mr-[3px] inline-block h-[9px] w-[9px] rounded-[3px] align-[-1px] bg-stripe-muted-light" />
             마감/불가
           </span>
         </div>

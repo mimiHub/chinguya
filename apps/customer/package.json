@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@chinguya/api-client": "workspace:*",
+    "@chinguya/catalog-data": "workspace:*",
     "@chinguya/mocks": "workspace:*",
     "@chinguya/types": "workspace:*",
     "@chinguya/ui": "workspace:*",

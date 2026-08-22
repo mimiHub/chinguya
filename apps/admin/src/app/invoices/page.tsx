@@ -15,7 +15,7 @@ import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
 import { IconX } from "@chinguya/ui/icon-x";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { agencies } from "@/data/agencyData";
 import { invoices as initialInvoices, getPreviousPeriod } from "@/data/invoiceData";
@@ -163,7 +163,11 @@ export default function AdminInvoicesPage() {
           </Button>
         </Stack>
 
-        <FormMessage type="error">{error}</FormMessage>
+        {error && (
+          <Alert status="error" icon={false}>
+            {error}
+          </Alert>
+        )}
       </Stack>
 
       <Text weight="bold" className="mt-6">

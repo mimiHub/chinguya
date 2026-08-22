@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import { BottomNav } from "@/components/BottomNav";
+import { Footer } from "@/components/Footer";
+import { TopNav } from "@/components/TopNav";
+import { CartProvider } from "@/context/CartContext";
 import "./globals.css";
 import { MswProvider } from "./msw-provider";
 
@@ -13,8 +17,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-      <body>
-        <MswProvider>{children}</MswProvider>
+      <body className="pb-16 md:pb-0">
+        <MswProvider>
+          <CartProvider>
+            <TopNav />
+            {children}
+            <Footer />
+            <BottomNav />
+          </CartProvider>
+        </MswProvider>
       </body>
     </html>
   );

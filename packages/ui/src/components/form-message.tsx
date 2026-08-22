@@ -2,11 +2,13 @@
 
 import type { ReactNode } from "react";
 
-type Type = "helper" | "error" | "success";
+type Type = "helper" | "error" | "success" | "warning" | "info";
 
 const typeClass: Record<Type, string> = {
   error: "text-error",
   success: "text-success",
+  warning: "text-warning",
+  info: "text-info",
   helper: "text-muted",
 };
 

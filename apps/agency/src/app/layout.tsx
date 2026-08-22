@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body>{children}</body>
+      <body>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 p-8">{children}</div>
+        </div>
+      </body>
     </html>
   );
 }

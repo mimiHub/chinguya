@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>친구야 — 고객 페이지 와이어프레임</title>
+<style>
+  :root{
+    --paper:#f7f7f5; --card:#ffffff; --ink:#20242a; --muted:#8b909a;
+    --line:#d3d7dd; --fill:#eef0f3; --accent:#3b4a6b; --warn:#b5642a;
+    --radius:10px;
+    --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  header.top{position:sticky;top:0;z-index:20;background:rgba(247,247,245,.95);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:14px 22px}
+  header.top h1{margin:0;font-size:16px;letter-spacing:.02em}
+  header.top p{margin:4px 0 10px;font-size:12px;color:var(--muted)}
+  nav.index{display:flex;flex-wrap:wrap;gap:6px}
+  nav.index a{font-family:var(--mono);font-size:11px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:3px 9px;background:var(--card)}
+  nav.index a:hover{border-color:var(--accent);color:var(--accent)}
+  main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
+  .group{margin:38px 0 8px}
+  .group h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 2px;font-weight:600}
+  .group hr{border:none;border-top:1px solid var(--line);margin:8px 0 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:26px;margin-top:20px}
+  .screen{scroll-margin-top:120px}
+  .screen .cap{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .screen .cap .id{font-family:var(--mono);font-size:11px;color:#fff;background:var(--accent);border-radius:5px;padding:2px 6px}
+  .screen .cap .nm{font-size:14px;font-weight:600}
+  .screen .cap .dsc{font-size:11px;color:var(--muted)}
+  /* screen definition */
+  .screen .desc{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:11px 13px}
+  .desc h4{margin:0 0 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .desc dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 10px}
+  .desc dt{font-size:10px;color:var(--muted);font-family:var(--mono);white-space:nowrap;padding-top:1px}
+  .desc dd{margin:0;font-size:11.5px;color:var(--ink);line-height:1.5}
+  .desc dd b{color:var(--accent)}
+  /* phone frame */
+  .phone{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .bar{height:26px;background:var(--fill);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 10px;gap:5px}
+  .bar i{width:7px;height:7px;border-radius:50%;background:var(--line);display:inline-block}
+  .bar span{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted)}
+  .vp{padding:14px;position:relative}
+  .toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) translateY(8px);background:rgba(33,37,41,.92);color:#fff;font-size:11px;padding:8px 14px;border-radius:18px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:5}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .appbar{display:flex;align-items:center;gap:8px;padding:2px 0 12px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .appbar .logo{font-weight:700;font-size:13px}
+  .appbar .sp{margin-left:auto}
+  .ic{width:22px;height:22px;border:1px solid var(--line);border-radius:6px;background:var(--fill)}
+  .h{height:12px;background:var(--fill);border-radius:4px}
+  .h.t{width:60%;height:15px;background:#e3e6ea}
+  .h.s{width:42%}
+  .line{height:9px;background:var(--fill);border-radius:4px;margin:6px 0}
+  .line.w9{width:90%}.line.w7{width:70%}.line.w5{width:50%}.line.w3{width:30%}
+  .imgph{position:relative;background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 8px,#e7eaee 8px,#e7eaee 16px);border:1px solid var(--line);border-radius:8px}
+  .imgph::after{content:"이미지";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .imgph.hero{height:120px}.imgph.sq{height:80px}.imgph.wide{height:64px}
+  .field{border:1px solid var(--line);border-radius:7px;padding:9px 10px;font-size:11px;color:var(--muted);background:#fcfcfd;margin:7px 0}
+  .btn{display:block;text-align:center;border:1px solid var(--line);border-radius:7px;padding:10px;font-size:12px;background:var(--card);margin:7px 0}
+  .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.sec{background:var(--fill)}
+  .btn.sm{display:inline-block;padding:6px 12px;margin:0;font-size:11px;width:auto}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  .chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:10px;color:var(--muted);margin:0 4px 4px 0;background:var(--card)}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .card2{border:1px solid var(--line);border-radius:8px;padding:10px;margin:9px 0}
+  .tag{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px;background:var(--fill);color:var(--ink)}
+  .tag.g{background:#e5efe7;color:#2f6b3d}.tag.y{background:#f6ecd8;color:#8a6a1e}.tag.r{background:#f3e0dd;color:#9a3b2c}.tag.b{background:#e0e7f3;color:#2f4a7a}
+  .note{border-left:3px solid var(--warn);background:#fbf4ec;padding:8px 10px;border-radius:0 6px 6px 0;font-size:10.5px;color:#6a4a2a;margin:10px 0;font-family:var(--mono)}
+  .note b{color:var(--warn)}
+  .note.blue{border-left-color:var(--accent);background:#eef1f7;color:#33405c}
+  .note.blue b{color:var(--accent)}
+  /* calendar */
+  .cal{border:1px solid var(--line);border-radius:8px;padding:9px;margin:8px 0}
+  .cal .m{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:6px}
+  .cal .dow,.cal .days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal .dow span{font-size:8px;color:var(--muted);text-align:center}
+  .cal .days span{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:9px;border-radius:4px;background:var(--fill);color:var(--ink)}
+  .cal .days span.off{color:#c4c8ce;background:transparent}
+  .cal .days span.dis{color:#c4c8ce;background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 3px,#e8eaed 3px,#e8eaed 6px)}
+  .cal .days span.sel{background:var(--accent);color:#fff}
+  .cal .days span.ok{background:#e5efe7;color:#2f6b3d}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:-1px;margin-right:3px}
+  .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .tabs span{flex:1;text-align:center;font-size:11px;padding:8px 0;color:var(--muted)}
+  .tabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--accent)}
+  .bnav{display:flex;border-top:1px solid var(--line);margin:12px -14px -14px;padding:8px 0}
+  .bnav div{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+  .bnav div .d{width:18px;height:18px;border:1px solid var(--line);border-radius:5px;margin:0 auto 3px;background:var(--fill)}
+  .bnav div.on{color:var(--accent)}.bnav div.on .d{border-color:var(--accent);background:#e7ebf3}
+  .kv{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .kv .k{color:var(--muted)}.kv .v{font-family:var(--mono)}
+  .lock{font-family:var(--mono);font-size:9px;color:var(--muted);border:1px dashed var(--line);border-radius:5px;padding:5px 7px;text-align:center;margin:8px 0}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:760px){.two{grid-template-columns:1fr}}
+  .legendbar{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:14px}
+  .legendbar b{color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>친구야 · 고객 페이지 와이어프레임 <span style="font-weight:400;color:var(--muted);font-size:12px">(저채도 · 모바일 우선 · v1)</span></h1>
+  <p>구조·흐름 검토용 저충실도 와이어프레임입니다. 색·폰트·이미지는 디자인 단계에서 확정됩니다. 주황 주석 = 규칙/로직, 파랑 주석 = 확정 대기.</p>
+  <nav class="index">
+    <a href="#landing">랜딩(안 A)</a>
+    <a href="#intro">서비스 소개</a>
+    <a href="#list">상품 조회</a>
+    <a href="#detail">상품 상세</a>
+    <a href="#booking">예약·캘린더</a>
+    <a href="#cart">장바구니·확인</a>
+    <a href="#deposit">입금 안내</a>
+    <a href="#myres">예약 목록</a>
+    <a href="#resdetail">예약 상세</a>
+    <a href="#cancel">취소 요청</a>
+    <a href="#faq">FAQ</a>
+    <a href="#qna">질문하기</a>
+    <a href="#signup">회원가입</a>
+    <a href="#profile">회원정보</a>
+  </nav>
+</header>
+<main>
+  <!-- LANDING -->
+  <div class="group" id="landing"><h2>랜딩 — 안 A 확정</h2><hr></div>
+  <p style="font-size:12px;color:var(--muted);max-width:640px">랜딩 구성은 <b>안 A(상품 우선형)</b>로 확정되었습니다. 세부 요소는 아래 정의를 기준으로 다듬습니다.</p>
+  <div style="max-width:380px">
+    <div class="screen">
+      <div class="cap"><span class="id">안 A</span><span class="nm">상품 우선형</span><span class="dsc">확정 · 서비스 소개 유도</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>LANDING · A</span></div><div class="vp">
+        <div class="appbar"><span class="logo">친구야</span><span class="sp"></span><span class="ic"></span></div>
+        <div class="imgph hero"></div>
+        <div class="h t" style="margin:10px 0 6px"></div><div class="line w7"></div>
+        <a class="btn pri" href="#s4-c2">서비스 소개</a>
+        <div class="h s" style="margin:12px 0 8px"></div>
+        <div class="row"><div class="imgph sq"></div><div class="imgph sq"></div></div>
+        <div class="row" style="margin-top:6px"><div class="chip">자전거</div><div class="chip">낚싯대</div></div>
+        <div class="note">서비스 소개 CTA를 최상단에 두는 방향. 신규·재방문 고객 모두 서비스 이해를 먼저 유도.</div>
+        <div class="bnav"><div class="on"><div class="d"></div>홈</div><div><div class="d"></div>상품</div><div><div class="d"></div>장바구니</div><div><div class="d"></div>내정보</div></div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>고객이 <b>서비스 소개</b>를 먼저 접한 뒤 자연스럽게 예약으로 이어지도록 유도</dd>
+          <dt>진입</dt><dd>앱 실행 시 홈 탭 기본 화면(<b>안 A 확정</b>)</dd>
+          <dt>주요 요소</dt><dd>히어로 이미지, 서비스 소개 CTA(최상단 고정), 인기 상품 썸네일, 카테고리 칩</dd>
+          <dt>규칙·로직</dt><dd>관리자 <b>'표출 ON'</b> 상품만 노출, 가격은 고객가 기준</dd>
+          <dt>화면 이동</dt><dd>서비스 소개 → 서비스 소개(S4-C2), 하단 탭 → 상품·예약·내정보</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <!-- CONTENT + LIST -->
+  <div class="group" id="intro"><h2>콘텐츠 · 상품</h2><hr></div>
+  <div class="grid">
+    <div class="screen" id="s4-c2">
+      <div class="cap"><span class="id">S4-C2</span><span class="nm">서비스 소개</span><span class="dsc">단일 상세 페이지</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>INTRO</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">서비스 소개</span></div>
+        <div class="imgph hero"></div>
+        <div class="h t" style="margin:10px 0 6px"></div>
+        <div class="line w9"></div><div class="line w9"></div><div class="line w7"></div>
+        <div class="imgph wide" style="margin:10px 0"></div>
+        <div class="line w9"></div><div class="line w5"></div>
+        <div class="note blue">텍스트·이미지는 관리자 콘텐츠 관리(S4-A3)에서 편집.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>서비스 개요·이용 방식을 소개하는 <b>단일 상세 페이지</b></dd>
+          <dt>진입</dt><dd>랜딩(안 A)의 '서비스 소개' CTA, 하단/상단 메뉴</dd>
+          <dt>주요 요소</dt><dd>히어로 이미지, 소개 본문, 중간 이미지 블록</dd>
+          <dt>규칙·로직</dt><dd>모든 텍스트·이미지는 관리자 <b>콘텐츠 관리(S4-A3)</b>에서 편집(고객은 읽기 전용)</dd>
+          <dt>화면 이동</dt><dd>본문 내 링크/버튼 → 상품 조회</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="list">
+      <div class="cap"><span class="id">S1-C1</span><span class="nm">상품 조회</span><span class="dsc">자전거·낚싯대 목록</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>PRODUCTS</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">상품</span></div>
+        <div><span class="chip on">자전거</span><span class="chip">낚싯대</span></div>
+        <div class="card2"><div class="row" style="align-items:center"><div class="imgph sq" style="flex:0 0 64px;height:64px"></div>
+          <div style="flex:1"><div class="h s"></div><div class="line w7"></div><div class="line w3"></div></div></div></div>
+        <div class="card2"><div class="row" style="align-items:center"><div class="imgph sq" style="flex:0 0 64px;height:64px"></div>
+          <div style="flex:1"><div class="h s"></div><div class="line w7"></div><div class="line w3"></div></div></div></div>
+        <div class="card2"><div class="row" style="align-items:center"><div class="imgph sq" style="flex:0 0 64px;height:64px"></div>
+          <div style="flex:1"><div class="h s"></div><div class="line w7"></div><div class="line w3"></div></div></div></div>
+        <div class="note">관리자가 '표출 ON'한 상품만 노출. 가격은 고객가.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>대여 가능 상품(자전거·낚싯대)을 <b>카테고리별</b>로 조회</dd>
+          <dt>진입</dt><dd>하단 탭 '상품', 랜딩 CTA</dd>
+          <dt>주요 요소</dt><dd>카테고리 칩(자전거/낚싯대), 상품 카드(썸네일·명칭·요약가)</dd>
+          <dt>규칙·로직</dt><dd>관리자 <b>'표출 ON'</b> 상품만 노출, 가격은 <b>고객가</b> 기준</dd>
+          <dt>화면 이동</dt><dd>상품 카드 → 상품 상세</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="detail">
+      <div class="cap"><span class="id">S3-C1</span><span class="nm">상품 상세</span><span class="dsc">대여 옵션·요금</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>DETAIL</span></div><div class="vp">
+        <a class="btn sm sec" style="margin-bottom:8px">‹ 이전 페이지로 이동</a>
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">전기 자전거</span></div>
+        <div class="imgph hero"></div>
+        <div class="h t" style="margin:10px 0 6px"></div><div class="line w9"></div><div class="line w7"></div>
+        <div class="h s" style="margin:12px 0 6px"></div>
+        <div class="card2"><div class="row"><div class="line w5" style="margin:0"></div><span class="tag">요금</span></div></div>
+        <div class="row" style="margin-top:2px"><span class="chip on">2시간</span><span class="chip">1일</span><span class="chip">2일</span><span class="chip">야간</span></div>
+        <div class="note">옵션(대여시간)별 요금 표기. 2일 대여에는 <b>타지역 반납(추가요금)</b> 옵션 노출. <b>여기서 선택한 옵션</b>이 다음 화면(예약·캘린더)의 날짜 선택 개수를 결정: 2시간·1일 → 1일 선택, 2일 → 2일 선택, 야간 → 야간 가능일 중 1일 선택.</div>
+        <a class="btn pri">예약하기</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>선택 상품의 <b>대여 옵션·요금</b>을 확인하고 <b>옵션(대여시간)을 선택</b>해 예약 시작</dd>
+          <dt>진입</dt><dd>상품 조회 목록의 상품 카드</dd>
+          <dt>주요 요소</dt><dd><b>이전 페이지로 이동</b> 버튼, 대표 이미지, 상품 설명, 옵션 칩(2시간/1일/2일/야간, <b>선택형</b>), 요금, 예약하기 CTA</dd>
+          <dt>규칙·로직</dt><dd>옵션(대여시간)별 요금 표기, 2일 대여 선택 시 <b>타지역 반납(추가요금)</b> 옵션 노출. <b>선택한 옵션</b>이 예약 캘린더의 날짜 선택 규칙을 결정: 2시간·1일 → <b>1일 선택</b>, 2일 → <b>2일 선택</b>, 야간 → <b>야간 가능일 중 1일 선택</b></dd>
+          <dt>화면 이동</dt><dd>이전 페이지로 이동 → 상품 조회, 예약하기 → 예약·캘린더(<b>선택한 옵션 전달</b>)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <!-- BOOKING -->
+  <div class="group" id="booking"><h2>예약 흐름</h2><hr></div>
+  <div class="grid">
+    <div class="screen">
+      <div class="cap"><span class="id">S1-C2</span><span class="nm">예약 · 캘린더</span><span class="dsc">가용 날짜 선택</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>BOOKING</span></div><div class="vp">
+        <a class="btn sm sec" style="margin-bottom:8px">‹ 이전 페이지로 이동</a>
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">예약 — 날짜 선택</span></div>
+        <div class="kv" style="border-bottom:none"><span class="k">선택 옵션</span><span class="v">2시간</span></div>
+        <div class="note blue">옵션은 상품 상세에서 선택되어 전달됨(이 화면에서 변경 불가). 옵션을 바꾸려면 상품 상세로 돌아가 재선택.</div>
+        <div class="cal">
+          <div class="m"><span>‹</span><span>2027 · 7월</span><span>›</span></div>
+          <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div class="days">
+            <span class="off"></span><span class="off"></span><span class="off"></span><span class="dis">1</span><span class="dis">2</span><span class="ok">3</span><span class="ok">4</span>
+            <span class="ok">5</span><span class="ok">6</span><span class="sel">7</span><span class="ok">8</span><span class="ok">9</span><span class="dis">10</span><span class="ok">11</span>
+            <span class="ok">12</span><span class="ok">13</span><span class="ok">14</span><span class="ok">15</span><span class="ok">16</span><span class="ok">17</span><span class="ok">18</span>
+          </div>
+          <div class="legend"><span><i style="background:#e5efe7"></i>예약가능</span><span><i style="background:var(--accent)"></i>선택</span><span><i style="background:#e8eaed"></i>마감/불가</span></div>
+        </div>
+        <div class="kv" style="align-items:center;border-bottom:none"><span class="k">수량</span>
+          <span class="v" style="display:flex;align-items:center;gap:10px">
+            <span style="width:26px;height:26px;border:1px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--fill)">−</span>
+            <span style="min-width:18px;text-align:center">2</span>
+            <span style="width:26px;height:26px;border:1px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--fill)">＋</span>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">/ 가용 3</span>
+          </span></div>
+        <div class="note"><b>날짜 선택</b>: 상품 상세에서 선택한 옵션에 따라 선택 가능 일수가 다름 — 2시간·1일 = <b>1일 선택</b>, 2일 = <b>연속 2일 선택</b>, 야간 = <b>야간 가능일 중 1일 선택</b>.<br><b>예약 가능 기간</b>: 오늘 +1일 ~ +3개월(일본 기준 '오늘').<br><b>가용성</b>: 재고×슬롯 겹침으로 판정. 선택 날짜·옵션의 <b>가용 수량 상한</b> 내에서만 수량 선택 가능. 2일+타지역 반납 선택 시 <b>익일·익익일 자동 마감</b>.</div>
+        <a class="btn sec" href="javascript:void(0)" data-toast="장바구니에 추가되었습니다.">장바구니 담기</a><a class="btn pri">바로 예약</a>
+        <div class="toast"></div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>전달받은 옵션에 맞춰 날짜·수량을 선택해 예약 항목 확정</dd>
+          <dt>진입</dt><dd>상품 상세의 '예약하기'(<b>선택한 옵션 포함</b>)</dd>
+          <dt>주요 요소</dt><dd><b>이전 페이지로 이동</b> 버튼, 선택된 옵션 표시(<b>읽기전용</b>), 가용성 캘린더(가능/선택/마감), 수량 스테퍼, 장바구니 담기·바로 예약</dd>
+          <dt>규칙·로직</dt><dd>옵션별 날짜 선택 개수 — 2시간·1일 → <b>1일 선택</b>, 2일 → <b>연속 2일 선택</b>, 야간 → <b>야간 가능일 중 1일 선택</b>. 예약 가능 기간 <b>오늘 +1일 ~ +3개월</b>(일본 기준), 가용성 = 재고×슬롯 겹침, 가용 수량 상한 내 선택, 2일+타지역 반납 시 <b>익일·익익일 자동 마감</b></dd>
+          <dt>화면 이동</dt><dd>이전 페이지로 이동 → 상품 상세, 장바구니 담기 → <b>토스트('장바구니에 추가되었습니다.')</b> 노출 후 현재 화면 유지, 바로 예약 → <b>여권 영문명 입력·확인 화면(S1-C3)</b></dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="cart">
+      <div class="cap"><span class="id">S1-C3</span><span class="nm">장바구니</span><span class="dsc">복수 상품 동시 예약</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>CART</span></div><div class="vp">
+        <a class="btn sm sec" style="margin-bottom:8px">‹ 이전 페이지로 이동</a>
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">예약 확인</span></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="h s"></div><div class="line w7"></div></div><span class="tag">×2 · ₩</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="h s"></div><div class="line w7"></div></div><span class="tag">×1 · ₩</span></div></div>
+        <div class="note blue">항목별 수량 표시. 수량 변경은 예약 화면(S1-C2)의 수량 선택에서.</div>
+        <div class="lock">⏱ 임시 홀드 중 · 남은 시간 09:57 — 중복 예약 방지</div>
+        <div class="kv"><span class="k">여권 영문명</span><span class="v">GILDONG HONG ✎</span></div>
+        <div class="note">저장된 영문명 없으면 <b>필수 입력</b>, 있으면 수정 가능(예약 확정 선행조건).</div>
+        <div class="kv"><span class="k">합계</span><span class="v">₩ 00,000</span></div>
+        <a class="btn pri">예약하고 입금 안내 받기</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>복수 상품을 <b>동시 예약</b>하고 여권명·합계 확인 후 확정</dd>
+          <dt>진입</dt><dd>예약 캘린더의 '장바구니 담기', 하단 탭 예약</dd>
+          <dt>주요 요소</dt><dd><b>이전 페이지로 이동</b> 버튼, 담긴 항목(수량 표시), 임시 홀드 타이머, 여권 영문명, 합계, 확정 CTA</dd>
+          <dt>규칙·로직</dt><dd><b>임시 홀드</b>로 중복 예약 방지, 저장된 여권 영문명 없으면 <b>필수 입력</b>(확정 선행조건), 수량 변경은 예약 화면에서</dd>
+          <dt>화면 이동</dt><dd>이전 페이지로 이동 → 예약·캘린더, 예약하고 입금 안내 받기 → 입금 안내</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="deposit">
+      <div class="cap"><span class="id">S1-C4</span><span class="nm">입금 안내 · 확인 요청</span><span class="dsc">무통장 + 수동확인</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>DEPOSIT</span></div><div class="vp">
+        <a class="btn sm sec" style="margin-bottom:8px">‹ 이전 페이지로 이동</a>
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">입금 안내</span></div>
+        <div class="card2">
+          <div class="kv"><span class="k">예약번호</span><span class="v">FR-27070001</span></div>
+          <div class="kv"><span class="k">입금 계좌</span><span class="v">○○은행 000-000</span></div>
+          <div class="kv"><span class="k">예금주</span><span class="v">친구야</span></div>
+          <div class="kv"><span class="k">입금액</span><span class="v">₩ 00,000</span></div>
+        </div>
+        <div class="note">PG 미사용. 안내 계좌(관리자 설정 1개)로 입금 후 아래 버튼으로 확인 요청 → 상태 <b>접수</b>.<br>24시간 내 미입금 시 관리자가 강제취소 가능.</div>
+        <a class="btn pri">입금 확인 요청</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>무통장 입금 안내 후 <b>수동 확인 요청</b> 접수</dd>
+          <dt>진입</dt><dd>예약 확인의 '예약하고 입금 안내 받기'</dd>
+          <dt>주요 요소</dt><dd><b>이전 페이지로 이동</b> 버튼, 예약번호, 입금 계좌·예금주·입금액, 입금 확인 요청 CTA</dd>
+          <dt>규칙·로직</dt><dd><b>PG 미사용</b>, 안내 계좌(관리자 설정 1개), 확인 요청 시 상태 <b>접수</b>, <b>24시간 내 미입금</b> 시 관리자 강제취소 가능</dd>
+          <dt>화면 이동</dt><dd>이전 페이지로 이동 → 장바구니, 입금 확인 요청 → 예약 목록(상태: 접수)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <!-- MY RESERVATIONS -->
+  <div class="group" id="myres"><h2>내 예약 · 취소</h2><hr></div>
+  <div class="grid">
+    <div class="screen">
+      <div class="cap"><span class="id">S1-C5</span><span class="nm">예약 목록</span><span class="dsc">상태별 조회</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>MY BOOKINGS</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">내 예약</span></div>
+        <div class="tabs"><span class="on">전체</span><span>접수</span><span>완료</span><span>취소</span></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">접수</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">완료</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag b">취소요청</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag r">취소</span></div></div>
+        <div class="note">상태: 접수 → 완료(입금확인) → 취소요청 → 취소.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>내 예약을 <b>상태별</b>로 조회</dd>
+          <dt>진입</dt><dd>하단 탭 '내정보' → 내 예약, 입금 확인 요청 후</dd>
+          <dt>주요 요소</dt><dd>상태 탭(전체/접수/완료/취소), 예약 카드(상태 태그)</dd>
+          <dt>규칙·로직</dt><dd>상태 흐름: <b>접수 → 완료(입금확인) → 취소요청 → 취소</b></dd>
+          <dt>화면 이동</dt><dd>예약 카드 → 예약 상세·바우처</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="resdetail">
+      <div class="cap"><span class="id">S1-C6</span><span class="nm">예약 상세 · 바우처</span><span class="dsc">예약번호 증빙</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>VOUCHER</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">예약 상세</span></div>
+        <div class="card2" style="text-align:center">
+          <div class="imgph sq" style="height:56px;width:56px;margin:0 auto 6px;border-radius:8px"></div>
+          <div class="h s" style="margin:0 auto 4px"></div>
+          <span class="tag g">완료</span>
+        </div>
+        <div class="kv"><span class="k">예약번호</span><span class="v">FR-27070001</span></div>
+        <div class="kv"><span class="k">상품/옵션</span><span class="v">전기 · 1일</span></div>
+        <div class="kv"><span class="k">이용일</span><span class="v">2027-07-07</span></div>
+        <div class="kv"><span class="k">여권명</span><span class="v">GILDONG HONG</span></div>
+        <a class="btn">취소 요청</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>예약 증빙(<b>바우처</b>) 확인 및 취소 요청 진입</dd>
+          <dt>진입</dt><dd>예약 목록의 예약 카드</dd>
+          <dt>주요 요소</dt><dd>상태 태그, 예약번호, 상품·옵션, 이용일, 여권명, 취소 요청 버튼</dd>
+          <dt>규칙·로직</dt><dd>예약번호가 현장 이용 시 <b>증빙</b> 역할, 취소는 상태·기간 조건 충족 시 가능</dd>
+          <dt>화면 이동</dt><dd>취소 요청 → 취소 요청 화면</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="cancel">
+      <div class="cap"><span class="id">S1-C7</span><span class="nm">취소 요청</span><span class="dsc">수수료·환불·계좌</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>CANCEL</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">예약 취소 요청</span></div>
+        <div class="card2">
+          <div class="kv"><span class="k">결제 금액</span><span class="v">₩ 00,000</span></div>
+          <div class="kv"><span class="k">취소 수수료</span><span class="v">− ₩ 0,000</span></div>
+          <div class="kv"><span class="k">환불 예정액</span><span class="v">₩ 00,000</span></div>
+        </div>
+        <div class="note">수수료는 <b>이용일 기준 차등 요율</b>(관리자 세팅). 고객은 취소 요청 시 수수료·환불액을 <b>확인 후</b> 진행.</div>
+        <div class="field">환불받을 계좌 (은행/번호/예금주)</div>
+        <div class="note blue">환불 계좌는 <b>취소 요청 시점</b>에 입력. 실제 이체는 관리자 수동 처리.</div>
+        <a class="btn pri">취소 요청 보내기</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>취소 수수료·환불액 확인 후 <b>취소 요청</b> 제출</dd>
+          <dt>진입</dt><dd>예약 상세의 '취소 요청'</dd>
+          <dt>주요 요소</dt><dd>결제 금액·취소 수수료·환불 예정액, 환불 계좌 입력, 취소 요청 보내기</dd>
+          <dt>규칙·로직</dt><dd>수수료는 <b>이용일 기준 차등 요율</b>(관리자 세팅), 고객은 확인 후 진행, 환불 계좌는 <b>요청 시점 입력</b>, 실제 이체는 관리자 <b>수동 처리</b></dd>
+          <dt>화면 이동</dt><dd>취소 요청 보내기 → 예약 목록(상태: 취소요청)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <!-- FAQ + QNA -->
+  <div class="group" id="faq"><h2>고객 지원 (FAQ · 문의)</h2><hr></div>
+  <div class="grid">
+    <div class="screen">
+      <div class="cap"><span class="id">S4-C3</span><span class="nm">FAQ</span><span class="dsc">자주 묻는 질문</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>FAQ</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">자주 묻는 질문</span></div>
+        <div class="card2"><div class="row"><div class="line w7" style="margin:0"></div><span style="color:var(--muted)">＋</span></div></div>
+        <div class="card2"><div class="row"><div class="line w5" style="margin:0"></div><span style="color:var(--muted)">＋</span></div></div>
+        <div class="card2"><div class="line w9" style="margin:0 0 6px"></div><div class="line w9"></div><div class="line w5"></div></div>
+        <div class="card2"><div class="row"><div class="line w7" style="margin:0"></div><span style="color:var(--muted)">＋</span></div></div>
+        <div class="note blue">검색 없음. 분류(카테고리)는 차후 확정. 아코디언 펼침형.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>자주 묻는 질문을 <b>아코디언</b>으로 열람</dd>
+          <dt>진입</dt><dd>내정보/고객지원 메뉴</dd>
+          <dt>주요 요소</dt><dd>질문 항목(＋ 펼침), 펼친 답변 본문</dd>
+          <dt>규칙·로직</dt><dd><b>검색 없음</b>, 분류(카테고리)는 차후 확정, 콘텐츠는 관리자 FAQ 관리에서 편집</dd>
+          <dt>화면 이동</dt><dd>해결 안 될 시 → 질문하기</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="qna">
+      <div class="cap"><span class="id">S4-C4</span><span class="nm">질문하기 — 목록</span><span class="dsc">목록 공개 / 상세 본인</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>Q&A LIST</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">질문 목록</span></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w7" style="margin:0"></div><div class="line w3"></div></div><span class="tag g">답변완료</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w3"></div></div><span class="tag">대기</span></div></div>
+        <div class="card2" style="opacity:.6"><div class="row"><div style="flex:1"><div class="line w7" style="margin:0"></div></div><span style="font-family:var(--mono);font-size:9px;color:var(--muted)">🔒 비공개</span></div></div>
+        <div class="note"><b>목록은 전체 공개</b>(제목·상태). <b>상세 내용·답변은 작성 본인만</b> 열람. 타인 글은 잠금 표시.</div>
+        <a class="btn pri">질문 작성</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>고객 1:1 문의를 목록으로 조회하고 신규 작성</dd>
+          <dt>진입</dt><dd>내정보/고객지원 메뉴, FAQ에서 이동</dd>
+          <dt>주요 요소</dt><dd>질문 카드(제목·상태 태그), 타인 글 잠금 표시, 질문 작성 CTA</dd>
+          <dt>규칙·로직</dt><dd><b>목록은 전체 공개</b>(제목·상태), <b>상세 내용·답변은 작성 본인만</b> 열람, 타인 글은 잠금</dd>
+          <dt>화면 이동</dt><dd>본인 카드 → 질문 상세, 질문 작성 → 작성 폼</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="cap"><span class="id">S4-C5</span><span class="nm">질문하기 — 상세/작성</span><span class="dsc">본인 글 + 답변</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>Q&A DETAIL</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">내 질문</span></div>
+        <div class="card2"><div class="line w7" style="margin:0 0 6px"></div><div class="line w9"></div><div class="line w5"></div>
+          <div style="margin-top:8px"><span class="btn sm sec">삭제</span> <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">수정 불가</span></div></div>
+        <div class="card2" style="background:var(--fill)"><span class="tag b">관리자 답변</span><div class="line w9" style="margin-top:6px"></div><div class="line w7"></div></div>
+        <div class="note">질문 <b>삭제 가능·수정 불가</b>. 답변 등록 시 <b>카카오 알림톡</b> 알림(알림 인터페이스).</div>
+        <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:10px">
+          <div class="field" style="height:56px">새 질문 입력…</div><a class="btn pri">등록</a>
+        </div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>본인 질문·답변 열람 및 신규 질문 등록</dd>
+          <dt>진입</dt><dd>질문 목록의 본인 카드/질문 작성</dd>
+          <dt>주요 요소</dt><dd>내 질문 본문(삭제 버튼), 관리자 답변, 새 질문 입력·등록</dd>
+          <dt>규칙·로직</dt><dd>질문 <b>삭제 가능·수정 불가</b>, 답변 등록 시 <b>카카오 알림톡</b> 알림</dd>
+          <dt>화면 이동</dt><dd>등록 → 질문 목록에 반영</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <!-- ACCOUNT -->
+  <div class="group" id="signup"><h2>계정</h2><hr></div>
+  <div class="grid">
+    <div class="screen">
+      <div class="cap"><span class="id">S0-C1</span><span class="nm">회원가입</span><span class="dsc">소셜 로그인</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>SIGN UP · 1</span></div><div class="vp">
+        <div style="text-align:center;padding:8px 0 4px"><div class="h t" style="margin:0 auto 4px"></div><div class="line w5" style="margin:0 auto"></div></div>
+        <a class="btn" style="background:#fee500;border-color:#fee500">카카오로 계속</a>
+        <a class="btn">네이버로 계속</a>
+        <a class="btn">구글로 계속</a>
+        <div class="note blue">소셜 제공자는 추후 확장 가능한 구조.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>소셜 로그인 기반 <b>회원가입</b> 시작</dd>
+          <dt>진입</dt><dd>예약 등 로그인 필요 액션, 내정보</dd>
+          <dt>주요 요소</dt><dd>소셜 버튼(카카오/네이버/구글)</dd>
+          <dt>규칙·로직</dt><dd>소셜 제공자 <b>추후 확장 가능</b> 구조</dd>
+          <dt>화면 이동</dt><dd>소셜 인증 완료 → <b>S0-C2(아이디 입력)</b></dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="cap"><span class="id">S0-C2</span><span class="nm">회원가입</span><span class="dsc">아이디 입력</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>SIGN UP · 2</span></div><div class="vp">
+        <div style="text-align:center;padding:8px 0 4px"><div class="h t" style="margin:0 auto 4px"></div><div class="line w5" style="margin:0 auto"></div></div>
+        <div class="field">아이디</div>
+        <div class="note">여권 영문명은 <b>예약 시점</b>에 확보(가입 단계 아님).</div>
+        <a class="btn pri">가입 완료</a>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>소셜 인증 후 <b>아이디</b> 설정으로 가입 완료</dd>
+          <dt>진입</dt><dd>S0-C1 소셜 인증 완료 후</dd>
+          <dt>주요 요소</dt><dd>아이디 입력, 가입 완료 CTA</dd>
+          <dt>규칙·로직</dt><dd>여권 영문명은 <b>예약 시점</b>에 확보(가입 단계 아님)</dd>
+          <dt>화면 이동</dt><dd>가입 완료 → 직전 화면/홈</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="screen" id="profile">
+      <div class="cap"><span class="id">S0-C3</span><span class="nm">회원정보 수정</span><span class="dsc">여권명 변경</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>PROFILE</span></div><div class="vp">
+        <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">내 정보</span></div>
+        <div class="kv"><span class="k">아이디</span><span class="v">gildong</span></div>
+        <div class="kv"><span class="k">연결 소셜</span><span class="v">카카오</span></div>
+        <div class="field">여권 영문명 (변경 가능)</div>
+        <a class="btn pri">저장</a>
+        <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px">
+          <a class="btn sec">로그아웃</a>
+          <a class="btn" style="color:#9a3b2c">회원 탈퇴 (개인정보 삭제)</a>
+        </div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>계정 정보 확인 및 <b>여권 영문명</b> 관리</dd>
+          <dt>진입</dt><dd>하단 탭 '내정보' → 내 정보</dd>
+          <dt>주요 요소</dt><dd>아이디·연결 소셜(읽기), 여권 영문명(변경 가능), 저장, 로그아웃, 회원 탈퇴</dd>
+          <dt>규칙·로직</dt><dd>여권 영문명은 언제든 변경 가능(예약 시 사용), <b>회원 탈퇴 시 개인정보 삭제</b></dd>
+          <dt>화면 이동</dt><dd>로그아웃/탈퇴 → 로그아웃 상태 홈</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="legendbar">
+    <b>범례</b> &nbsp; 🟧 주황 주석 = 규칙·로직(재고/상태/기간) &nbsp;·&nbsp; 🟦 파랑 주석 = 확정 대기·연동 메모 &nbsp;·&nbsp; 빗금 박스 = 이미지 자리 &nbsp;·&nbsp; 회색 라인 = 텍스트 자리<br>
+    <b>다음</b> 사장님 랜딩 안 선택 → 관리자 페이지 와이어프레임 → 와이어 승인 후 견적 수치 확정.
+  </div>
+</main>
+<script>
+  document.querySelectorAll('[data-toast]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      var toast = btn.closest('.vp').querySelector('.toast');
+      if(!toast) return;
+      toast.textContent = btn.getAttribute('data-toast');
+      toast.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function(){ toast.classList.remove('show'); }, 1800);
+    });
+  });
+</script>
+</body>
+</html>

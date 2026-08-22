@@ -38,6 +38,9 @@ export interface TitleProps {
   tone?: Tone;
   className?: string;
   children?: ReactNode;
+  /** as="label"로 쓸 때 연결할 입력 요소의 id (예: 폼 필드 라벨) */
+  htmlFor?: string;
+  id?: string;
 }
 
 /**
@@ -47,7 +50,7 @@ export interface TitleProps {
  * 제목 앞뒤 간격이 필요하면 호출하는 쪽에서 Stack(gap="sm" 등)으로 감싸서 조절한다.
  */
 export function Title({
-  as: Tag = "h2",
+  as: Tag = "h3",
   size = "lg",
   center = false,
   subtitle,
@@ -57,6 +60,8 @@ export function Title({
   tone = "default",
   className = "",
   children,
+  htmlFor,
+  id,
 }: TitleProps) {
   const classNames = [
     "font-bold text-ink",
@@ -81,7 +86,11 @@ export function Title({
     children
   );
 
-  const titleEl = <Tag className={classNames}>{titleContent}</Tag>;
+  const titleEl = (
+    <Tag className={classNames} htmlFor={htmlFor} id={id}>
+      {titleContent}
+    </Tag>
+  );
   const subtitleEl = subtitle && (
     <p className={`mt-1 text-sm font-normal text-muted ${center ? "text-center" : ""}`}>{subtitle}</p>
   );
