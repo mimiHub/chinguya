@@ -112,13 +112,13 @@
     <a href="#a-login">로그인</a><a href="#a-dash">대시보드</a><a href="#a-asset">자산</a><a href="#a-inv">재고 세팅</a>
     <a href="#a-prod">상품 목록</a><a href="#a-prodedit">상품 등록</a><a href="#a-res">예약 목록</a><a href="#a-resdetail">예약 상세·입금</a>
     <a href="#a-cancel">취소 처리</a><a href="#a-set">계좌·정책</a><a href="#a-admins">관리자 관리</a>
-    <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅</a><a href="#a-invoice">인보이스</a>
+    <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅</a><a href="#a-invoice">인보이스</a><a href="#a-invoicedetail">인보이스 상세</a>
     <a href="#a-qna">문의 관리</a><a href="#a-cms">FAQ·콘텐츠</a>
   </nav>
 </header>
 
 <main>
-  <div class="group"><h2>관리자 — 모바일</h2><p class="sub">현장 접객·운영용. 22개 관리자 기능을 17개 대표 화면으로.</p><hr></div>
+  <div class="group"><h2>관리자 — 모바일</h2><p class="sub">현장 접객·운영용. 22개 관리자 기능을 18개 대표 화면으로.</p><hr></div>
   <div class="grid">
 
     <div class="screen" id="a-login">
@@ -483,21 +483,50 @@
     </div>
 
     <div class="screen" id="a-invoice">
-      <div class="cap"><span class="id">S2-A5/A6</span><span class="nm">인보이스 관리</span><span class="dsc">월 발행</span></div>
+      <div class="cap"><span class="id">S2-A5</span><span class="nm">인보이스 목록</span><span class="dsc">여행사·월별</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>INVOICES</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">인보이스</span></div>
-        <div class="card2"><div class="row"><div style="flex:1">ABC 투어 · 6월<div class="line w3"></div></div><span class="tag g">발행됨</span></div></div>
-        <div class="card2"><div class="row"><div style="flex:1">ABC 투어 · 7월<div class="line w3"></div></div><span class="tag y">발행예정</span></div></div>
-        <div class="note">통화 <b>KRW</b>(세금 라인 없음). <b>매월 1일 전월 기준</b> 발행. 라인아이템=예약 건. 정산은 <b>수동 확인</b>.</div>
+        <div class="field" style="margin-top:0">여행사: 전체 ▾</div>
+        <div class="card2"><div class="row"><div style="flex:1">ABC 투어 · 6월<br><span style="color:var(--muted);font-size:10px">발행 06-01 · ₩ 92,000</span></div><span class="tag g">입금완료</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1">ABC 투어 · 7월<br><span style="color:var(--muted);font-size:10px">발행 07-01 · ₩ 76,000</span></div><span class="tag y">입금미완료</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1">ABC 투어 · 8월<br><span style="color:var(--muted);font-size:10px">발행예정 · 09-01</span></div><span class="tag k">예정</span></div></div>
+        <div class="note">여행사마다 <b>매월 1일 전월 예약 기준 자동 발행</b>. 여행사 필터로 조회. 입금 상태 <b>완료/미완료</b>. 수동 등록 없음.</div>
+        <div class="note blue">발행예정(아직 1일 미도래) 건은 발행일·입금상태 표시 없음. 문구·금액은 예시값(확정 대기).</div>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>여행사 <b>월별 인보이스</b> 발행·관리</dd>
+          <dt>목적</dt><dd>여행사 <b>월별 인보이스</b>를 목록으로 조회</dd>
           <dt>진입</dt><dd>메뉴 → 인보이스</dd>
-          <dt>주요 요소</dt><dd>여행사·월별 인보이스 카드(발행 상태 태그)</dd>
-          <dt>규칙·로직</dt><dd>통화 <b>KRW</b>(세금 라인 없음), <b>매월 1일 전월 기준</b> 발행, 라인아이템 = 예약 건, 정산은 <b>수동 확인</b></dd>
-          <dt>화면 이동</dt><dd>카드 → 인보이스 상세</dd>
+          <dt>주요 요소</dt><dd><b>여행사 필터</b>, 인보이스 카드(월 · 발행일 · 금액 · <b>입금 완료/미완료</b>)</dd>
+          <dt>규칙·로직</dt><dd>여행사마다 <b>매월 1일 전월 예약 기준</b> 자동 발행(<b>수동 등록 없음</b>), 발행예정 건은 발행일·입금상태 없음, 통화 <b>KRW</b>(세금 라인 없음)</dd>
+          <dt>화면 이동</dt><dd>카드 → 인보이스 상세(<b>S2-A6</b>)</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="screen" id="a-invoicedetail">
+      <div class="cap"><span class="id">S2-A6</span><span class="nm">인보이스 상세</span><span class="dsc">정산·입금확인</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>INVOICE DETAIL</span></div><div class="vp">
+        <div class="abar"><span class="mn">←</span><span class="ti">ABC 투어 · 7월</span><span class="sp"></span><span class="tag y">입금미완료</span></div>
+        <div class="kv"><span class="k">여행사 / 대상 월</span><span class="v">ABC 투어 / 2027-06</span></div>
+        <div class="kv"><span class="k">발행일</span><span class="v">2027-07-01</span></div>
+        <div class="card2"><div class="row"><div style="flex:1">FR-27060012 · 전기 1일 · ×2<br><span style="color:var(--muted);font-size:10px">예약 금액 반영</span></div><span class="tag g">완료</span><span class="v" style="margin-left:8px">₩ 40,000</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1">FR-27060015 · 전기 2일 · ×1<br><span style="color:var(--muted);font-size:10px">예약 금액 반영</span></div><span class="tag g">완료</span><span class="v" style="margin-left:8px">₩ 30,000</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1">FR-27060020 · 전기 1일 · ×1<br><span style="color:var(--muted);font-size:10px">취소 수수료만 반영</span></div><span class="tag r">취소</span><span class="v" style="margin-left:8px">₩ 6,000</span></div></div>
+        <div class="kv" style="border-bottom:none;border-top:1px solid var(--line);margin-top:4px"><span class="k"><b>합계 (정산 반영액)</b></span><span class="v"><b>₩ 76,000</b></span></div>
+        <a class="btn pri">입금 확인</a>
+        <div class="note">라인 = 전월 <b>완료·취소</b> 예약. <b>완료</b>는 예약 금액 전액, <b>취소</b>는 <b>취소 수수료만</b> 합계 반영. 통화 KRW·세금 라인 없음.</div>
+        <div class="note blue">'입금 확인'은 <b>발행된 인보이스 · 입금 미완료</b>일 때만 노출(인보이스 1건 단위). 누르면 <b>'입금을 확인했습니까?'</b> 컨펌 → 확인 시 입금 상태 <b>완료</b> 전이·목록(S2-A5) 반영·버튼 사라짐.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>인보이스의 <b>예약 내역 확인</b>과 <b>입금(정산) 수동 확인</b></dd>
+          <dt>진입</dt><dd>인보이스 목록(S2-A5)에서 카드 클릭</dd>
+          <dt>주요 요소</dt><dd>여행사·대상월·발행일, <b>완료·취소 예약 라인</b>(예약번호·상품·수량·금액·상태), <b>합계(정산 반영액)</b>, <b>입금 확인</b> CTA</dd>
+          <dt>규칙·로직</dt><dd>합계 = <b>완료 예약 금액 합 + 취소 예약의 취소 수수료 합</b>(취소는 예약 금액 아닌 <b>수수료만</b> 반영), 취소 수수료는 이용일 기준 차등, '입금 확인'은 <b>인보이스 단위 1건</b>·발행됨·입금 미완료일 때만, 확인 시 컨펌 <b>'입금을 확인했습니까?'</b> → 입금 상태 완료</dd>
+          <dt>화면 이동</dt><dd>입금 확인 → 인보이스 목록(S2-A5) 입금 상태 반영</dd>
         </dl>
       </div>
     </div>
