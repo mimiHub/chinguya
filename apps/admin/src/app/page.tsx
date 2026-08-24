@@ -5,7 +5,6 @@ import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Text } from "@chinguya/ui/text";
 import { StatusBadge, Badge } from "@chinguya/ui/badge";
-import { NoticeBox } from "@chinguya/ui/notice-box";
 import { adminReservations, getAdminTab } from "@/data/reservationData";
 
 /**
@@ -19,9 +18,9 @@ export default function AdminDashboardPage() {
   const cancelRequestCount = adminReservations.filter((r) => r.status === "cancel_requested").length;
 
   const stats = [
-    { label: "신규 예약", value: newCount },
-    { label: "입금확인 요청", value: pendingDepositCount },
-    { label: "취소요청", value: cancelRequestCount },
+    { label: "신규 예약", value: newCount, href: "/reservations?tab=received" },
+    { label: "입금확인 요청", value: pendingDepositCount, href: "/reservations?tab=unpaid" },
+    { label: "취소요청", value: cancelRequestCount, href: "/reservations?tab=cancel_requested" },
   ];
 
   // TODO: 실제 연동 시 "오늘"은 일본 기준(JST)으로 판정하고, useDate === 오늘인 건만 필터링한다.
@@ -31,13 +30,13 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
+      {/* 로고는 이제 모든 화면 공통 상단 헤더(TopHeader)에 떠 있어서, 대시보드 화면 안에는
+          따로 다시 넣지 않는다. */}
       <Stack direction="column" gap="lg">
-        <Title size="md">대시보드</Title>
-
         <Stat items={stats} />
 
         <Stack direction="column" gap="sm">
-          <Title size="sm">오늘 방문 예약</Title>
+          <Title size="sm" leaf>오늘 방문 예약</Title>
           <Stack direction="column" gap="sm">
             {recentReservations.map((r) => (
               <NextLink key={r.id} href={`/reservations/${r.id}`} className="block">
@@ -60,10 +59,6 @@ export default function AdminDashboardPage() {
             ))}
           </Stack>
         </Stack>
-
-        <NoticeBox tone="gray">
-          &apos;오늘 방문 예약&apos; = 오늘 날짜 이용 건 목록(일본 기준 &apos;오늘&apos;).
-        </NoticeBox>
       </Stack>
     </main>
   );

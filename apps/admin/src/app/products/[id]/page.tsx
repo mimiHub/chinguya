@@ -7,6 +7,7 @@ import type { RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Chip } from "@chinguya/ui/chip";
+import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
@@ -82,19 +83,19 @@ export default function AdminProductEditPage() {
 
         <Title size="md">{isNew ? "상품 등록" : "상품 수정"}</Title>
 
-        <Stack align="center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={image}
-            alt={title}
-            className="h-16 w-16 shrink-0 rounded-md border border-line object-cover"
-          />
+        <Card>
+          <Stack align="center">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-line bg-white p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image} alt={title} className="h-full w-full object-contain" />
+          </div>
           {!isNew && (
             <Text weight="bold">
               [{CATEGORY_LABEL[category]}] {title} · {RENTAL_OPTION_LABEL[option]}
             </Text>
           )}
         </Stack>
+        </Card>
       </Stack>
 
       <Stack direction="column" gap="md" className="mt-4">
@@ -129,6 +130,7 @@ export default function AdminProductEditPage() {
           <Input
             type="number"
             size="sm"
+            fullWidth={false}
             className="w-32 text-right"
             value={customerPrice}
             min={0}
@@ -143,6 +145,7 @@ export default function AdminProductEditPage() {
           <Input
             type="number"
             size="sm"
+            fullWidth={false}
             className="w-32 text-right"
             value={agencyPrice}
             min={0}
@@ -165,6 +168,7 @@ export default function AdminProductEditPage() {
             <Input
               type="number"
               size="sm"
+              fullWidth={false}
               className="w-32 text-right"
               value={offSiteReturnFeeKrw}
               min={0}

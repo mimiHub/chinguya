@@ -14,7 +14,7 @@ const tintClass: Record<Tint, string> = {
 
 const paddingClass: Record<Padding, string> = {
   none: "p-0",
-  sm: "p-2 md:p-4",
+  sm: "p-4",
   md: "p-4 md:p-6",
   lg: "p-6 md:p-10",
   xl: "p-10 md:p-16",
@@ -74,9 +74,9 @@ export function Card({
     // p-4 md:p-6를 같이 넣어두면 padding="sm" 같은 값이 있어도 같은 속성(padding)을 건드리는
     // 유틸리티 두 개가 한 className에 동시에 있게 돼서(예: p-2와 p-4가 함께 붙는 문제),
     // Tailwind가 최종 CSS를 만들 때 어느 게 이길지 보장이 안 된다.
-    "relative rounded-lg border border-white",
+    "relative rounded-lg border border-card-border",
     shadow ? "shadow-[0_2px_10px_rgba(0,0,0,0.05)]" : "",
-    tint ? tintClass[tint] : "bg-white",
+    tint ? tintClass[tint] : "bg-surface",
     onClick
       ? `cursor-pointer transition-[box-shadow,transform] hover:-translate-y-0.5 ${shadow ? "hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]" : ""}`
       : "",

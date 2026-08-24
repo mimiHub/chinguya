@@ -136,35 +136,37 @@ export default function AdminAllocationsPage() {
         <Title size="md">할당 세팅</Title>
       </Stack>
 
-      <Text variant="sub" className="mt-4">
-        자산 선택
-      </Text>
-      <Stack gap="sm" align="center" className="mt-1">
-        <Chip.List>
+      <Stack direction="column" gap="sm" className="mt-4">
+        <Text weight="bold" leaf>자산 선택</Text>
+        <Chip.List scrollArrows>
           {assets.map((asset) => (
             <Chip key={asset.id} on={asset.id === assetId} onClick={() => handleSelectAsset(asset.id)}>
               {asset.name}
             </Chip>
           ))}
         </Chip.List>
+      </Stack>
+      
 
-        {/* 날짜 버튼 — 누르면 캘린더가 팝업으로 뜨고, 고른 날짜가 이 버튼 위에 그대로 적힌다 */}
+      {/* "날짜별 할당 세팅" 제목과 날짜 버튼을 한 줄에 양끝 정렬. 누르면 캘린더가 팝업으로 뜨고,
+          고른 날짜가 이 버튼 위에 그대로 적힌다 */}
+      <Stack justify="between" align="center" className="mt-4">
+        <Text weight="bold" leaf>날짜별 할당 세팅</Text>
         <button
           type="button"
           onClick={() => setDatePickerOpen(true)}
-          className="ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-4 text-sm text-ink"
+          className="flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm text-ink"
         >
           {dateKey ?? "날짜 선택"}
           <CalendarIcon />
         </button>
       </Stack>
-
-      <Text weight="bold" className="mt-6">
-        날짜별 할당 세팅
-      </Text>
+     
 
       {selectedDay ? (
-        <Stack direction="column" gap="md" className="mt-3">
+        <Stack direction="column" gap="md" className="mt-4">
+          <Text weight="bold" leaf>여행사별 수량 입력</Text>
+
           {/*
             여행사가 많아질 수 있어서 전부 나열하지 않고 하나씩 골라 수량을 추가하는 방식.
             브라우저 기본 select는 모바일에서 팝업 위치가 화면 위로 튀는 문제가 있어서, 네이티브
@@ -176,7 +178,7 @@ export default function AdminAllocationsPage() {
               <button
                 type="button"
                 onClick={() => setAgencyMenuOpen((o) => !o)}
-                className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-sm border border-line bg-white px-4 text-left text-sm text-ink focus:border-primary-500 focus:outline-none"
+                className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-sm border border-line bg-surface px-4 text-left text-sm text-ink focus:border-input-focus focus:outline-none"
               >
                 <span className="truncate">{pickerAgency?.name ?? "여행사 선택"}</span>
                 {/* 셀렉트박스처럼 보이는 화살표 — 열림/닫힘에 따라 위/아래로 뒤집힌다(순수 CSS 삼각형) */}
@@ -191,7 +193,7 @@ export default function AdminAllocationsPage() {
                 <>
                   {/* 드롭다운 바깥을 누르면 닫히도록 화면 전체를 덮는 투명 레이어 */}
                   <div className="fixed inset-0 z-40" onClick={() => setAgencyMenuOpen(false)} />
-                  <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-line bg-white shadow-lg">
+                  <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-line bg-surface shadow-lg">
                     {activeAgencies.map((agency) => (
                       <button
                         key={agency.id}
@@ -224,8 +226,8 @@ export default function AdminAllocationsPage() {
                 onChange={(e) => setPickerQty(Number(e.target.value))}
               />
             </div>
-            <Button size="md" variant="secondary" className="shrink-0" onClick={handleAddAllocation} disabled={!pickerAgencyId}>
-              추가
+            <Button size="md" variant="subtle" className="shrink-0" onClick={handleAddAllocation} disabled={!pickerAgencyId}>
+              + 추가
             </Button>
           </Stack>
 
@@ -255,7 +257,7 @@ export default function AdminAllocationsPage() {
               );
             })}
           </div>
-
+            <hr />
           <Kv items={[{ key: "할당 합계", value: `${allocatedSum}개` }]} />
 
           {allocatedSum !== agencyAllocatedTarget && (
@@ -273,7 +275,7 @@ export default function AdminAllocationsPage() {
           </Button>
         </Stack>
       ) : (
-        <Text variant="sub" className="mt-3">
+        <Text variant="sub" className="mt-4">
           날짜를 선택하면 여행사별 할당 수량을 확인·수정할 수 있습니다.
         </Text>
       )}

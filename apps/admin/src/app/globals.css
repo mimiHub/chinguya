@@ -1,7 +1,80 @@
 @import "tailwindcss";
 @import "@chinguya/tailwind-config/theme.css";
 
+/*
+ * 관리자 앱 전용 다크 테마 오버라이드.
+ * packages/tailwind-config/theme.css의 색 토큰은 3개 앱(customer/admin/agency)이 공유하지만,
+ * 각 앱의 CSS 커스텀 프로퍼티는 여기(자기 globals.css)에서 다시 선언하면 이 앱 안에서만
+ * 값이 바뀐다 — Tailwind 유틸리티(bg-ink, text-muted, border-line, bg-gray-100 등)는 전부
+ * var(--color-*)를 참조해서 그려지기 때문에, 컴포넌트 코드를 건드리지 않고도 색만 바꿀 수 있다.
+ * (단, 컴포넌트가 이 변수 대신 리터럴 "bg-white"를 직접 쓴 곳은 여기서 못 바꾸므로, 그런 곳은
+ * packages/ui 쪽에서 "bg-surface"로 바꿔뒀다 — surface 토큰도 아래서 다크로 재정의된다.)
+ */
+:root {
+  /* 시맨틱 텍스트/배경/라인 — 크롬 다크 모드 설정 화면 톤 참고(따뜻한 브라운 대신 차분한
+     블루그레이 계열 무채색). */
+  --color-ink: #e8eaed;
+  --color-muted: #9aa0a6;
+  --color-surface: #292a2d;
+  --color-bg: #202124;
+  --color-bg-light: #35363a;
+  --color-line: #5f6368;
+
+  /* Gray scale — 라이트 테마에서 0(밝음)→950(어두움)이던 방향을 다크에 맞게 뒤집었다
+     (0이 가장 어두운 배경, 950이 가장 밝은 텍스트가 되도록). 크롬 다크 모드와 같은
+     블루그레이 무채색 계열로 맞췄다. */
+  --color-gray-0: #202124;
+  --color-gray-50: #26272a;
+  --color-gray-100: #2d2e31;
+  --color-gray-200: #35363a;
+  --color-gray-300: #45474a;
+  --color-gray-400: #5f6368;
+  --color-gray-500: #80868b;
+  --color-gray-600: #9aa0a6;
+  --color-gray-700: #bdc1c6;
+  --color-gray-800: #dadce0;
+  --color-gray-900: #e8eaed;
+  --color-gray-950: #f1f3f4;
+
+  /* 카드 배경 파스텔 톤도 같은 블루그레이 계열로 */
+  --color-card-primary: #2d2e31;
+  --color-card-secondary: #2b2c2f;
+  --color-card-tertiary: #303134;
+
+  /* Card 테두리 — 라이트 테마의 흰색 테두리(배경과 거의 안 보이던 효과) 대신, 어두운 배경 위에서
+     카드 경계가 살짝 드러나도록 밝은 회색으로 지정 */
+  --color-card-border: #494a4d;
+
+  /* CTA/강조 색 — 로고의 세이지그린 포인트 컬러로 지정 */
+  --color-primary-500: #8ba286;
+  --color-primary-600: #6f866a;
+
+  /* Toggle 스위치 ON 색 — 저장 버튼(primary-500)과 똑같은 색을 쓰니 톤 차이가 없어 밋밋해
+     보인다는 피드백으로, 같은 세이지그린 계열이되 한 톤 더 짙은 accent-700을 대신 썼다
+     (공용 accent 스케일 — theme.css 참고. 로고 세이지그린과 이어지는 색이라 브랜드 톤은 유지). */
+  --color-toggle-on: var(--color-accent-700);
+
+  /* Toast 배경 — 공용 기본값(#1c1c1a)은 어두운 페이지 배경(#202124) 위에서 거의 안 보여서,
+     그림자로만 겨우 구분되는 문제가 있었다. gray-300(#45474a, surface보다 한 단계 밝은 톤)으로
+     살짝 띄워서 흰 글자와의 대비도 확보하고 페이지 배경과도 구분되게 했다. */
+  --color-toast-bg: var(--color-gray-300);
+
+  /* Input 포커스 테두리 — 다크 배경 위에서 또렷하게 보이도록 화이트로 지정 */
+  --color-input-focus: #ffffff;
+
+  /* subtle 버튼 테두리 — 배경(bg-bg-light)만으로는 Input과 구분이 잘 안 돼서, 테두리를
+     화이트로 올려 "이건 버튼이다"가 한눈에 드러나게 했다 */
+  --color-button-subtle-border: #ffffff;
+
+  /* Badge "gray" variant — 공용 기본값(bg-gray-100)이 admin의 gray-100(#2d2e31)과 surface가
+     거의 같은 색이라 배지가 배경에 묻혀 안 보이는 문제가 있었다. 배경은 한 톤 더 밝은
+     gray-300, 글자는 ink로 올려서 눈에 띄게 했다. */
+  --color-badge-gray-bg: var(--color-gray-300);
+  --color-badge-gray-text: var(--color-ink);
+}
+
 body {
   color: var(--color-ink);
+  background: var(--color-bg);
   font-family: var(--font-sans);
 }

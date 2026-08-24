@@ -4,7 +4,6 @@ import { Stack } from "@chinguya/ui/stack";
 import { Text } from "@chinguya/ui/text";
 import { Badge } from "@chinguya/ui/badge";
 import { Button } from "@chinguya/ui/button";
-import { NoticeBox } from "@chinguya/ui/notice-box";
 import { assets } from "@/data/assetData";
 
 /**
@@ -17,7 +16,7 @@ export default function AdminAssetsPage() {
       <Stack justify="between" align="center">
         <Title size="md">자산 관리</Title>
         {/* TODO: 실제 등록 폼/모달로 교체 예정 */}
-        <Button size="sm" variant="secondary">
+        <Button size="sm" variant="subtle">
           + 등록
         </Button>
       </Stack>
@@ -31,11 +30,7 @@ export default function AdminAssetsPage() {
             </Stack>
           </Card>
         ))}
-      </Stack>
-
-      <NoticeBox tone="gray" className="mt-6">
-        사유(수리/입고/외부임대)는 따로 관리하지 않고 총 보유 대수만 관리합니다. 삭제는 소프트삭제 처리됩니다.
-      </NoticeBox>
+      </Stack>      
     </main>
   );
 }

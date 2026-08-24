@@ -10,8 +10,7 @@ import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
 import { Toast } from "@chinguya/ui/toast";
-import { NoticeBox } from "@chinguya/ui/notice-box";
-import { depositAccount, cancellationFeeRules, offSiteReturnFeeKrw } from "@/data/settingsData";
+import { depositAccount, cancellationFeeRules } from "@/data/settingsData";
 
 /**
  * S1-A10 계좌 · 정책 설정.
@@ -46,9 +45,11 @@ export default function AdminSettingsPage() {
         <Title size="md">계좌 · 정책 설정</Title>
       </Stack>
 
+      {/* 섹션 사이(특히 저장 버튼 위)는 gap="lg"로 넉넉하게 띄운다 — mt-* 마진 대신 Stack의
+          gap으로 간격을 준다. */}
       <Stack direction="column" gap="lg" className="mt-4">
-        <div>
-          <Text weight="bold" className="mb-2">
+        <Stack direction="column" gap="sm">
+          <Text weight="bold" leaf>
             입금 계좌
           </Text>
           <Stack direction="column" gap="sm">
@@ -62,13 +63,13 @@ export default function AdminSettingsPage() {
               <Input value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} />
             </LabeledBox>
           </Stack>
-          <Text variant="sub" className="mt-1">
+          <Text variant="sub">
             고객이 예약 후 이 계좌로 직접 입금합니다.
           </Text>
-        </div>
+        </Stack>
 
-        <div>
-          <Text weight="bold" className="mb-2">
+        <Stack direction="column" gap="sm">
+          <Text weight="bold" leaf>
             취소 수수료율
           </Text>
           <Stack direction="column" gap="sm">
@@ -81,6 +82,7 @@ export default function AdminSettingsPage() {
                   <Input
                     type="number"
                     size="sm"
+                    fullWidth={false}
                     className="w-20 text-right"
                     value={Math.round(rule.feeRate * 100)}
                     min={0}
@@ -94,15 +96,10 @@ export default function AdminSettingsPage() {
               </Stack>
             ))}
           </Stack>
-          <Text variant="sub" className="mt-1">
+          <Text variant="sub">
             이용일까지 남은 일수가 짧을수록 수수료율이 높습니다. 환불 이체는 관리자가 수동으로 처리합니다.
           </Text>
-        </div>
-
-        <NoticeBox tone="gray">
-          타지역 반납 추가요금(2일 상품 한정)은 전 상품 공통 고정값 {offSiteReturnFeeKrw.toLocaleString()}원이며,
-          이 화면에서는 아직 수정할 수 없습니다.
-        </NoticeBox>
+        </Stack>
 
         <Button fullWidth onClick={handleSave}>
           저장

@@ -105,7 +105,10 @@ export function Calendar({
   };
 
   return (
-    <div className="rounded-md border border-line bg-gray-100 p-2">
+    // Calendar는 항상 Card나 Popup처럼 이미 테두리·배경을 가진 컨테이너 안에서만 쓰인다 —
+    // 여기서도 자체 테두리·배경(border-line, bg-gray-100)을 또 그리면 "카드 안에 카드"처럼
+    // 이중 박스로 보인다. 그래서 레이아웃만 남기고 테두리·배경은 부모에게 맡긴다.
+    <div className="p-2">
       <div className="mb-2 flex items-center justify-between text-sm font-bold">
         <span
           className={canPrevMonth ? "cursor-pointer px-2" : "cursor-not-allowed px-2 text-gray-300"}
@@ -162,7 +165,7 @@ export function Calendar({
         })}
       </div>
       {showLegend && (
-        <div className="mt-2 flex flex-wrap gap-2 font-mono text-[10px] text-muted">
+        <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted">
           <span>
             <i className="mr-[3px] inline-block h-[9px] w-[9px] rounded-[3px] align-[-1px] bg-success-light" />
             예약가능

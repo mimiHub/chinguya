@@ -9,10 +9,9 @@ import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Badge } from "@chinguya/ui/badge";
 import { Toggle } from "@chinguya/ui/toggle";
-import { Link } from "@chinguya/ui/link";
+import { Button } from "@chinguya/ui/button";
 import { IconX } from "@chinguya/ui/icon-x";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { NoticeBox } from "@chinguya/ui/notice-box";
 import { agencies as initialAgencies } from "@/data/agencyData";
 
 /**
@@ -43,9 +42,9 @@ export default function AdminAgenciesPage() {
         </NextLink>
         <Stack justify="between" align="center">
           <Title size="md">여행사 관리</Title>
-          <Link href="/agencies/new" variant="primary" size="sm">
+          <Button href="/agencies/new" variant="subtle" size="sm">
             + 등록
-          </Link>
+          </Button>
         </Stack>
       </Stack>
 
@@ -71,11 +70,7 @@ export default function AdminAgenciesPage() {
             </Stack>
           </Card>
         ))}
-      </Stack>
-
-      <NoticeBox tone="gray" className="mt-6">
-        비활성화된 여행사는 여행사앱 로그인/예약이 막힙니다(여행사앱 로그인 연동 후 적용 예정).
-      </NoticeBox>
+      </Stack>      
 
       <ConfirmPopup
         open={Boolean(deleteTarget)}

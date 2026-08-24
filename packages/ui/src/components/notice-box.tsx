@@ -6,7 +6,7 @@ type Tone = "gray" | "white" | "warning" | "success" | "none";
 
 const toneClass: Record<Tone, string> = {
   gray: "bg-gray-100",
-  white: "bg-white",
+  white: "bg-surface",
   warning: "bg-warning-light",
   success: "bg-success-light",
   none: "",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TopHeader } from "@/components/TopHeader";
 import { BottomNav } from "@/components/BottomNav";
 import "./globals.css";
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body className="pb-16 md:pb-0">
+        <TopHeader />
         {children}
         <BottomNav />
       </body>

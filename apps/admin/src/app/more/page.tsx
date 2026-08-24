@@ -46,7 +46,7 @@ export default function AdminMorePage() {
       </Stack>
 
       {/* 아직 실제 로그인 세션이 없어서 "로그아웃"은 로그인 화면으로 돌아가는 것으로 대신한다 */}
-      <Button href="/login" variant="outline" fullWidth className="mt-6">
+      <Button href="/login" fullWidth className="mt-6">
         로그아웃
       </Button>
     </main>

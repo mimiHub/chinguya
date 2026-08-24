@@ -23,7 +23,7 @@ export default function AgencyInvoicePage() {
       <Title
         size="md"
         action={
-          <Badge variant="gray" className="font-mono">
+          <Badge variant="gray">
             {period} · KRW
           </Badge>
         }

@@ -3,7 +3,7 @@
 import NextLink from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "outline" | "text" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "outline" | "text" | "danger" | "ghost" | "subtle";
 type Size = "sm" | "md" | "lg";
 type Align = "start" | "center" | "end";
 type Padding = "none";
@@ -11,11 +11,17 @@ type Padding = "none";
 const variantClass: Record<Variant, string> = {
   primary: "bg-primary-500 text-white hover:bg-primary-600",
   secondary: "bg-secondary-800 text-ink hover:bg-secondary-600",
-  outline: "bg-white text-primary-500 border border-primary-500 hover:bg-bg-light",
+  outline: "bg-surface text-primary-500 border border-primary-500 hover:bg-bg-light",
   text: "bg-transparent text-muted hover:text-ink",
   danger: "bg-error text-white hover:bg-[#d63c3c]",
   // scaffold 초기 데모에서 쓰던 별칭 — cafe-next 원본에는 없던 variant, "text"와 동일하게 취급
   ghost: "bg-transparent text-primary-500 hover:bg-gray-100",
+  // 특정 의미색(빨강=위험, 초록=CTA 등) 없이, 배경과 살짝 톤 차이만 나는 중립 버튼 —
+  // 강제취소처럼 "위험해 보이는 강조색"도 "CTA처럼 튀는 포인트색"도 원치 않을 때 사용.
+  // 배경을 bg-surface(Input과 동일한 배경)로 두면 옆에 놓인 Input과 색이 같아서 버튼인지
+  // 구분이 안 되는 문제가 있었다 — bg-bg-light(한 톤 올린 배경)로 바꿔서 Input과는 다르게,
+  // 눈에 띄게 했다.
+  subtle: "border border-button-subtle-border bg-bg-light text-ink hover:bg-gray-200",
 };
 
 const sizeClass: Record<Size, string> = {

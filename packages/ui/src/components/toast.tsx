@@ -26,7 +26,7 @@ export function Toast({ open, onClose, message, actionLabel, actionHref, duratio
   return (
     <div
       role="status"
-      className="fixed bottom-[76px] left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] md:bottom-6"
+      className="fixed bottom-[76px] left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-toast-bg px-4 py-2 text-sm text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] md:bottom-6"
     >
       <span>{message}</span>
       {actionLabel && actionHref && (

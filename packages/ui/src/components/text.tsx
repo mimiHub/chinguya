@@ -63,13 +63,15 @@ export interface TextProps extends HTMLAttributes<HTMLElement> {
   weight?: Weight;
   size?: Size;
   tone?: Tone;
-  mono?: boolean;
+  /** true면 텍스트 앞에 로고 나뭇잎 포인트 아이콘이 붙는다(Title의 leaf prop과 동일한 방식).
+   *  Title(제목)만큼 크지 않은, 섹션 라벨 같은 본문 텍스트에 나뭇잎을 붙이고 싶을 때 사용 —
+   *  이미지가 필요하므로 각 앱 public/logo-mb.png가 있어야 한다. */
+  leaf?: boolean;
 }
 
 /**
  * 본문/캡션 등 일반 텍스트용 컴포넌트. Title은 제목(h1~h2)용, Text는 그 외 본문 텍스트용.
  * weight/size/tone은 variant의 기본값을 덮어쓰고 싶을 때만 지정한다.
- * mono=true면 금액 등 숫자 강조에 쓰는 고정폭 글꼴(font-mono)이 적용된다.
  */
 export function Text({
   as: Component = "p",
@@ -77,7 +79,7 @@ export function Text({
   weight,
   size,
   tone,
-  mono = false,
+  leaf = false,
   className = "",
   children,
   ...rest
@@ -90,7 +92,6 @@ export function Text({
     tone ? toneClass[tone] : config.color,
     config.leading,
     config.extraClass ?? "",
-    mono ? "font-mono" : "",
     className,
   ]
     .filter(Boolean)
@@ -98,7 +99,17 @@ export function Text({
 
   return (
     <Component className={classNames} {...rest}>
-      {children}
+      {leaf ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-[1.4em] w-[0.9em] shrink-0 bg-[url('/logo-mb.png')] bg-contain bg-center bg-no-repeat"
+          />
+          {children}
+        </span>
+      ) : (
+        children
+      )}
     </Component>
   );
 }

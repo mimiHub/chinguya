@@ -31,7 +31,7 @@ export function Checkbox({ checked, onChange, className = "", ...rest }: Checkbo
       <span
         aria-hidden="true"
         className={`flex h-5 w-5 items-center justify-center rounded-[4px] border transition-colors ${
-          checked ? "border-primary-500 bg-primary-500" : "border-line bg-white"
+          checked ? "border-primary-500 bg-primary-500" : "border-line bg-surface"
         }`}
       >
         {checked && (

@@ -16,7 +16,6 @@ import { Input } from "@chinguya/ui/input";
 import { Popup } from "@chinguya/ui/popup";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Alert } from "@chinguya/ui/alert";
-import { NoticeBox } from "@chinguya/ui/notice-box";
 import { adminAccounts, type AdminAccount } from "@/data/authData";
 
 const LEVEL_LABEL: Record<AdminLevel, string> = {
@@ -79,7 +78,7 @@ export default function AdminAccountsPage() {
           <Title size="md">관리자 관리</Title>
           <Button
             size="sm"
-            variant="secondary"
+            variant="subtle"
             onClick={() => {
               resetForm();
               setPopupOpen(true);
@@ -107,11 +106,7 @@ export default function AdminAccountsPage() {
             </Stack>
           </Card>
         ))}
-      </Stack>
-
-      <NoticeBox tone="gray" className="mt-6">
-        일반 관리자는 조회 전용이고, 슈퍼어드민만 계정을 추가·삭제할 수 있습니다(로그인 연동 후 적용 예정).
-      </NoticeBox>
+      </Stack>      
 
       <Popup open={popupOpen} onClose={() => setPopupOpen(false)} title="관리자 등록">
         <Stack direction="column" gap="md">

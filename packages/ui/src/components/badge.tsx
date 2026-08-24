@@ -38,7 +38,7 @@ const variantClass: Record<Variant, string> = {
   warning: "bg-warning-light text-warning",
   error: "bg-error-light text-error",
   info: "bg-info-light text-info",
-  gray: "bg-gray-100 text-gray-700",
+  gray: "bg-badge-gray-bg text-badge-gray-text",
 };
 
 export interface BadgeProps {

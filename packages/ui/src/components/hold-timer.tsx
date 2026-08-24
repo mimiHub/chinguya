@@ -12,7 +12,7 @@ export function HoldTimer({ seconds = 0, label = "임시 홀드 중" }: HoldTime
   const ss = String(seconds % 60).padStart(2, "0");
 
   return (
-    <div className="my-2 rounded-sm border border-dashed border-line px-4 py-2 text-center font-mono text-sm text-muted">
+    <div className="my-2 rounded-sm border border-dashed border-line px-4 py-2 text-center text-sm text-muted">
       ⏱ {label} · 남은 시간 <b className="text-warning">{mm}:{ss}</b> — 중복 예약 방지
     </div>
   );

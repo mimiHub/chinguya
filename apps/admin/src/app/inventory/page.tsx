@@ -78,104 +78,106 @@ export default function AdminInventoryPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Title size="md">날짜별 재고 세팅</Title>
+      <Stack direction="column" gap="sm">
+        <Title size="md">날짜별 재고 세팅</Title>
+      </Stack>
 
-      <Text variant="sub" className="mt-2">
-        자산 선택
-      </Text>
-      <Chip.List className="mt-1">
-        {assets.map((asset) => (
-          <Chip key={asset.id} on={asset.id === assetId} onClick={() => handleSelectAsset(asset.id)}>
-            {asset.name}
-          </Chip>
-        ))}
-      </Chip.List>
+      <Stack direction="column" gap="md" className="mt-4">
+        <Text weight="bold" leaf>상품 선택</Text>
+        <Chip.List scrollArrows>
+          {assets.map((asset) => (
+            <Chip key={asset.id} on={asset.id === assetId} onClick={() => handleSelectAsset(asset.id)}>
+              {asset.name}
+            </Chip>
+          ))}
+        </Chip.List>
 
-      <Card className="mt-4">
-        <Calendar
-          year={viewYear}
-          month={viewMonth}
-          days={days}
-          mode="single"
-          selected={selectedDay ?? undefined}
-          onSelect={handleSelectDay}
-          onPrevMonth={() => {
-            setSelectedDay(null);
-            if (viewMonth === 1) {
-              setViewYear((y) => y - 1);
-              setViewMonth(12);
-            } else {
-              setViewMonth((m) => m - 1);
-            }
-          }}
-          onNextMonth={() => {
-            setSelectedDay(null);
-            if (viewMonth === 12) {
-              setViewYear((y) => y + 1);
-              setViewMonth(1);
-            } else {
-              setViewMonth((m) => m + 1);
-            }
-          }}
-        />
-      </Card>
+        <Card>
+          <Calendar
+            year={viewYear}
+            month={viewMonth}
+            days={days}
+            mode="single"
+            selected={selectedDay ?? undefined}
+            onSelect={handleSelectDay}
+            onPrevMonth={() => {
+              setSelectedDay(null);
+              if (viewMonth === 1) {
+                setViewYear((y) => y - 1);
+                setViewMonth(12);
+              } else {
+                setViewMonth((m) => m - 1);
+              }
+            }}
+            onNextMonth={() => {
+              setSelectedDay(null);
+              if (viewMonth === 12) {
+                setViewYear((y) => y + 1);
+                setViewMonth(1);
+              } else {
+                setViewMonth((m) => m + 1);
+              }
+            }}
+          />
+        </Card>
 
-      {selectedDay ? (
-        <Stack direction="column" gap="md" className="mt-4">
-          <Text weight="bold">
-            {viewMonth}월 {selectedDay}일 재고 세팅
-          </Text>
-
-          <Stack justify="between" align="center">
-            <Text variant="sub" as="span">
-              총 보유
+        {selectedDay ? (
+          <Stack direction="column" gap="md">
+            <Text weight="bold">
+              {viewMonth}월 {selectedDay}일 재고 세팅
             </Text>
-            <Input
-              type="number"
-              size="sm"
-              className="w-24 text-right"
-              value={totalStock}
-              min={0}
-              onChange={(e) => setTotalStock(Number(e.target.value))}
-            />
+
+            <Stack justify="between" align="center">
+              <Text variant="sub" as="span">
+                총 보유
+              </Text>
+              <Input
+                type="number"
+                size="sm"
+                fullWidth={false}
+                className="w-24 text-right"
+                value={totalStock}
+                min={0}
+                onChange={(e) => setTotalStock(Number(e.target.value))}
+              />
+            </Stack>
+
+            <Stack justify="between" align="center">
+              <Text variant="sub" as="span">
+                여행사 할당
+              </Text>
+              <Input
+                type="number"
+                size="sm"
+                fullWidth={false}
+                className="w-24 text-right"
+                value={agencyAllocated}
+                min={0}
+                max={totalStock}
+                onChange={(e) => setAgencyAllocated(Number(e.target.value))}
+              />
+            </Stack>
+
+            <Kv items={[{ key: "고객 가용(자동)", value: `${customerAvailable}개` }]} />
+
+            <Stack justify="between" align="center">
+              <Text variant="sub" as="span">
+                휴무
+              </Text>
+              <Toggle on={closed} onChange={setClosed} />
+            </Stack>
+
+            {/* 지금은 이 앱 안에서만 저장된다. 고객·여행사 앱의 노출/가용 수량(@chinguya/catalog-data)에는
+                아직 자동 반영되지 않는다 — 실제 API가 생기면 여기서 저장한 값이 그대로 전달되도록 연결한다.
+                (개발자용 메모라 화면에는 노출하지 않는다.) */}
+            <Button fullWidth onClick={handleSave}>
+              저장
+            </Button>
           </Stack>
-
-          <Stack justify="between" align="center">
-            <Text variant="sub" as="span">
-              여행사 할당
-            </Text>
-            <Input
-              type="number"
-              size="sm"
-              className="w-24 text-right"
-              value={agencyAllocated}
-              min={0}
-              max={totalStock}
-              onChange={(e) => setAgencyAllocated(Number(e.target.value))}
-            />
-          </Stack>
-
-          <Kv items={[{ key: "고객 가용(자동)", value: `${customerAvailable}개` }]} />
-
-          <Stack justify="between" align="center">
-            <Text variant="sub" as="span">
-              휴무
-            </Text>
-            <Toggle on={closed} onChange={setClosed} />
-          </Stack>
-
-          {/* 지금은 이 앱 안에서만 저장된다. 고객·여행사 앱의 노출/가용 수량(@chinguya/catalog-data)에는
-              아직 자동 반영되지 않는다 — 실제 API가 생기면 여기서 저장한 값이 그대로 전달되도록 연결한다.
-              (개발자용 메모라 화면에는 노출하지 않는다.) */}
-          <Button fullWidth onClick={handleSave}>
-            저장
-          </Button>
-        </Stack>
-      ) : (
-        <Text variant="sub" className="mt-4">
-          날짜를 선택하면 세팅값을 확인·수정할 수 있습니다.
-        </Text>
-      )}
+        ) : (
+          <Text variant="sub">날짜를 선택하면 세팅값을 확인·수정할 수 있습니다.</Text>
+        )}
+      </Stack>
 
       <Toast open={savedOpen} onClose={() => setSavedOpen(false)} message="저장되었습니다" />
     </main>

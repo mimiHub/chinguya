@@ -88,7 +88,7 @@ export default function NoticePage() {
                 <Title size="lg" className="mt-2">
                   {selected.title}
                 </Title>
-                <Text variant="sub" size="xs" mono className="mt-1">
+                <Text variant="sub" size="xs" className="mt-1">
                   {selected.date}
                 </Text>
                 <hr className="my-4 border-line" />

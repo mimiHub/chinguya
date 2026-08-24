@@ -12,15 +12,22 @@ const sizeClass: Record<Size, string> = {
   lg: "h-12 px-6 text-lg",
 };
 
+// "w-full"을 여기 고정으로 넣어두면, 고정 너비를 주고 싶은 곳(className="w-32" 등)에서
+// 같은 width 속성을 두 클래스가 동시에 노려서 어느 쪽이 이기는지가 Tailwind 내부 유틸리티
+// 정렬 순서에 좌우된다(순서상 w-full이 이겨서, 형제 요소(라벨)의 텍스트 길이에 따라 flex-shrink
+// 계산이 달라지며 같은 w-32를 준 입력창끼리도 실제 렌더링 너비가 달라지는 문제가 있었다 —
+// packages/ui/src/components/card.tsx의 padding 충돌과 동일한 유형의 버그). 그래서 기본값은
+// fullWidth prop으로 조건부 적용하고, 고정 너비가 필요한 곳은 fullWidth={false}로 꺼서
+// className의 w-32 등이 유일한 width 소스가 되게 한다.
 const baseFieldClass =
-  "w-full rounded-sm border border-line bg-white text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-secondary-800 disabled:bg-gray-100 disabled:cursor-not-allowed";
+  "rounded-sm border border-line bg-surface text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-input-focus disabled:bg-gray-100 disabled:cursor-not-allowed";
 
 const checkboxClass =
-  "relative inline-flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded-sm border-[1.5px] border-line bg-white transition-colors hover:border-primary-500 checked:bg-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +
+  "relative inline-flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded-sm border-[1.5px] border-line bg-surface transition-colors hover:border-primary-500 checked:bg-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +
   "checked:after:content-[''] checked:after:absolute checked:after:h-3 checked:after:w-1.5 checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:-translate-y-0.5 checked:after:rotate-45";
 
 const radioClass =
-  "relative inline-flex h-5 w-5 shrink-0 appearance-none items-center justify-center rounded-full border-[1.5px] border-line bg-white transition-colors hover:border-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +
+  "relative inline-flex h-5 w-5 shrink-0 appearance-none items-center justify-center rounded-full border-[1.5px] border-line bg-surface transition-colors hover:border-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +
   "checked:after:content-[''] checked:after:absolute checked:after:h-2.5 checked:after:w-2.5 checked:after:rounded-full checked:after:bg-primary-500";
 
 const switchClass =
@@ -37,6 +44,8 @@ type BaseProps = {
   error?: boolean;
   as?: As;
   className?: string;
+  /** 기본 true(꽉 채움). 고정 너비를 className(예: "w-32")으로 줄 때는 false로 꺼서 충돌을 막는다. */
+  fullWidth?: boolean;
 };
 
 export type InputProps = BaseProps &
@@ -47,7 +56,15 @@ export type InputProps = BaseProps &
  * checkbox/radio/switch는 텍스트 입력용 스타일 대신 각자의 커스텀 스타일로 렌더링된다.
  * switch는 native checkbox에 스위치 모양을 입힌 것 — checked/onChange(event)로 동일하게 쓴다.
  */
-export function Input({ size = "md", className = "", error = false, as = "input", type = "text", ...rest }: InputProps) {
+export function Input({
+  size = "md",
+  className = "",
+  error = false,
+  as = "input",
+  type = "text",
+  fullWidth = true,
+  ...rest
+}: InputProps) {
   if (type === "checkbox" || type === "radio" || type === "switch") {
     const nativeType = type === "switch" ? "checkbox" : type;
     return (
@@ -59,7 +76,7 @@ export function Input({ size = "md", className = "", error = false, as = "input"
     );
   }
 
-  const classNames = [baseFieldClass, sizeClass[size], error ? "border-error" : "", className]
+  const classNames = [baseFieldClass, fullWidth ? "w-full" : "", sizeClass[size], error ? "border-error" : "", className]
     .filter(Boolean)
     .join(" ");
 

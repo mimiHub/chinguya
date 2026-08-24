@@ -56,6 +56,38 @@
   --color-card-secondary: #e9e6de;
   --color-card-tertiary: #ece9e2;
 
+  /* Card 컴포넌트 테두리 전용 색 — 배경(surface/tint)과 별개로 관리해서, 다크 테마 앱에서
+     카드 배경은 그대로 두고 테두리 색만 다르게 바꿀 수 있게 했다(예: apps/admin/globals.css). */
+  --color-card-border: #ffffff;
+
+  /* Toggle 스위치 ON 색 전용 토큰 — 원래 secondary-800을 직접 썼는데, secondary-800은
+     버튼/캘린더 선택일 등 다른 곳에도 쓰이는 색이라 그대로 두고, 스위치만 다른 색으로 바꿀 수
+     있도록 별도 토큰으로 분리했다(예: apps/admin에서만 포인트 컬러로 재정의). */
+  --color-toggle-on: #7a6236;
+
+  /* Button "subtle" variant 테두리 전용 토큰 — 기본값은 지금의 border-line과 같은 색을
+     그대로 가리키게 해서(값 대신 변수로 연결) 다른 곳(subtle 버튼을 안 쓰는 앱)엔 영향이 없고,
+     admin에서만 화이트로 바꿔 "이게 버튼이다"가 배경(bg-bg-light)만으로는 잘 안 드러난다는
+     피드백을 반영했다. */
+  --color-button-subtle-border: var(--color-line);
+
+  /* Badge "gray" variant 전용 배경/글자색 토큰 — 기본값은 지금의 bg-gray-100/text-gray-700과
+     같은 값을 가리키게 해서 다른 앱엔 영향이 없고, admin(다크 테마)에서는 gray-100이 surface와
+     거의 같은 색이라 배지가 배경에 묻혀 안 보이는 문제가 있어 더 밝은 톤으로 재정의한다. */
+  --color-badge-gray-bg: var(--color-gray-100);
+  --color-badge-gray-text: var(--color-gray-700);
+
+  /* Input 포커스 테두리 전용 토큰 — 원래 secondary-800(브라운)을 직접 썼는데, 다크 테마 앱에서
+     포커스 색을 화이트로 바꾸고 싶다는 요청으로 분리했다(다른 곳에 쓰이는 secondary-800 자체는
+     그대로 두고 포커스 색만 독립적으로 바꿀 수 있도록). */
+  --color-input-focus: #7a6236;
+
+  /* Toast(하단에 잠깐 뜨는 알림 pill) 배경 전용 토큰 — 원래 ink(텍스트색)를 배경으로 재사용했는데,
+     ink는 다크 테마 앱(admin)에서 "밝은 색"으로 뒤집히는 시맨틱 텍스트 토큰이라, 거기 배경으로
+     쓰면 흰 글자 위에 거의 흰 배경이 겹쳐서 메시지가 안 보이는(디스에이블된 것처럼 흐릿한) 문제가
+     있었다. Toast는 항상 "어두운 배경 + 흰 글자" pill이어야 하므로 테마와 무관한 전용 색으로 분리. */
+  --color-toast-bg: #1c1c1a;
+
   /* Gray scale */
   --color-gray-0: #ffffff;
   --color-gray-50: #fafafa;
@@ -182,4 +214,15 @@
     var(--color-gray-200) 2px,
     var(--color-gray-200) 4px
   );
+}
+
+/* 가로 스크롤 영역에서 브라우저 기본 스크롤바를 숨긴다(예: Chip.List scrollArrows) —
+   화살표 버튼으로만 넘기게 하고 싶을 때, 스크롤은 그대로 되지만 막대만 안 보이게 한다. */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

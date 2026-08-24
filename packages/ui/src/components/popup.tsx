@@ -20,7 +20,7 @@ export function Popup({ open, onClose, title, className = "", children }: PopupP
       onClick={onClose}
     >
       <div
-        className={`max-h-[85vh] w-full overflow-y-auto rounded-t-lg bg-white p-6 md:max-h-[90vh] md:w-[400px] md:max-w-[90vw] md:rounded-lg ${className}`}
+        className={`max-h-[85vh] w-full overflow-y-auto rounded-t-lg bg-surface p-6 md:max-h-[90vh] md:w-[400px] md:max-w-[90vw] md:rounded-lg ${className}`}
         onClick={(e: MouseEvent) => e.stopPropagation()}
       >
         {title && (

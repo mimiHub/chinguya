@@ -7,6 +7,7 @@ import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Toggle } from "@chinguya/ui/toggle";
 import { Link } from "@chinguya/ui/link";
+import { Button } from "@chinguya/ui/button";
 import { adminProductVariants, type AdminProductVariant, RENTAL_OPTION_LABEL } from "@/data/productData";
 
 /**
@@ -25,9 +26,9 @@ export default function AdminProductsPage() {
     <main className="mx-auto max-w-2xl p-6">
       <Stack justify="between" align="center">
         <Title size="md">상품 관리</Title>
-        <Link href="/products/new" variant="primary" size="sm">
+        <Button href="/products/new" variant="subtle" size="sm">
           + 등록
-        </Link>
+        </Button>
       </Stack>
 
       <Stack direction="column" gap="sm" className="mt-4">
@@ -60,11 +61,7 @@ export default function AdminProductsPage() {
             </Stack>
           </Card>
         ))}
-      </Stack>
-
-      <Text variant="sub" className="mt-6">
-        상품별 고객앱 / 여행사앱 표출을 각각 토글합니다.
-      </Text>
+      </Stack>      
     </main>
   );
 }
