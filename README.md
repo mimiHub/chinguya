@@ -23,7 +23,9 @@ chinguya/
 ├─ packages/
 │  ├─ ui/                 # 공용 컴포넌트 (Button, StatusBadge …)
 │  ├─ types/              # 도메인 타입 = 비즈니스 규칙 단일 출처
+│  ├─ api-spec/           # OpenAPI 계약 = API 스펙 단일 출처
 │  ├─ api-client/         # 타입드 fetch 래퍼
+│  ├─ mocks/              # api-spec 기반 MSW 목 핸들러(Slice 1)
 │  ├─ tailwind-config/    # 공유 디자인 토큰(theme.css)
 │  ├─ eslint-config/      # 공유 ESLint(flat) 프리셋
 │  └─ typescript-config/  # 공유 tsconfig 프리셋
@@ -34,6 +36,8 @@ chinguya/
 ```
 
 `packages/types` 는 공통 비즈니스 규칙(재고 산식, 예약 상태 흐름, 예약 가능 기간, 취소 수수료, 인보이스 등)을 코드로 옮긴 **단일 출처(source of truth)**다. 규칙이 바뀌면 이 패키지를 먼저 고치고 세 앱을 맞춘다. 규칙 원문은 `chinguya-wireframes/docs/README.md` 를 근거로 한다.
+
+`packages/api-spec` 은 Slice 1 Core API 계약(엔드포인트·요청/응답 스키마)의 **단일 출처**다(`openapi/chinguya-slice1-openapi.yaml`). `api-client`, `packages/mocks`(MSW 목), 화면 구현은 모두 이 yaml을 따라가며, 반대로 구현이나 목이 계약을 임의로 정하지 않는다. 스펙이 바뀌어야 하면 이 yaml을 먼저 고치고 나서 구현을 맞춘다. 자세한 규칙은 [`packages/api-spec/README.md`](packages/api-spec/README.md), 목 사용법은 [`packages/mocks/README.md`](packages/mocks/README.md) 참고.
 
 ## 시작하기
 
