@@ -37,6 +37,11 @@ function spanDates(start: string, opt: S["RentalOptionType"]): string[] {
   next.setDate(next.getDate() + 1);
   return [start, next.toISOString().slice(0, 10)];
 }
+function daysToUse(useDate: string): number {
+  const today = new Date().toISOString().slice(0, 10);
+  const ms = new Date(useDate).getTime() - new Date(today).getTime();
+  return Math.max(0, Math.round(ms / (24 * 3600 * 1000)));
+}
 
 // ── cart / 임시 홀드 ─────────────────────────────────────────────────────────
 export function getCart(): S["Cart"] {
@@ -87,6 +92,7 @@ export function createBooking(dto: S["BookingCreate"]): S["Booking"] | null {
     bookingNumber: `CG${now.getFullYear()}${String(seq).padStart(4, "0")}`,
     status: "AWAITING_DEPOSIT", // 생성 직후 = 입금대기
     items: chosen.map((c) => ({
+      bookingItemId: c.cartItemId,
       productId: c.productId,
       productName: c.productName,
       optionType: c.optionType,
@@ -94,8 +100,10 @@ export function createBooking(dto: S["BookingCreate"]): S["Booking"] | null {
       quantity: c.quantity,
       crossRegionReturn: c.crossRegionReturn,
       lineTotal: c.lineTotal!,
+      status: "ACTIVE",
     })),
     totalAmount: total,
+    activeTotalAmount: total,
     passportName: dto.passportName ?? "",
     cancellable: true,
     depositInfo: {
@@ -140,6 +148,7 @@ export function listBookings(status: string): S["BookingListPage"] {
     bookingNumber: b.bookingNumber,
     status: b.status,
     productName: b.items[0]?.productName ?? "",
+    itemCount: b.items.length,
     useDates: b.items.flatMap((i) => i.dates),
     totalAmount: b.totalAmount,
     createdAt: b.createdAt,
@@ -151,13 +160,30 @@ export function listBookings(status: string): S["BookingListPage"] {
 export function cancellationQuote(id: string): S["CancellationQuote"] | null {
   const b = bookings.get(id);
   if (!b) return null;
-  const fee = Math.round(b.totalAmount * FEE_RATE);
+  const items: S["CancellationQuoteItem"][] = b.items.map((i) => {
+    const fee = Math.round(i.lineTotal * FEE_RATE);
+    return {
+      bookingItemId: i.bookingItemId,
+      productName: i.productName,
+      optionType: i.optionType,
+      useDate: i.dates[0] ?? "",
+      daysToUse: daysToUse(i.dates[0] ?? ""),
+      feeRate: FEE_RATE,
+      lineAmount: i.lineTotal,
+      cancellationFee: fee,
+      refundAmount: i.lineTotal - fee,
+    };
+  });
+  const selectedAmount = items.reduce((s, i) => s + i.lineAmount, 0);
+  const cancellationFee = items.reduce((s, i) => s + i.cancellationFee, 0);
   return {
+    bookingId: id,
+    scope: "FULL",
+    items,
     paidAmount: b.totalAmount,
-    cancellationFee: fee,
-    feeRate: FEE_RATE,
-    refundAmount: b.totalAmount - fee,
-    basedOnUseDate: b.items[0]?.dates[0],
+    selectedAmount,
+    cancellationFee,
+    refundAmount: selectedAmount - cancellationFee,
   };
 }
 

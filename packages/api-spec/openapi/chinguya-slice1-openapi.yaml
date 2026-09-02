@@ -1,9 +1,9 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [초안]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.4]
 #
-# 범위: 고객 화면 8종 (S1-C1 상품조회 / S3-C1 상품 상세 / S1-C2 예약·캘린더 /
+# 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
 #       S1-C6 예약 상세·바우처 / S1-C7 취소 요청)
 #
@@ -11,18 +11,79 @@ openapi: 3.1.0
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
 #
-# ⚠ 확정 전 협의 항목은 본문에 TODO(협의)로 표시했다. 목록은 파일 하단 참고.
+# v0.4 변경(2026-09-02, PM 확정 반영 — 와이어프레임 S1-C5/C6/C7 개편과 동시):
+#   1. **부분취소(항목 단위 취소) 도입.** 취소 견적·취소 요청이 예약 단위에서
+#      **항목 단위**로 바뀐다(`itemIds`). 근거: 취소 수수료가 '이용일 기준
+#      차등 요율'인데 한 예약에 이용일이 다른 항목이 섞이므로 **예약 단위
+#      일괄 산정이 성립하지 않는다**. 따라서 요율·수수료는 항목별로 산정해
+#      합산한다.
+#      - `CancellationQuote.feeRate` / `basedOnUseDate` **제거** →
+#        `CancellationQuote.items[]`의 항목별 값으로 이동(파괴적 변경).
+#   2. **부분취소는 별도 상태값·목록 탭을 만들지 않는다.** 예약 상태
+#      (`BookingStatus`)는 그대로 두고 항목 상태(`BookingItemStatus`)를 새로
+#      두며, 일부만 취소된 예약은 `Booking.partiallyCancelled=true` 플래그로
+#      표시한다(프론트는 '부분취소' 뱃지). 예약 상태는 **유효 항목 기준**으로
+#      유지한다. 입금대기·취소요청을 뱃지로 처리하는 v0.3 규칙과 대칭.
+#   3. **부분취소 허용 시점 = 완료(COMPLETED) 이후.** `AWAITING_DEPOSIT`
+#      (입금대기)에서는 **전체 취소만** 허용한다 — 일부만 취소하면 입금액이
+#      바뀌어 입금 안내(S1-C4) 재발행과 관리자 수동 입금확인이 어긋나기
+#      때문. 이 규칙은 `Booking.cancellationScope`로 표현하고, 위반 시
+#      409 `PARTIAL_CANCEL_NOT_ALLOWED`.
+#   4. **1 예약번호 = N 항목**을 계약에 명시. `BookingItem.bookingItemId`를
+#      필수로 추가(항목 지정의 키), `BookingSummary`에 `itemCount`·
+#      `partiallyCancelled`를 추가해 목록 카드의 "대표 상품명 외 N건"·
+#      부분취소 뱃지를 서버 값으로 그릴 수 있게 했다.
+#   5. 취소 확정 시 재고 복원 범위를 **해당 항목·날짜**로 한정(문서화).
+#
+# v0.3 변경(2026-08-25, PM 확정 반영 — 노션 "자전거 예약 MVP 상세 기능
+# 명세 최종화"(2026-08-19)를 기준으로 정리):
+#   1. 예약 상태 전이 순서 확정(Model B): 생성=입금대기 → 입금확인요청=
+#      접수 → 관리자 입금확인=완료. 입금대기·취소요청은 목록 탭 필터에서
+#      빠지고 '전체' 탭 안에서 뱃지로만 노출(아래 GET /bookings 참고).
+#   2. 임시 홀드 TTL = 15분 확정.
+#   3. 취소 수수료 요율 D-7↑10% / D-6~3 20% / D-2~1 30% / 당일 50%를
+#      초기값으로 확정. 단, 이 구간·요율은 **DB(정책 테이블)로 관리**하며
+#      하드코딩하지 않는다 — 관리자 화면 a-set(S1-A10 계좌·정책 설정)이
+#      이미 이 편집 UI로 와이어프레임에 존재하므로, 훗날 그 화면용 관리자
+#      CRUD API(별도 문서, chinguya-admin-product-api.yaml과 같은 패턴)를
+#      추가해 이 값을 관리하게 될 수 있다.
+#   4. 상품/가용성 표기 세부: (a) 카테고리 쿼리 파라미터 방식(GET
+#      /products?category=)을 프론트 URL 스킴으로 추천·확정 — 근거는
+#      파일 하단 "추천 사항" 참고. (b) 2일+타지역 반납 자동 마감은
+#      결정 로그대로 '마감' 단일 표기로 확정(별도 reason 필드 불필요).
+#
+# ⚠ 남은 협의 항목은 본문에 TODO(협의)로 표시했다. 목록은 파일 하단 참고.
 # =============================================================================
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.1.0-draft
+  version: 0.4.0-draft
   description: |
-    고객 자전거 예약 MVP의 Core API 초안.
+    고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
     - 언어: 한국어 단일(i18n 미사용).
     - 날짜: `YYYY-MM-DD`. 예약 가능 기간 판정의 '오늘'은 **일본 시간(JST)** 기준.
-    - 상태 enum·전이 순서, 임시 홀드 TTL, 취소 수수료 요율은 협의 미확정(하단 참고).
+    - 상품 사진·설명은 대여 옵션(2시간/1일/2일/야간)별로 다를 수 있다
+      (관리자가 옵션 단위로 등록·관리, chinguya-admin-product-api.yaml 참고).
+      상품 상세(S3-C1)에서 옵션을 바꾸면 해당 옵션의 사진·설명으로 전환된다.
+      **와이어프레임 개편(2026-09-02)**: 상품 상세(S3-C1)와 예약·캘린더
+      (S1-C2)는 한 화면으로 통합됐다. API 계약은 영향 없음(같은 엔드포인트를
+      한 화면에서 연달아 호출).
+    - 예약 상태 전이(Model B, 2026-08-19 확정): 생성 시 `AWAITING_DEPOSIT`
+      (입금대기) → 고객이 입금확인요청 시 `RECEIVED`(접수) → 관리자가
+      입금 확인 시 `COMPLETED`(완료). 취소는 `CANCEL_REQUESTED`(취소요청)
+      → 관리자 환불 처리 후 `CANCELLED`(취소).
+    - **예약 구성 단위(v0.4 확정)**: **1 예약번호 = N 항목**(상품 × 옵션 ×
+      이용일 조합). 항목마다 상품·옵션·이용일·수량·금액이 다를 수 있으므로
+      예약을 단일 상품·단일 이용일로 표기하지 않는다.
+    - **부분취소(v0.4 확정)**: 항목 단위 취소를 지원한다. 수수료는 **항목별
+      이용일 기준**으로 각각 산정해 합산한다(예약 단위 일괄 산정 불가).
+      부분취소는 **완료(COMPLETED) 이후**부터 허용하며, **입금대기
+      (AWAITING_DEPOSIT)에서는 전체 취소만** 가능하다. 부분취소는 별도
+      상태값이 아니라 `Booking.partiallyCancelled` 플래그로 표현하고,
+      예약 상태는 유효 항목 기준으로 유지한다.
+    - 임시 홀드 TTL = 15분(확정). 취소 수수료 요율은 초기값 확정 +
+      DB 관리 전제(하단 CancellationQuote 참고).
 
 servers:
   - url: https://api.chinguya.co.kr/v1
@@ -40,7 +101,7 @@ tags:
   - name: bookings
     description: 예약 생성·조회·입금요청 (S1-C3, S1-C4, S1-C5, S1-C6)
   - name: cancellation
-    description: 취소 견적·요청 (S1-C7)
+    description: 취소 견적·요청 (S1-C7, 항목 단위)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -52,6 +113,12 @@ paths:
       description: |
         관리자가 '표출 ON'한 상품만, 카테고리별로 조회. 가격은 고객가 기준.
         비로그인 열람 허용(예약 단계부터 인증 필요).
+
+        URL 스킴(추천·확정, 하단 "추천 사항" 참고): Core API는 `category`
+        쿼리 파라미터로 단일 엔드포인트를 유지한다. 프론트(Next.js)는 이를
+        감싸 `/bicycles`처럼 사람이 읽기 좋은 라우트를 노출하되, 내부적으로
+        `GET /products?category=BICYCLE`을 호출한다 — Slice 3의 낚싯대
+        (`FISHING_ROD`) 추가 시 새 Core API 엔드포인트 없이 확장된다.
       security: []
       parameters:
         - name: category
@@ -81,7 +148,11 @@ paths:
       description: |
         선택 상품의 대여 옵션(2시간/1일/2일/야간)별 요금을 반환한다.
         2일 옵션에는 '타지역 반납(추가요금)' 가용 여부·추가요금이 포함된다.
-        여기서 고른 옵션이 예약 캘린더(S1-C2)의 날짜 선택 규칙을 결정한다.
+        여기서 고른 옵션이 (같은 화면의) 예약 캘린더 날짜 선택 규칙을 결정한다.
+        각 옵션(`options[]`)은 관리자가 옵션 단위로 등록한 자체 사진·설명을
+        가질 수 있다 — 화면에서 옵션을 바꾸면 `options[].imageUrls`·
+        `options[].description`으로 갤러리·설명을 전환하고, 값이 없는
+        옵션은 상품 레벨 `imageUrls`·`description`(폴백)을 그대로 쓴다.
       security: []
       parameters:
         - $ref: '#/components/parameters/ProductIdPath'
@@ -105,7 +176,9 @@ paths:
         - 옵션별 선택 단위: 2시간·1일 → 1일 / 2일 → 연속 2일 / 야간 → 야간 가능일 중 1일.
         - `daysRequired=2`(2일 옵션)에서 각 date는 **연속 2일 예약의 시작일**을 의미한다.
         - 2일 + 타지역 반납 선택 시 익일·익익일 자동 마감(엔진 내부 처리).
-          TODO(협의): 자동 마감 결과를 응답 dates에 어떻게 표기할지(예: reason 필드).
+          **확정**: 자동 마감된 날짜도 `selectable=false`로만 표기하는
+          단일 '마감' 처리다 — 마감 사유를 구분하는 별도 `reason` 필드는
+          두지 않는다(결정 로그 2026-08-19).
       security: []
       parameters:
         - $ref: '#/components/parameters/ProductIdPath'
@@ -156,7 +229,7 @@ paths:
       description: |
         선택 상품·옵션·날짜·수량으로 재고에 **임시 홀드**를 걸어 중복 예약을 방지한다.
         응답의 `holdExpiresAt`까지 유효하며, 만료 시 홀드는 해제된다.
-        TODO(협의): 홀드 TTL(예: 10분) 확정 필요.
+        홀드 TTL = **15분(확정)**.
       requestBody:
         required: true
         content:
@@ -198,9 +271,13 @@ paths:
         장바구니(홀드)로부터 예약을 확정 생성한다.
         선행조건: 여권 영문명 필수(저장값 없으면 요청 본문으로 전달).
         생성 시 예약번호가 발급되고 입금 안내 정보를 함께 반환한다(S1-C4).
-        TODO(협의): 생성 직후 상태값. 와이어프레임 흐름상 '입금대기'로 시작하고
-        고객의 입금확인요청 시 '접수'로 전이하는 것으로 해석되나, 확정 상태
-        머신 표기(접수 → 입금대기 → 완료)와 순서가 어긋남. 하단 참고 1 확정 필요.
+        **확정(Model B)**: 생성 직후 상태는 `AWAITING_DEPOSIT`(입금대기)다.
+        이후 고객의 입금확인요청(`/deposit-request`)으로 `RECEIVED`(접수)로
+        전이하고, 관리자 입금확인으로 `COMPLETED`(완료)로 전이한다.
+
+        **1 예약번호 = N 항목**: 장바구니의 여러 항목이 하나의 예약번호로
+        묶인다. 각 항목은 `bookingItemId`로 식별되며, 취소는 이 단위로
+        지정한다(S1-C7).
       requestBody:
         required: true
         content:
@@ -208,7 +285,7 @@ paths:
             schema: { $ref: '#/components/schemas/BookingCreate' }
       responses:
         '201':
-          description: 예약 생성됨
+          description: 예약 생성됨(상태 = AWAITING_DEPOSIT)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Booking' }
@@ -222,18 +299,31 @@ paths:
     get:
       tags: [bookings]
       summary: 내 예약 목록 조회 (S1-C5)
-      description: 상태 탭(전체/접수/완료/취소) 필터. 본인 예약만 반환.
+      description: |
+        상태 탭(전체/접수/완료/취소) 필터. 본인 예약만 반환.
+        카드 표기에 필요한 `productName`(대표 상품명)·`itemCount`(총 항목 수)·
+        `partiallyCancelled`(부분취소 뱃지)를 함께 반환한다.
       parameters:
         - name: status
           in: query
           schema:
             type: string
-            enum: [ALL, RECEIVED, AWAITING_DEPOSIT, COMPLETED, CANCEL_REQUESTED, CANCELLED]
+            enum: [ALL, RECEIVED, COMPLETED, CANCELLED]
             default: ALL
           description: |
-            목록 탭 필터. 와이어프레임 탭은 전체/접수/완료/취소 4종.
-            TODO(협의): 입금대기(AWAITING_DEPOSIT)·취소요청(CANCEL_REQUESTED)을
-            고객 목록에서 어느 탭에 노출할지(접수/취소에 합칠지) 확정 필요.
+            목록 탭 필터. 와이어프레임 탭 전체/접수/완료/취소 4종에 대응한다
+            (**확정**, 결정 로그 2026-08-19).
+            - `AWAITING_DEPOSIT`(입금대기)은 별도 탭이 아니라 `ALL` 안에서
+              뱃지로만 노출한다(`RECEIVED` 필터에는 포함되지 않음).
+            - `CANCEL_REQUESTED`(취소요청)도 결정 로그에 명시되지는 않았지만,
+              입금대기와 동일한 "진행 중 하위상태" 성격이라 대칭 규칙으로
+              `ALL` 안에서만 뱃지로 노출하고(`CANCELLED` 필터에는 미포함)
+              별도 탭을 두지 않는 것을 추천·적용했다(추천 사항 3번 참고,
+              확정 시 조정 가능).
+            - **부분취소(v0.4)도 같은 대칭 규칙**: 별도 탭·상태값을 만들지
+              않고 `partiallyCancelled=true` 뱃지로만 노출한다. 일부 항목만
+              취소된 예약은 **유효 항목 기준 상태**(보통 `COMPLETED`)로
+              필터에 잡힌다.
         - name: page
           in: query
           schema: { type: integer, minimum: 0, default: 0 }
@@ -253,8 +343,17 @@ paths:
       tags: [bookings]
       summary: 예약 상세·바우처 조회 (S1-C6)
       description: |
-        예약번호(현장 이용 증빙), 상품·옵션, 이용일, 여권명, 상태를 반환한다.
-        `cancellable`은 상태·기간 조건 충족 시 true.
+        예약번호(현장 이용 증빙), 여권명, 상태와 **항목 리스트**를 반환한다.
+
+        - `items[]`에는 **취소된 항목도 포함**해 반환한다
+          (`status=CANCELLED`). 바우처 화면에서 취소 항목을 회색·취소
+          뱃지로 남겨 현장 혼선을 막기 위해서다.
+        - `totalAmount`는 예약 원 결제액, `activeTotalAmount`는 **유효
+          항목 합계**다. 화면 합계는 `activeTotalAmount`를 쓴다.
+        - `partiallyCancelled`가 true면 프론트는 '부분취소' 뱃지를 표시한다.
+        - `cancellable`은 상태·기간 조건 충족 시 true(취소 버튼 노출 판단),
+          `cancellationScope`는 이번 취소가 **전체만 가능한지 항목 선택이
+          가능한지**를 알려준다(S1-C7 진입 시 UI 분기).
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
       responses:
@@ -273,6 +372,8 @@ paths:
       description: |
         PG 미사용. 관리자 설정 안내 계좌 1개와 입금액·입금 기한을 반환한다.
         입금 기한(dueBy)은 24시간 내 미입금 시 관리자 강제취소 정책 기준.
+        `amount`는 **유효 항목 합계** 기준이다(입금대기 상태에서는 부분취소가
+        불가하므로 실무상 예약 전체 금액과 같다 — v0.4 규칙 참고).
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
       responses:
@@ -289,20 +390,22 @@ paths:
       tags: [bookings]
       summary: 입금 확인 요청 (S1-C4 CTA)
       description: |
-        고객이 무통장 입금 후 확인을 요청한다. 처리 결과로 상태가 '접수'로 전이된다.
-        (관리자 입금확인 시 별도로 '완료'로 전이 — 관리자 API, Slice 1 범위 밖)
+        고객이 무통장 입금 후 확인을 요청한다. **확정(Model B)**: 처리
+        결과로 상태가 `AWAITING_DEPOSIT` → `RECEIVED`(접수)로 전이된다.
+        (관리자 입금확인 시 별도로 `COMPLETED`(완료)로 전이 — 관리자 API,
+        Slice 1 범위 밖)
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
       responses:
         '200':
-          description: 요청 접수, 갱신된 예약 반환
+          description: 요청 접수, 갱신된 예약 반환(상태 = RECEIVED)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Booking' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: 현재 상태에서 요청 불가
+          description: 현재 상태에서 요청 불가(예 이미 RECEIVED/COMPLETED)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -310,23 +413,49 @@ paths:
   /bookings/{bookingId}/cancellation-quote:
     get:
       tags: [cancellation]
-      summary: 취소 견적 조회 (S1-C7 진입 시)
+      summary: 취소 견적 조회 (S1-C7 진입·항목 선택 변경 시)
       description: |
-        결제 금액·취소 수수료·환불 예정액을 반환한다.
-        수수료는 이용일 기준 차등 요율(관리자 세팅)로 산정한다.
-        TODO(협의): 요율표 원천·계산 규칙(관리자 세팅 스키마) 확정 필요.
+        선택한 항목들의 결제액·취소 수수료·환불 예정액을 반환한다.
+
+        **v0.4 변경(항목 단위)**: 수수료는 **항목별 이용일 기준 차등 요율**로
+        각각 산정해 합산한다. 한 예약 안에서도 항목마다 이용일이 다르면
+        요율이 다르므로 예약 단위 단일 `feeRate`는 성립하지 않는다 —
+        항목별 값은 `items[]`에 담기고, 상위에는 합산값만 둔다.
+
+        - `itemIds` 생략 = **예약 전체**(모든 유효 항목) 기준 견적.
+        - `itemIds` 지정 = 해당 항목만 기준(부분취소 견적). 화면에서
+          체크박스를 바꿀 때마다 재호출해 합계를 갱신한다.
+        - 요율표는 관리자가 편집 가능한 **DB 정책 테이블**에서 조회한다
+          (하드코딩 아님 — 하단 CancellationQuoteItem.feeRate 참고).
+        - `AWAITING_DEPOSIT`(입금대기)에서 `itemIds`로 **일부만** 요청하면
+          409 `PARTIAL_CANCEL_NOT_ALLOWED`(전체 취소만 가능).
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
+        - name: itemIds
+          in: query
+          required: false
+          explode: false
+          style: form
+          schema:
+            type: array
+            items: { type: string }
+          description: |
+            견적 대상 `bookingItemId` 목록(쉼표 구분). 생략 시 유효 항목 전체.
+            이미 취소됐거나 취소요청 중인 항목을 지정하면 400
+            `ITEM_NOT_CANCELLABLE`.
       responses:
         '200':
-          description: 취소 견적
+          description: 취소 견적(항목별 내역 + 합산)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CancellationQuote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: 취소 불가 상태
+          description: |
+            취소 불가 상태. `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기에서 부분
+            취소 시도) 포함.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -334,10 +463,21 @@ paths:
   /bookings/{bookingId}/cancel-request:
     post:
       tags: [cancellation]
-      summary: 취소 요청 제출 (S1-C7 '취소 요청 보내기')
+      summary: 취소 요청 제출 (S1-C7 '선택 항목 취소 요청')
       description: |
-        환불 계좌를 입력받아 취소를 요청한다. 상태가 '취소요청'으로 전이된다.
-        실제 환불 이체는 관리자 수동 처리(Slice 1 범위 밖).
+        환불 계좌와 **취소할 항목**을 입력받아 취소를 요청한다.
+
+        **v0.4 변경(항목 단위)**:
+        - `itemIds` 생략 = 예약 전체 취소. 지정 = 부분취소.
+        - 지정된 항목의 상태가 `ACTIVE` → `CANCEL_REQUESTED`로 전이한다.
+        - **전체 항목**이 요청되면 예약 상태도 `CANCEL_REQUESTED`로 전이한다.
+          **일부만** 요청되면 예약 상태는 **유효 항목 기준으로 유지**하고
+          `partiallyCancelled=true`만 세운다(별도 상태값 없음).
+        - `AWAITING_DEPOSIT`에서는 **전체 취소만** 허용 — 일부 지정 시 409
+          `PARTIAL_CANCEL_NOT_ALLOWED`.
+        - 실제 환불 이체는 관리자 수동 처리이며, 처리 후 해당 항목이
+          `CANCELLED`로 전이하고 **그 항목·날짜의 재고만** 복원된다
+          (관리자 API, Slice 1 범위 밖 — a-cancel/S1-A9).
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
       requestBody:
@@ -347,7 +487,10 @@ paths:
             schema: { $ref: '#/components/schemas/CancelRequest' }
       responses:
         '200':
-          description: 취소 요청 접수, 갱신된 예약 반환
+          description: |
+            취소 요청 접수, 갱신된 예약 반환(전체 취소면 상태 =
+            CANCEL_REQUESTED / 부분취소면 예약 상태 유지 +
+            partiallyCancelled = true).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Booking' }
@@ -355,7 +498,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: 취소 불가 상태
+          description: |
+            취소 불가 상태. `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기에서 부분
+            취소 시도), `ITEM_NOT_CANCELLABLE`(이미 취소·취소요청 중인 항목)
+            포함.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -415,9 +561,39 @@ components:
       type: string
       enum: [RECEIVED, AWAITING_DEPOSIT, COMPLETED, CANCEL_REQUESTED, CANCELLED]
       description: |
-        접수(RECEIVED) / 입금대기(AWAITING_DEPOSIT) / 완료(COMPLETED) /
-        취소요청(CANCEL_REQUESTED) / 취소(CANCELLED).
-        TODO(협의): 생성 상태 및 전이 순서 확정(하단 참고 1).
+        **확정(Model B, 결정 로그 2026-08-19)**. 전이 순서:
+        생성 → 입금대기(AWAITING_DEPOSIT) → [고객 입금확인요청] →
+        접수(RECEIVED) → [관리자 입금확인] → 완료(COMPLETED).
+        취소: [고객 취소요청] → 취소요청(CANCEL_REQUESTED) →
+        [관리자 환불 처리] → 취소(CANCELLED).
+        목록 필터(GET /bookings)에서 AWAITING_DEPOSIT·CANCEL_REQUESTED는
+        별도 탭이 아니라 'ALL' 안 뱃지로만 노출한다.
+
+        **부분취소는 이 enum에 값을 추가하지 않는다(v0.4 확정)**. 일부 항목만
+        취소된 예약의 상태는 **유효 항목 기준**으로 유지하고
+        `Booking.partiallyCancelled` 플래그로만 구분한다.
+
+    BookingItemStatus:
+      type: string
+      enum: [ACTIVE, CANCEL_REQUESTED, CANCELLED]
+      description: |
+        **v0.4 신규.** 예약 '항목'의 상태.
+        - `ACTIVE`(유효): 정상 항목. 바우처에서 유효 항목으로 표시·합산.
+        - `CANCEL_REQUESTED`(취소요청): 고객이 취소 요청, 관리자 환불 대기.
+        - `CANCELLED`(취소): 관리자 환불 처리 완료. 바우처에는 회색·취소
+          뱃지로 **남겨서** 표시하되 합계에서는 제외한다.
+
+    CancellationScope:
+      type: string
+      enum: [FULL_ONLY, ITEM_SELECTABLE]
+      description: |
+        **v0.4 신규.** 현재 이 예약에 허용되는 취소 범위.
+        - `FULL_ONLY`: 전체 취소만 가능. `AWAITING_DEPOSIT`(입금대기)일 때 —
+          일부만 취소하면 입금액이 바뀌어 입금 안내 재발행·관리자 수동
+          입금확인이 어긋나기 때문(확정 2026-09-02).
+        - `ITEM_SELECTABLE`: 항목 선택 취소(부분취소) 가능.
+          `COMPLETED`(완료) 이후.
+        S1-C7은 이 값으로 체크박스 노출 여부를 분기한다.
 
     Money:
       type: integer
@@ -431,7 +607,13 @@ components:
         productId: { type: string }
         name: { type: string }
         category: { $ref: '#/components/schemas/ProductCategory' }
-        thumbnailUrl: { type: string, format: uri }
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: |
+            목록 카드 대표 이미지. 대표 옵션(정렬 우선순위상 첫 옵션, 보통
+            1일권)의 `imageUrls[0]`을 사용하고, 없으면 상품 레벨
+            `ProductDetail.imageUrls[0]`(폴백)을 사용한다.
         priceFrom:
           allOf:
             - $ref: '#/components/schemas/Money'
@@ -466,6 +648,20 @@ components:
         crossRegionReturnExtraFee:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
           description: 타지역 반납 추가요금(가능한 경우).
+        description:
+          type: string
+          description: |
+            이 옵션 전용 상세 설명. 관리자가 옵션 단위로 등록한 값
+            (chinguya-admin-product-api.yaml BicycleProduct.description).
+            없으면 프론트는 ProductDetail.description(폴백)을 사용한다.
+        imageUrls:
+          type: array
+          items: { type: string, format: uri }
+          description: |
+            이 옵션 전용 이미지(다중). 관리자가 옵션 단위로 등록한 값
+            (chinguya-admin-product-api.yaml BicycleProduct.imageUrls).
+            상품 상세 화면에서 옵션을 바꾸면 이 배열로 갤러리를 전환한다.
+            없으면 ProductDetail.imageUrls(폴백)를 사용한다.
 
     ProductDetail:
       type: object
@@ -474,10 +670,17 @@ components:
         productId: { type: string }
         name: { type: string }
         category: { $ref: '#/components/schemas/ProductCategory' }
-        description: { type: string }
+        description:
+          type: string
+          description: |
+            상품 레벨 기본 설명(폴백). 옵션에 `options[].description`이
+            있으면 옵션 선택 시 그 값으로 대체 표시한다.
         imageUrls:
           type: array
           items: { type: string, format: uri }
+          description: |
+            상품 레벨 기본 이미지(폴백). 옵션에 `options[].imageUrls`가
+            있으면 옵션 선택 시 그 배열로 대체 표시한다.
         options:
           type: array
           items: { $ref: '#/components/schemas/RentalOption' }
@@ -489,7 +692,10 @@ components:
         date: { type: string, format: date }
         selectable:
           type: boolean
-          description: 해당 date를 (옵션 단위의) 선택 시작일로 고를 수 있는지.
+          description: |
+            해당 date를 (옵션 단위의) 선택 시작일로 고를 수 있는지. 재고
+            소진이든 2일+타지역반납 자동 마감이든 사유 구분 없이 이 단일
+            불리언 + 프론트의 '마감' 표기로 충분하다(확정, reason 필드 없음).
         remaining:
           type: integer
           minimum: 0
@@ -550,7 +756,7 @@ components:
         holdExpiresAt:
           type: string
           format: date-time
-          description: 임시 홀드 만료 시각(TTL 협의 미확정).
+          description: 임시 홀드 만료 시각. TTL = 15분(확정, 생성 시각+15분).
 
     Cart:
       type: object
@@ -579,21 +785,49 @@ components:
 
     BookingItem:
       type: object
-      required: [productId, productName, optionType, dates, quantity, lineTotal]
+      required: [bookingItemId, productId, productName, optionType, dates, quantity, lineTotal, status]
       properties:
+        bookingItemId:
+          type: string
+          description: |
+            **v0.4 신규(필수).** 항목 식별자. 취소 견적·취소 요청에서
+            `itemIds`로 지정하는 키다.
         productId: { type: string }
         productName: { type: string }
         optionType: { $ref: '#/components/schemas/RentalOptionType' }
         dates:
           type: array
           items: { type: string, format: date }
+          description: |
+            이 항목의 실제 이용일(2일 옵션이면 연속 2일).
+            **항목마다 다를 수 있다** — 예약 단위 단일 이용일 표기는 불가.
         quantity: { type: integer }
         crossRegionReturn: { type: boolean }
         lineTotal: { $ref: '#/components/schemas/Money' }
+        status:
+          allOf: [ { $ref: '#/components/schemas/BookingItemStatus' } ]
+          description: |
+            **v0.4 신규(필수).** 항목 상태. 취소된 항목도 `items[]`에 남아
+            반환되므로 바우처에서 회색·취소 뱃지로 표시할 수 있다.
+        cancellable:
+          type: boolean
+          description: |
+            **v0.4 신규.** 이 항목을 지금 취소 대상으로 고를 수 있는지.
+            `status=ACTIVE`이고 예약 상태·기간 조건을 충족할 때 true.
+            S1-C7의 체크박스 활성 여부에 대응한다.
+        refundAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: |
+            **v0.4 신규.** 이 항목이 취소된 경우 실제 환불액(수수료 차감 후).
+            `status`가 CANCELLED일 때만 채워진다(바우처의 '환불' 라인).
+        cancelledAt:
+          type: string
+          format: date-time
+          description: 취소 확정 시각(status=CANCELLED일 때).
 
     Booking:
       type: object
-      required: [bookingId, bookingNumber, status, items, totalAmount, passportName, createdAt]
+      required: [bookingId, bookingNumber, status, items, totalAmount, activeTotalAmount, passportName, createdAt]
       properties:
         bookingId: { type: string }
         bookingNumber:
@@ -603,28 +837,65 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/BookingItem' }
-        totalAmount: { $ref: '#/components/schemas/Money' }
+          description: |
+            예약 항목 전체. **취소된 항목도 포함**해 반환한다(바우처에서
+            회색·취소 뱃지로 남기기 위함). 유효 항목만 필요하면
+            `status=ACTIVE`로 필터한다.
+        totalAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 예약 원 결제액(취소 항목 포함, 이력용).
+        activeTotalAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: |
+            **v0.4 신규(필수).** 유효 항목(`status=ACTIVE`) 합계.
+            바우처·입금 안내의 화면 합계는 이 값을 쓴다.
+        partiallyCancelled:
+          type: boolean
+          description: |
+            **v0.4 신규.** 일부 항목만 취소(또는 취소요청)된 상태.
+            프론트는 이 값으로 '부분취소' 뱃지를 표시한다. 별도
+            BookingStatus 값을 만들지 않기로 한 결정의 표현(2026-09-02 확정).
         passportName: { type: string }
         cancellable:
           type: boolean
           description: 상태·기간 조건 충족 시 true(S1-C6 취소 버튼 노출 판단).
+        cancellationScope:
+          allOf: [ { $ref: '#/components/schemas/CancellationScope' } ]
+          description: |
+            **v0.4 신규.** 지금 허용되는 취소 범위(전체만 / 항목 선택 가능).
+            `cancellable=true`일 때 의미가 있다.
         depositInfo:
           $ref: '#/components/schemas/DepositInfo'
         createdAt: { type: string, format: date-time }
 
     BookingSummary:
       type: object
-      required: [bookingId, bookingNumber, status, productName, useDates, totalAmount, createdAt]
+      required: [bookingId, bookingNumber, status, productName, itemCount, useDates, totalAmount, createdAt]
       properties:
         bookingId: { type: string }
         bookingNumber: { type: string }
         status: { $ref: '#/components/schemas/BookingStatus' }
         productName:
           type: string
-          description: 대표 상품명(복수 항목이면 "외 N건" 표기 등은 프론트 처리).
+          description: |
+            대표 상품명(첫 유효 항목 기준). 카드 제목은 프론트에서
+            `productName` + `itemCount`로 "전기 자전거 외 2건"을 만든다.
+        itemCount:
+          type: integer
+          minimum: 1
+          description: |
+            **v0.4 신규(필수).** 예약의 총 항목 수(취소 항목 포함).
+            "외 N건"의 N은 `itemCount - 1`이다.
+        partiallyCancelled:
+          type: boolean
+          description: |
+            **v0.4 신규.** 목록 카드의 '부분취소' 뱃지 표시용.
         useDates:
           type: array
           items: { type: string, format: date }
+          description: |
+            예약에 포함된 이용일 전체(항목별 이용일의 합집합, 오름차순).
+            항목마다 이용일이 다를 수 있으므로 단일 값이 아니다.
         totalAmount: { $ref: '#/components/schemas/Money' }
         createdAt: { type: string, format: date-time }
 
@@ -646,26 +917,85 @@ components:
         bankName: { type: string }
         accountNumber: { type: string }
         accountHolder: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
+        amount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 입금액(유효 항목 합계 = Booking.activeTotalAmount).
         dueBy:
           type: string
           format: date-time
           description: 입금 기한(생성+24h). 초과 시 관리자 강제취소 대상.
 
-    CancellationQuote:
+    CancellationQuoteItem:
       type: object
-      required: [paidAmount, cancellationFee, refundAmount]
+      required: [bookingItemId, productName, optionType, useDate, daysToUse, feeRate, lineAmount, cancellationFee, refundAmount]
       properties:
-        paidAmount: { $ref: '#/components/schemas/Money' }
-        cancellationFee: { $ref: '#/components/schemas/Money' }
-        feeRate:
-          type: number
-          description: 적용 요율(0~1). 이용일 기준 차등(관리자 세팅).
-        refundAmount: { $ref: '#/components/schemas/Money' }
-        basedOnUseDate:
+        bookingItemId: { type: string }
+        productName: { type: string }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        useDate:
           type: string
           format: date
-          description: 요율 산정 기준 이용일.
+          description: |
+            이 항목의 요율 산정 기준 이용일(2일 옵션이면 시작일). JST 기준.
+        daysToUse:
+          type: integer
+          description: |
+            기준 이용일까지 남은 일수(D-day, JST 기준 '오늘'). 화면의
+            'D-6' 표기에 대응한다. 당일이면 0.
+        feeRate:
+          type: number
+          description: |
+            이 항목에 적용된 요율(0~1). 초기값(확정, 결정 로그 2026-08-19):
+            D-7 이상 10% / D-6~D-3 20% / D-2~D-1 30% / 당일 50%.
+            **이 구간·요율은 코드에 하드코딩하지 않고 DB 정책 테이블에서
+            조회한다** — 관리자 화면 a-set(S1-A10 계좌·정책 설정)이 이미 이
+            값을 편집하는 UI로 와이어프레임에 존재하므로, 그 화면을 지원할
+            관리자 CRUD API가 별도 필요하다(하단 TODO 참고 — 아직 작성 전).
+            **v0.4**: 항목마다 이용일이 다르면 요율도 달라지므로, 요율은
+            예약이 아니라 **항목** 단위 값이다.
+        lineAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 이 항목의 결제액(BookingItem.lineTotal).
+        cancellationFee:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 이 항목의 취소 수수료(lineAmount × feeRate, 원 단위 반올림 규칙은 구현 확정).
+        refundAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 이 항목의 환불 예정액(lineAmount − cancellationFee).
+
+    CancellationQuote:
+      type: object
+      required: [bookingId, scope, items, selectedAmount, cancellationFee, refundAmount]
+      description: |
+        **v0.4 구조 변경.** 항목별 내역(`items[]`) + 합산값 구조로 바뀌었다.
+        예약 단위 단일 `feeRate`·`basedOnUseDate`는 **제거**됐다 — 한 예약에
+        이용일이 다른 항목이 섞이면 단일 요율이 성립하지 않기 때문.
+      properties:
+        bookingId: { type: string }
+        scope:
+          type: string
+          enum: [FULL, PARTIAL]
+          description: |
+            이번 견적이 예약 전체 대상인지(`FULL`, itemIds 생략 또는 전 항목
+            지정) 일부 대상인지(`PARTIAL`).
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CancellationQuoteItem' }
+          description: 선택된 항목별 요율·수수료·환불 내역.
+        paidAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 예약 전체 결제액(참고용 컨텍스트).
+        selectedAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 선택 항목 결제액 합계(items[].lineAmount 합).
+        cancellationFee:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: |
+            취소 수수료 합계(items[].cancellationFee 합).
+            **항목별로 각각 산정한 뒤 합산**한 값이다.
+        refundAmount:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 환불 예정액 합계(selectedAmount − cancellationFee).
 
     RefundAccount:
       type: object
@@ -679,6 +1009,13 @@ components:
       type: object
       required: [refundAccount]
       properties:
+        itemIds:
+          type: array
+          items: { type: string }
+          description: |
+            **v0.4 신규.** 취소할 `bookingItemId` 목록. 생략 시 예약 전체 취소.
+            `AWAITING_DEPOSIT`(입금대기)에서는 일부 지정이 불가하며(전체
+            취소만) 위반 시 409 `PARTIAL_CANCEL_NOT_ALLOWED`.
         refundAccount: { $ref: '#/components/schemas/RefundAccount' }
         reason:
           type: string
@@ -690,7 +1027,15 @@ components:
       properties:
         code:
           type: string
-          description: 도메인 에러 코드(예 HOLD_EXPIRED, OUT_OF_STOCK, PASSPORT_NAME_REQUIRED).
+          description: |
+            도메인 에러 코드. 예:
+            `HOLD_EXPIRED`, `OUT_OF_STOCK`, `PASSPORT_NAME_REQUIRED`,
+            그리고 v0.4 취소 관련:
+            - `PARTIAL_CANCEL_NOT_ALLOWED` — 입금대기 상태에서 부분취소 시도
+              (전체 취소만 가능).
+            - `ITEM_NOT_CANCELLABLE` — 이미 취소됐거나 취소요청 중인 항목을
+              지정.
+            - `INVALID_BOOKING_ITEM` — 이 예약에 속하지 않는 bookingItemId.
         message: { type: string }
         fieldErrors:
           type: array
@@ -704,24 +1049,47 @@ security:
   - cookieAuth: []
 
 # =============================================================================
-# 협의 미확정(TODO) 목록 — 개발자·사장님 확정 필요
+# 추천 사항 (2026-08-25 적용, 팀 확인 환영 — 블로커 아님)
 #
-# 1. 예약 상태 전이 순서 (최우선)
-#    - 확정 머신 표기: 접수 → 입금대기 → 완료 ; 취소요청 → 취소
-#    - 와이어프레임 흐름: 예약 생성 → (입금대기) → 고객 입금확인요청 → 접수
-#      → 관리자 입금확인 → 완료
-#    - 두 서술의 '접수/입금대기' 순서가 상충. POST /bookings 생성 직후 상태와
-#      /deposit-request 후 상태를 확정해야 enum·전이·목록 탭이 고정됨.
+# 1. 상품 목록 URL 스킴: Core API는 `GET /products?category=`(쿼리 파라미터)
+#    단일 엔드포인트를 유지 추천. 프론트가 `/bicycles` 같은 사람이 읽기
+#    좋은 라우트로 감싸되, Core API 계약은 카테고리별 별도 엔드포인트로
+#    쪼개지 않는다 — Slice 3 낚싯대(FISHING_ROD) 확장 시 새 엔드포인트
+#    불필요.
+# 2. 2일+타지역 반납 자동 마감 표기: `reason` 필드 없이 `selectable=false`
+#    단일 처리(결정 로그와 일치, 굳이 새 필드를 늘리지 않는 게 더 단순).
+# 3. GET /bookings 상태 필터에서 CANCEL_REQUESTED(취소요청)를 AWAITING_
+#    DEPOSIT(입금대기)과 대칭으로 취급 — 별도 탭 없이 'ALL' 안에서만
+#    뱃지로 노출. 결정 로그에 명시된 건 입금대기 쪽뿐이라 이 부분만
+#    추천값이며, "취소 탭에 합치는" 대안도 가능하니 최종 확인 시 조정 여지.
+# 4. (v0.4) 부분취소를 BookingStatus에 값으로 추가하지 않고
+#    `partiallyCancelled` 플래그로 둔 것은 3번과 같은 대칭 원칙이다 —
+#    목록 탭 4종(전체/접수/완료/취소)을 늘리지 않기 위함.
+# =============================================================================
+# 협의 미확정(TODO) 목록 — 개발자·PM 확정 필요
 #
-# 2. 임시 홀드 TTL
-#    - /cart/items 홀드 유효시간(예: 10분) 미확정. holdExpiresAt 산정 근거.
+# 1. 취소 수수료 정책 관리자 CRUD API (신규 필요)
+#    - a-set(S1-A10 계좌·정책 설정) 화면은 이미 와이어프레임에 존재하고
+#      구간·요율을 관리자가 편집하는 것으로 설계돼 있다. 이 화면을 지원할
+#      관리자 API(예: chinguya-admin-settings-api.yaml, 입금 계좌 +
+#      취소 수수료 구간 CRUD)는 아직 작성 전 — chinguya-admin-product-
+#      api.yaml과 같은 패턴으로 이어서 작성 필요.
 #
-# 3. 취소 수수료 요율표
-#    - 이용일 기준 차등 요율의 관리자 세팅 스키마·계산 규칙 미확정.
-#      /cancellation-quote 계산 로직에 직결.
+# 2. 관리자 강제취소·완료 처리 API + **부분취소 승인(v0.4 추가)**
+#    - '완료(입금확인)'·'미입금 강제취소' 전이는 관리자 전용(a-resdetail,
+#      S1-A7/A8)이라 이 Core API 밖. 별도 관리자 API 문서 필요.
+#    - v0.4로 관리자 취소요청 처리(a-cancel, S1-A9)도 **항목 단위 승인**이
+#      됐다. 관리자 API에 `itemIds` 단위 확정·부분환불 엔드포인트가 필요하며,
+#      확정 시 해당 항목·날짜의 재고만 복원하는 규칙도 그 문서에 명시해야 한다.
 #
-# 4. 상품/가용성 표기 세부
-#    - 상품 목록 URL·카테고리 파라미터 최종화(프론트 URL 스킴 결정과 연동).
-#    - 2일+타지역 반납의 '익일·익익일 자동 마감'을 availability 응답에
-#      어떻게 표기할지(reason 필드 추가 등).
+# 3. 환불 계좌 재입력 (v0.4 신규)
+#    - 부분취소를 여러 번 하면 매번 `refundAccount`를 입력받게 된다.
+#      직전 입력값 재사용(회원정보 저장 or 마지막 요청값 프리필) 여부가
+#      미확정 — 확정되면 CancelRequest.refundAccount를 선택값으로 바꾸고
+#      저장 계좌 조회 필드를 추가할 수 있다.
+#
+# 4. 수수료 원 단위 반올림 규칙 (v0.4 신규)
+#    - `lineAmount × feeRate`의 소수점 처리(반올림/버림/올림)가 미확정.
+#      항목별로 계산해 합산하므로 항목 수만큼 오차가 누적될 수 있어
+#      규칙을 못박아야 한다(권장: 항목별 반올림 후 합산).
 # =============================================================================
