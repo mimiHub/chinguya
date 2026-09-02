@@ -108,21 +108,23 @@ export function makeHandlers(baseUrl = "https://api.chinguya.co.kr/v1") {
         : HttpResponse.json(err("INVALID_STATE", "입금대기 상태가 아닙니다."), { status: 409 });
     }),
 
-    // ── S1-C7 취소 견적 ──────────────────────────────────────────────────────
-    http.get(`${baseUrl}/bookings/:bookingId/cancellation-quote`, ({ params }) => {
-      const q = store.cancellationQuote(String(params.bookingId));
-      return q
-        ? HttpResponse.json(q)
-        : HttpResponse.json(err("NOT_FOUND", "예약을 찾을 수 없습니다."), { status: 404 });
+    // ── S1-C7 취소 견적 (v0.4: itemIds로 항목 지정, 생략 시 전체) ─────────────
+    http.get(`${baseUrl}/bookings/:bookingId/cancellation-quote`, ({ params, request }) => {
+      const itemIdsParam = new URL(request.url).searchParams.get("itemIds");
+      const itemIds = itemIdsParam ? itemIdsParam.split(",").filter(Boolean) : undefined;
+      const result = store.cancellationQuote(String(params.bookingId), itemIds);
+      return result.ok
+        ? HttpResponse.json(result.value)
+        : HttpResponse.json(err(result.error.code, result.error.message), { status: result.error.status });
     }),
 
-    // ── S1-C7 취소 요청 제출 (→ 취소요청) ────────────────────────────────────
+    // ── S1-C7 취소 요청 제출 (v0.4: itemIds 지정 시 부분취소) ─────────────────
     http.post(`${baseUrl}/bookings/:bookingId/cancel-request`, async ({ params, request }) => {
       const dto = (await request.json()) as S["CancelRequest"];
-      const b = store.cancelRequest(String(params.bookingId), dto);
-      return b
-        ? HttpResponse.json(b)
-        : HttpResponse.json(err("INVALID_STATE", "취소할 수 없는 상태입니다."), { status: 409 });
+      const result = store.cancelRequest(String(params.bookingId), dto);
+      return result.ok
+        ? HttpResponse.json(result.value)
+        : HttpResponse.json(err(result.error.code, result.error.message), { status: result.error.status });
     }),
   ];
 }
