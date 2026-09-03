@@ -90,9 +90,25 @@
   .callegend{display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
   .callegend i{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:-1px;margin-right:3px}
   .callegend i.hz{background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 2px,#e8eaed 2px,#e8eaed 4px)}
+  .cal.dual .days .d .q{font-size:10px;letter-spacing:-.02em}
+  .cal .days .d.over{background:#f3e0dd;border-color:#9a3b2c}
+  .cal .days .d.over .q{color:#9a3b2c}
+  .cal .days .d.adj{position:relative}
+  .cal .days .d.adj::after{content:"";position:absolute;top:2px;right:2px;width:4px;height:4px;border-radius:50%;background:var(--warn)}
+  .callegend i.dot{width:4px;height:4px;border-radius:50%;background:var(--warn);vertical-align:1px}
   .note{border-left:3px solid var(--warn);background:#fbf4ec;padding:8px 10px;border-radius:0 6px 6px 0;font-size:10.5px;color:#6a4a2a;margin:10px 0;font-family:var(--mono)}
   .note b{color:var(--warn)}
   .note.blue{border-left-color:var(--accent);background:#eef1f7;color:#33405c}.note.blue b{color:var(--accent)}
+  .mdstack{display:grid;gap:10px;margin-top:12px}
+  .mdscrim{background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 3px,#e8eaed 3px,#e8eaed 6px);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .md{background:var(--card);border:1px solid var(--line);border-radius:10px}
+  .md .mdh{display:flex;align-items:baseline;gap:8px;padding:9px 11px;border-bottom:1px solid var(--line)}
+  .md .mdh .mdt{font-size:12px;font-weight:700}
+  .md .mdh .mdc{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted)}
+  .md .mdb{padding:10px 11px 2px}
+  .md .mdb .txt{font-size:11px;line-height:1.55;margin:2px 0 6px}
+  .md .mdf{display:flex;gap:8px;padding:8px 11px 11px}
+  .md .mdf .btn{flex:1;margin:0}
   .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:10px;overflow:auto}
   .tabs span{flex:1;white-space:nowrap;text-align:center;font-size:10.5px;padding:8px 6px;color:var(--muted)}
   .tabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--accent)}
@@ -151,6 +167,7 @@
           <div class="s"><div class="n">3</div><div class="l">입금확인 요청</div></div>
           <div class="s"><div class="n">1</div><div class="l">취소요청</div></div>
         </div>
+        <div class="card2" style="margin:9px 0 0;display:flex;align-items:center;gap:8px"><span class="tag r">초과</span><span style="font-size:11px">재고 초과 날짜 <b>2건</b> · 7/28, 8/3</span></div>
         <div class="h s" style="margin:14px 0 8px"></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">완료</span></div></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">접수</span></div></div>
@@ -162,95 +179,175 @@
         <dl>
           <dt>목적</dt><dd>운영 현황과 <b>오늘 방문 예약</b>을 한눈에 파악</dd>
           <dt>진입</dt><dd>로그인 직후, 하단 탭 '홈'</dd>
-          <dt>주요 요소</dt><dd>지표 카드(신규 예약/입금확인 요청/취소요청), 오늘 방문 예약 목록, 하단 탭</dd>
-          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘')</dd>
-          <dt>화면 이동</dt><dd>예약 카드 → 예약 상세, 지표 → 해당 목록</dd>
+          <dt>주요 요소</dt><dd>지표 카드(신규 예약/입금확인 요청/취소요청), <b>재고 초과 알림 줄</b>, 오늘 방문 예약 목록, 하단 탭</dd>
+          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘') · <b>재고 초과 알림</b> = 그 날짜의 예약 수가 총 보유를 넘은 날(S1-A3에서 재고를 낮춰 발생), 해소될 때까지 상시 노출</dd>
+          <dt>화면 이동</dt><dd>예약 카드 → 예약 상세, 지표 → 해당 목록, <b>초과 알림 → 재고 세팅(a-inv)</b>의 해당 날짜</dd>
         </dl>
       </div>
     </div>
 
     <div class="screen" id="a-asset">
-      <div class="cap"><span class="id">S1-A2</span><span class="nm">자산 관리</span><span class="dsc">보유 대수</span></div>
+      <div class="cap"><span class="id">S1-A2</span><span class="nm">자산 관리</span><span class="dsc">명칭 마스터 · 모달 CRUD</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>ASSETS</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">자산 관리</span><span class="sp"></span><span class="btn sm sec">+ 등록</span></div>
-        <div class="card2"><div class="row"><div style="flex:1">전기 자전거<div class="line w3"></div></div><span class="tag">수량 8</span></div></div>
-        <div class="card2"><div class="row"><div style="flex:1">일반 자전거<div class="line w3"></div></div><span class="tag">수량 12</span></div></div>
-        <div class="card2"><div class="row"><div style="flex:1">일반 낚싯대<div class="line w3"></div></div><span class="tag">수량 6</span></div></div>
-        <div class="note">사유(수리/입고/외부임대)는 관리 안 함, <b>수량만</b> 관리. 삭제=소프트삭제.</div>
+        <div class="lbl">활성 자산</div>
+        <div class="card2"><div class="row" style="align-items:center"><div style="flex:1">전기 자전거<div class="line w3"></div></div><span class="btn sm sec" style="flex:0 0 auto">수정</span><span class="btn sm dgr" style="flex:0 0 auto">삭제</span></div></div>
+        <div class="card2"><div class="row" style="align-items:center"><div style="flex:1">일반 자전거<div class="line w3"></div></div><span class="btn sm sec" style="flex:0 0 auto">수정</span><span class="btn sm dgr" style="flex:0 0 auto">삭제</span></div></div>
+        <div class="card2"><div class="row" style="align-items:center"><div style="flex:1">일반 낚싯대<div class="line w3"></div></div><span class="btn sm sec" style="flex:0 0 auto">수정</span><span class="btn sm dgr" style="flex:0 0 auto">삭제</span></div></div>
+        <div class="lbl" style="margin-top:14px">삭제됨</div>
+        <div class="card2" style="opacity:.55"><div class="row" style="align-items:center"><div style="flex:1">구형 전기 자전거<div class="line w3"></div></div><span class="tag r" style="flex:0 0 auto">삭제됨</span><span class="btn sm sec" style="flex:0 0 auto">복원</span></div></div>
+        <div class="note">자산은 <b>명칭만</b> 관리. 수량은 전부 <b>재고 세팅(S1-A3)</b>에서 날짜별로 관리. 등록·수정·삭제·복원은 별도 화면 없이 <b>모달</b>.</div>
+        <div class="note">삭제: 재고 레코드 <b>0건 → 완전 삭제</b>, <b>1건 이상 → 소프트 삭제</b>(목록 하단에 '삭제됨' 뱃지로 노출, 복원 가능).</div>
       </div></div>
+
+      <div class="mdstack">
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">자산 등록</span><span class="mdc">A2-M1</span></div>
+          <div class="mdb">
+            <div class="lbl">자산 명칭 <span class="tag k">필수</span></div><div class="field">예) 전기 자전거</div>
+            <div class="note" style="margin:8px 0 0">앞뒤 공백 제거. 중복 검사는 <b>활성 자산끼리만</b>(삭제된 명칭은 재사용 가능).</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">등록</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">자산 수정</span><span class="mdc">A2-M2</span></div>
+          <div class="mdb">
+            <div class="lbl">자산 명칭</div><div class="field">전기 자전거</div>
+            <div class="note" style="margin:8px 0 0">기존 명칭 프리필. 값이 그대로면 <b>저장 비활성</b>. <b>삭제됨 자산은 수정 불가</b>.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">저장</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">자산 삭제</span><span class="mdc">A2-M3</span></div>
+          <div class="mdb">
+            <div class="lbl">CASE 1 · 재고 레코드 0건</div>
+            <div class="txt">'전기 자전거'를 삭제합니다.<br><b>되돌릴 수 없습니다.</b></div>
+            <div class="lbl">CASE 2 · 재고 레코드 1건 이상</div>
+            <div class="txt">재고 세팅 이력이 있어 목록에 <b>'삭제됨'으로 남습니다.</b><br>새 날짜의 재고 세팅은 할 수 없습니다.</div>
+            <div class="note" style="margin:2px 0 0">같은 모달, <b>재고 레코드 유무로 문구·처리 분기</b>. CASE 1 = 완전 삭제, CASE 2 = 소프트 삭제.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn dgr">삭제</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">자산 복원</span><span class="mdc">A2-M4</span></div>
+          <div class="mdb">
+            <div class="txt">과거 <b>재고·예약 이력을 그대로 이어받습니다.</b></div>
+            <div class="lbl">자산 명칭</div><div class="field">구형 전기 자전거</div>
+            <div class="note" style="margin:8px 0 0">같은 명칭의 <b>활성 자산이 이미 있으면 명칭 변경을 요구</b>한 뒤 복원.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">복원</span></div>
+        </div></div>
+      </div>
+
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>보유 자산(자전거·낚싯대)의 <b>총 보유 대수</b> 관리</dd>
+          <dt>목적</dt><dd>대여 자산(자전거·낚싯대)의 <b>명칭 마스터</b> 관리</dd>
           <dt>진입</dt><dd>메뉴 → 자산 관리</dd>
-          <dt>주요 요소</dt><dd>자산 카드(명칭·수량), + 등록 버튼</dd>
-          <dt>규칙·로직</dt><dd>사유(수리/입고/외부임대)는 관리 안 함 <b>수량만</b> 관리, 삭제 = <b>소프트삭제</b></dd>
-          <dt>화면 이동</dt><dd>+ 등록 → 자산 등록 폼, 카드 → 상세/수정</dd>
+          <dt>주요 요소</dt><dd>자산 카드(명칭·수정/삭제), + 등록 버튼, 목록 하단의 삭제된 자산 영역(삭제됨 뱃지·복원) · 모달 4종 <b>A2-M1 등록 / A2-M2 수정 / A2-M3 삭제 / A2-M4 복원</b></dd>
+          <dt>규칙·로직</dt><dd>자산은 <b>명칭만</b> 보유(수량은 전부 S1-A3에서 날짜별 관리) · 등록/수정/삭제/복원은 <b>모달</b>로 처리 · 중복 검사는 <b>활성 자산끼리만</b> · 삭제됨 자산은 수정 불가 · 삭제 시 재고 레코드 <b>0건이면 완전 삭제, 1건 이상이면 소프트 삭제</b> · 소프트 삭제 자산은 <b>복원 가능</b>(이력 승계, 명칭 충돌 시 명칭 변경 요구) · 삭제된 명칭은 <b>재사용 가능</b> · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>화면 이동</dt><dd>+ 등록 → 등록 모달, 카드 → 수정 모달, 삭제 → 삭제 확인 모달, 삭제된 카드 → 복원 모달 (<b>화면 전환 없음</b>)</dd>
         </dl>
       </div>
     </div>
 
     <div class="screen" id="a-inv">
-      <div class="cap"><span class="id">S1-A3</span><span class="nm">날짜별 재고 세팅</span><span class="dsc">달력 뷰·가용 수량·휴무</span></div>
+      <div class="cap"><span class="id">S1-A3</span><span class="nm">날짜별 재고 세팅</span><span class="dsc">기준 보유량 · 재고 조정 · 매장 휴무</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>INVENTORY</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">재고 세팅</span></div>
         <div class="row"><div class="field" style="margin:0">전기 자전거 ▾</div></div>
-        <div class="cal">
+        <div class="card2" style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--muted)">기준 보유량</span>
+          <span style="font-family:var(--mono);font-size:15px;font-weight:700">5</span>
+          <span style="font-size:10px;color:var(--muted)">대</span>
+          <span class="btn sm" style="margin-left:auto">변경</span>
+        </div>
+        <div class="note">상단 선택은 <b>자산</b>(상품 아님). 세팅 단위는 <b>자산 × 날짜</b>. <b>기준 보유량</b>은 "지금 우리가 가진 대수"이고, 달력의 각 날짜는 이 값을 <b>상속</b>한다. 예외는 전부 <b>재고 조정</b>으로 건다.</div>
+        <div class="cal dual">
           <div class="m"><span>‹</span><span>2027 · 7월</span><span>›</span></div>
           <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
           <div class="days">
             <div class="d off"></div><div class="d off"></div><div class="d off"></div>
-            <div class="d ok"><span class="dn">1</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">2</span><span class="q">5</span></div>
-            <div class="d low"><span class="dn">3</span><span class="q">2</span></div>
-            <div class="d ok"><span class="dn">4</span><span class="q">4</span></div>
-            <div class="d ok"><span class="dn">5</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">6</span><span class="q">3</span></div>
-            <div class="d ok sel"><span class="dn">7</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">8</span><span class="q">5</span></div>
-            <div class="d low"><span class="dn">9</span><span class="q">1</span></div>
-            <div class="d hol"><span class="dn">10</span><span class="q">휴무</span></div>
-            <div class="d ok"><span class="dn">11</span><span class="q">4</span></div>
-            <div class="d ok"><span class="dn">12</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">13</span><span class="q">5</span></div>
-            <div class="d zero"><span class="dn">14</span><span class="q">0</span></div>
-            <div class="d ok"><span class="dn">15</span><span class="q">3</span></div>
-            <div class="d ok"><span class="dn">16</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">17</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">18</span><span class="q">4</span></div>
-            <div class="d low"><span class="dn">19</span><span class="q">2</span></div>
-            <div class="d ok"><span class="dn">20</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">21</span><span class="q">5</span></div>
-            <div class="d hol"><span class="dn">22</span><span class="q">휴무</span></div>
-            <div class="d ok"><span class="dn">23</span><span class="q">4</span></div>
-            <div class="d ok"><span class="dn">24</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">25</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">26</span><span class="q">3</span></div>
-            <div class="d ok"><span class="dn">27</span><span class="q">5</span></div>
-            <div class="d low"><span class="dn">28</span><span class="q">1</span></div>
-            <div class="d ok"><span class="dn">29</span><span class="q">5</span></div>
-            <div class="d ok"><span class="dn">30</span><span class="q">4</span></div>
-            <div class="d ok"><span class="dn">31</span><span class="q">5</span></div>
+            <div class="d ok"><span class="dn">1</span><span class="q">5/5</span></div><div class="d ok"><span class="dn">2</span><span class="q">4/5</span></div><div class="d low adj"><span class="dn">3</span><span class="q">2/3</span></div><div class="d ok adj sel"><span class="dn">4</span><span class="q">4/6</span></div>
+            <div class="d ok adj"><span class="dn">5</span><span class="q">5/6</span></div><div class="d ok adj"><span class="dn">6</span><span class="q">3/3</span></div><div class="d low adj"><span class="dn">7</span><span class="q">1/3</span></div><div class="d ok adj"><span class="dn">8</span><span class="q">3/3</span></div>
+            <div class="d low"><span class="dn">9</span><span class="q">1/5</span></div><div class="d hol"><span class="dn">10</span><span class="q">휴무</span></div><div class="d ok adj"><span class="dn">11</span><span class="q">8/8</span></div><div class="d ok adj"><span class="dn">12</span><span class="q">7/8</span></div>
+            <div class="d ok"><span class="dn">13</span><span class="q">5/5</span></div><div class="d zero"><span class="dn">14</span><span class="q">0/5</span></div><div class="d ok"><span class="dn">15</span><span class="q">3/5</span></div><div class="d ok"><span class="dn">16</span><span class="q">5/5</span></div>
+            <div class="d ok"><span class="dn">17</span><span class="q">5/5</span></div><div class="d ok adj"><span class="dn">18</span><span class="q">6/8</span></div><div class="d low adj"><span class="dn">19</span><span class="q">2/8</span></div><div class="d ok"><span class="dn">20</span><span class="q">5/5</span></div>
+            <div class="d ok"><span class="dn">21</span><span class="q">5/5</span></div><div class="d hol"><span class="dn">22</span><span class="q">휴무</span></div><div class="d ok"><span class="dn">23</span><span class="q">4/5</span></div><div class="d ok"><span class="dn">24</span><span class="q">5/5</span></div>
+            <div class="d ok adj"><span class="dn">25</span><span class="q">8/8</span></div><div class="d ok adj"><span class="dn">26</span><span class="q">3/8</span></div><div class="d ok adj"><span class="dn">27</span><span class="q">4/4</span></div><div class="d over adj"><span class="dn">28</span><span class="q">−1/4</span></div>
+            <div class="d ok adj"><span class="dn">29</span><span class="q">4/4</span></div><div class="d ok adj"><span class="dn">30</span><span class="q">3/4</span></div><div class="d ok adj"><span class="dn">31</span><span class="q">4/4</span></div>
           </div>
-          <div class="callegend"><span><i style="background:#e5efe7"></i>여유</span><span><i style="background:#f6ecd8"></i>임박</span><span><i style="background:#f3e0dd"></i>마감(0)</span><span><i class="hz"></i>휴무</span></div>
+          <div class="callegend"><span><i style="background:#e5efe7"></i>여유</span><span><i style="background:#f6ecd8"></i>임박</span><span><i style="background:#f3e0dd"></i>마감(0)</span><span><i style="background:#f3e0dd;border:1px solid #9a3b2c"></i>초과</span><span><i class="hz"></i>매장 휴무</span><span><i class="dot"></i>재고 조정 있음</span></div>
         </div>
-        <div class="note">셀 숫자 = 그 날짜의 <b>고객 가용 수량</b>. 색으로 여유/임박/마감/휴무를 한눈에. 날짜를 탭하면 아래 상세에서 편집.</div>
-        <div class="h s" style="margin:12px 0 6px">7월 7일 (선택)</div>
-        <div class="kv"><span class="k">총 보유</span><span class="v">8</span></div>
-        <div class="kv"><span class="k">여행사 할당 <span class="tag k">S2</span></span><span class="v">3</span></div>
-        <div class="kv"><span class="k">고객 가용(자동)</span><span class="v">5</span></div>
-        <div class="kv" style="border:none"><span class="k">휴무/블랙아웃</span><span class="v"><span class="toggle"></span></span></div>
-        <div class="note blue">Slice 1은 관리자가 <b>고객 가용 수량 직접 세팅</b>. Slice 2부터 <b>총 보유 − 여행사 할당 = 고객 가용</b>으로 자동.</div>
-        <a class="btn pri">저장</a>
+        <div class="note">셀 숫자 = <b>잔여 / 고객 가용</b>(예: <b>4/6</b> = 6대 중 4대 남음). 색상은 <b>잔여</b> 기준. 우상단 점 = <b>재고 조정</b>이 걸린 날. Slice 1은 할당이 없어 <b>고객 가용 = 그날 총 보유</b>.</div>
+        <div class="h s" style="margin:12px 0 6px">7월 4일 (토, 선택)</div>
+        <div class="kv"><span class="k">기준 보유량</span><span class="v">5</span></div>
+        <div class="kv" style="border:none;padding-bottom:0"><span class="k">이 날 조정 <span class="tag b">임차</span></span><span class="v">+3</span></div>
+        <div class="kv"><span class="k" style="padding-left:8px;font-size:10px">주말 임차 · 7~8월 토·일 반복</span><span class="v"><span class="btn sm" style="font-size:9px;padding:2px 8px">수정 · 해제</span></span></div>
+        <div class="kv" style="border:none;padding-bottom:0"><span class="k">이 날 조정 <span class="tag y">수리</span></span><span class="v">−2</span></div>
+        <div class="kv"><span class="k" style="padding-left:8px;font-size:10px">펑크 2대 · 7/3~7/8</span><span class="v"><span class="btn sm" style="font-size:9px;padding:2px 8px">수정 · 해제</span></span></div>
+        <div class="kv"><span class="k">그날 총 보유 <span class="tag k">= 고객 가용</span></span><span class="v">6</span></div>
+        <div class="kv"><span class="k">예약</span><span class="v">2</span></div>
+        <div class="kv"><span class="k"><b>잔여</b></span><span class="v"><b>4</b></span></div>
+        <div class="kv" style="border:none"><span class="k">매장 휴무 <span class="tag k">전 자산 공통</span></span><span class="v"><span class="toggle"></span></span></div>
+        <div class="note">한 날짜에 <b>재고 조정이 여러 개 겹칠 수 있고 전부 합산</b>된다(5 +3 −2 = 6). 조정은 <b>각각 개별로 수정·해제</b>하며, 해제하면 그 조정분만 빠진다. 태그(임차·수리)는 <b>메모 앞머리를 자동 표시</b>한 것으로 별도 코드값이 아니다.</div>
+        <div class="note blue">Slice 1은 <b>여행사 할당 = 0</b>으로 저장하므로 <b>고객 가용 = 총 보유</b>이고, 관리자는 숫자를 하나만 다룬다. Slice 2에서 이 자리에 <b>여행사 할당</b> 줄이 추가되고 <b>총 보유 − 할당 = 고객 가용</b>으로 자동 계산된다(스키마 변경 없음).</div>
+        <div class="row"><span class="btn sec">재고 조정 추가</span><span class="btn pri">저장</span></div>
       </div></div>
+
+      <div class="mdstack">
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">기준 보유량 변경</span><span class="mdc">A3-M1</span></div>
+          <div class="mdb">
+            <div class="lbl">기준 보유량 <span class="tag k">필수</span></div>
+            <div class="row" style="align-items:center">
+              <div class="field" style="background:var(--fill);color:var(--ink)">5 <span style="color:var(--muted);font-size:9px">현재 · 수정 불가</span></div>
+              <div style="flex:0 0 auto;font-size:12px;color:var(--muted)">→</div>
+              <div class="field">7 <span style="color:var(--muted);font-size:9px">변경 후</span></div>
+            </div>
+            <div class="lbl">적용 시작일 <span class="tag k">필수</span></div><div class="field">2027-07-15</div>
+            <div class="lbl">메모</div><div class="field">예) 전기 자전거 2대 추가 구매</div>
+            <div class="note" style="margin:8px 0 0"><b>구매·처분 등 영구 변화</b>용. 왼쪽은 <b>현재 기준값(읽기 전용)</b>, 오른쪽에 <b>변경 후 값</b>을 넣는다. 시작일 <b>이후</b> 날짜의 상속값이 한 번에 바뀐다. <b>과거 날짜와 이미 걸린 재고 조정은 건드리지 않는다</b>(조정은 새 기준값 위에 그대로 합산).</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">저장</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">재고 조정</span><span class="mdc">A3-M2</span></div>
+          <div class="mdb">
+            <div class="lbl">증감 <span class="tag k">필수</span></div>
+            <div class="row"><div class="field">− ▾</div><div class="field">2</div></div>
+            <div class="lbl">기간 <span class="tag k">필수</span></div>
+            <div class="row"><div class="field">2027-07-03</div><div class="field">2027-07-08</div></div>
+            <div class="lbl">요일 지정 <span class="tag k">선택</span></div>
+            <div><span class="chip">일</span><span class="chip">월</span><span class="chip">화</span><span class="chip">수</span><span class="chip">목</span><span class="chip">금</span><span class="chip">토</span></div>
+            <div class="lbl">메모</div><div class="field">펑크 2대</div>
+            <div class="note" style="margin:8px 0 0"><b>수리·임시 임차 등 일시 변화</b>용. 하루짜리는 <b>시작일 = 종료일</b>, 수리처럼 복귀일을 모르면 <b>종료일 미정</b>으로 열어두고 복귀 시 종료 처리(그 이후 날짜는 기준값 상속으로 복구). 주말 임차처럼 반복되는 건 <b>요일 지정</b>으로 한 번에(예: 7~8월 토·일 +3). <b>조정 하나 = 레코드 하나</b>이며 같은 날에 여러 개가 겹치면 합산된다.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">적용</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">재고 초과 경고</span><span class="mdc">A3-M3</span></div>
+          <div class="mdb">
+            <div class="txt"><b>7월 28일 · 예약 5건 / 총 보유 4대 — 1건 초과</b>입니다.<br>실제 파손·수리는 사실이므로 <b>저장은 허용</b>합니다.</div>
+            <div class="note" style="margin:2px 0 0">저장하면 그 날짜에 <b>'초과' 표시</b>가 붙고 <b>대시보드(S1-A1) 알림</b>에 남는다. 고객앱은 이미 0이라 <b>신규 예약은 유입되지 않으며</b>, 관리자가 개별 연락·취소로 해소한다. 기간을 걸친 조정이면 <b>초과가 생기는 날짜를 모두 나열</b>한다.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">초과 감수하고 저장</span></div>
+        </div></div>
+      </div>
+
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>날짜별 <b>고객 가용 수량·휴무</b>를 달력 뷰로 세팅</dd>
-          <dt>진입</dt><dd>메뉴 → 재고 세팅</dd>
-          <dt>주요 요소</dt><dd>상품 선택, 달력(여유/임박/마감/휴무 색상), 선택일 상세(총 보유·여행사 할당·고객 가용·휴무 토글)</dd>
-          <dt>규칙·로직</dt><dd>셀 숫자 = 그 날짜 <b>고객 가용 수량</b>. Slice 1은 <b>직접 세팅</b>, Slice 2부터 <b>총 보유 − 여행사 할당 = 고객 가용</b> 자동</dd>
-          <dt>화면 이동</dt><dd>날짜 탭 → 하단 상세 편집, 저장 → 반영</dd>
+          <dt>목적</dt><dd>자산별 <b>기준 보유량</b>과 <b>재고 조정·매장 휴무</b>를 달력 뷰로 관리</dd>
+          <dt>진입</dt><dd>메뉴 → 재고 세팅 (대시보드의 <b>재고 초과 알림</b>에서도 진입)</dd>
+          <dt>주요 요소</dt><dd><b>자산 선택</b>, 기준 보유량 카드(변경), 달력(잔여/고객 가용 · 여유/임박/마감/초과/휴무 · 재고 조정 있는 날 점 표시), 선택일 상세(기준 보유량 · <b>이 날 조정 N줄</b> · 총 보유 · 예약 · 잔여 · 매장 휴무), 모달 3종 <b>A3-M1 기준 보유량 변경 / A3-M2 재고 조정 / A3-M3 초과 경고</b></dd>
+          <dt>규칙·로직</dt><dd>세팅 단위 = <b>자산 × 날짜</b>(상품 아님) · <b>수량은 이 화면이 단일 소관</b>(S1-A2 자산은 명칭만) · 날짜별 값은 <b>기준 보유량을 상속</b>하고 예외는 <b>재고 조정</b>으로만 건다 · 구매·처분 등 <b>영구 변화는 기준값 변경 + 적용 시작일</b>(A3-M1: 현재값 읽기 전용 + 변경 후 값 2필드), 수리·임차 등 <b>일시 변화는 재고 조정</b>(A3-M2: ±N · 기간(하루는 시작=종료, 수리는 종료일 미정) · 요일 지정 · 메모 1줄) · <b>그날 총 보유 = 기준 보유량 + 그날 걸린 모든 조정의 합</b>, 조정은 <b>개별 수정·해제</b> 가능 · 셀 숫자 = <b>잔여 / 고객 가용</b>, 색상은 잔여 기준 · Slice 1은 <b>할당 0</b>으로 저장해 <b>고객 가용 = 총 보유</b>, Slice 2부터 <b>총 보유 − 여행사 할당 = 고객 가용</b> 자동 · <b>휴무는 매장 전역</b> 플래그(전 자산 공통, 수량 값은 보존한 채 판매만 차단), 자산 하나만 중단은 <b>수량 0</b>으로 표현 · 예약 수보다 낮아지면 <b>경고 후 저장 허용 + '초과' 표시 + 대시보드 알림</b> · <b>소프트 삭제된 자산</b>은 삭제 시점 <b>이후 날짜의 상속을 중단(0)</b>하고 과거 값·예약 이력은 보존, 조회만 가능 · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>화면 이동</dt><dd>자산 선택 → 해당 자산 달력, 기준 보유량 변경 → A3-M1, 재고 조정 추가/조정 줄의 수정 → A3-M2, 저장 시 초과 발생 → A3-M3 (<b>모달만 사용, 화면 전환 없음</b>)</dd>
         </dl>
       </div>
     </div>
@@ -309,17 +406,17 @@
         <div class="abar"><span class="mn">≡</span><span class="ti">예약 관리</span></div>
         <div class="tabs"><span class="on">접수</span><span>완료</span><span>미입금</span><span>취소요청</span><span>취소</span></div>
         <div class="field" style="margin-top:0">🔍 검색 (예약번호·여권명)</div>
-        <div class="card2"><div class="row"><div style="flex:1">FR-27070001<div class="line w7"></div></div><span class="tag y">접수</span></div></div>
-        <div class="card2"><div class="row"><div style="flex:1">FR-27070002<div class="line w7"></div></div><span class="tag y">접수</span></div></div>
-        <div class="note">필터: 접수 / 완료 / 미입금 / 취소요청 / 취소. 목록·검색·페이지네이션.</div>
+        <div class="card2"><div class="row" style="align-items:center;gap:6px"><div style="flex:1">FR-27070001 <span style="font-size:10px;color:var(--muted)">· 전기 자전거 외 2건</span><div class="line w7"></div></div><span style="flex:0 0 auto"><span class="tag y">접수</span></span></div></div>
+        <div class="card2"><div class="row" style="align-items:center;gap:6px"><div style="flex:1">FR-27070002 <span style="font-size:10px;color:var(--muted)">· 일반 자전거</span><div class="line w7"></div></div><span style="flex:0 0 auto;display:flex;gap:3px"><span class="tag g">완료</span><span class="tag y">부분취소</span></span></div></div>
+        <div class="note">필터: 접수 / 완료 / 미입금 / 취소요청 / 취소. 목록·검색·페이지네이션.<br>카드 제목은 <b>예약번호 + 대표 상품명·'외 N건'</b>(한 예약에 복수 항목). <b>부분취소는 별도 탭 없이 뱃지</b>로만 노출.</div>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
           <dt>목적</dt><dd>전체 예약을 <b>상태별</b>로 조회·검색</dd>
           <dt>진입</dt><dd>메뉴 → 예약 관리, 대시보드 지표</dd>
-          <dt>주요 요소</dt><dd>상태 탭, 검색(예약번호·여권명), 예약 카드(상태 태그)</dd>
-          <dt>규칙·로직</dt><dd>필터: <b>접수/완료/미입금/취소요청/취소</b>, 목록·검색·페이지네이션</dd>
+          <dt>주요 요소</dt><dd>상태 탭, 검색(예약번호·여권명), 예약 카드(예약번호 + <b>대표 상품명·'외 N건'</b>, 상태 태그, <b>부분취소 뱃지</b>)</dd>
+          <dt>규칙·로직</dt><dd>필터: <b>접수/완료/미입금/취소요청/취소</b>, 목록·검색·페이지네이션. 한 예약에 복수 항목이 담기므로 카드는 <b>대표 상품명 + '외 N건'</b>으로 표기하고, <b>부분취소는 별도 탭·상태값 없이 뱃지</b>로만 노출</dd>
           <dt>화면 이동</dt><dd>예약 카드 → 예약 상세·입금확인</dd>
         </dl>
       </div>
@@ -331,11 +428,20 @@
         <div class="abar"><span class="mn">←</span><span class="ti">예약 상세</span><span class="sp"></span><span class="tag y">접수</span></div>
         <div class="kv"><span class="k">예약번호</span><span class="v">FR-27070001</span></div>
         <div class="kv"><span class="k">고객 / 여권명</span><span class="v">gildong / GILDONG H.</span></div>
-        <div class="kv"><span class="k">상품 · 수량</span><span class="v">전기 1일 · ×2</span></div>
-        <div class="kv"><span class="k">이용일</span><span class="v">2027-07-07</span></div>
-        <div class="kv"><span class="k">입금액</span><span class="v">₩ 20,000</span></div>
+        <div class="lbl" style="margin-top:10px">예약 항목 (2건)</div>
+        <div class="card2">
+          <div class="row" style="align-items:center;gap:6px"><span style="flex:1;font-size:11px;font-weight:600">전기 자전거 · 1일</span><span class="tag g" style="flex:0 0 auto">유효</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">이용일 · 수량</span><span class="v">2027-07-07 · ×2</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">금액</span><span class="v">₩ 20,000</span></div>
+        </div>
+        <div class="card2">
+          <div class="row" style="align-items:center;gap:6px"><span style="flex:1;font-size:11px;font-weight:600">전기 자전거 · 야간</span><span class="tag g" style="flex:0 0 auto">유효</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">이용일 · 수량</span><span class="v">2027-07-08 · ×1</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">금액</span><span class="v">₩ 12,000</span></div>
+        </div>
+        <div class="kv"><span class="k">입금액(유효 항목)</span><span class="v">₩ 32,000</span></div>
         <a class="btn pri">입금 확인 → 완료 처리</a>
-        <div class="note">접수 후 <b>24시간 내 미입금</b> 시 '미입금' 표시 → <b>강제 취소</b> 가능(재고 즉시 복원).</div>
+        <div class="note">한 예약번호에 <b>복수 항목</b>이 담긴다(항목마다 상품·옵션·이용일이 다를 수 있음). <b>입금액은 유효 항목 합계</b> 기준.<br>접수 후 <b>24시간 내 미입금</b> 시 '미입금' 표시 → <b>강제 취소</b> 가능(재고 즉시 복원). 강제 취소는 <b>예약 전체 단위</b>(입금 전이므로 부분취소 없음).<br>일부 항목만 취소된 예약은 별도 상태값 없이 <b>'부분취소' 뱃지</b>로 표시하고, 예약 상태는 <b>유효 항목 기준</b>으로 유지.</div>
         <a class="btn dgr">미입금 강제 취소</a>
       </div></div>
       <div class="desc">
@@ -343,8 +449,8 @@
         <dl>
           <dt>목적</dt><dd>예약 상세 확인 및 <b>입금 확인 → 완료 처리</b></dd>
           <dt>진입</dt><dd>예약 관리 목록의 예약 카드</dd>
-          <dt>주요 요소</dt><dd>예약번호·고객·여권명·상품·이용일·입금액, 완료 처리 CTA, 미입금 강제 취소</dd>
-          <dt>규칙·로직</dt><dd>입금 확인 시 상태 <b>완료</b>, 접수 후 <b>24시간 내 미입금</b> 시 '미입금' 표시 → 강제 취소(재고 즉시 복원)</dd>
+          <dt>주요 요소</dt><dd>예약번호·고객·여권명, <b>예약 항목 리스트</b>(상품·옵션, 이용일·수량, 금액, 항목 상태), 입금액(유효 항목 합계), 완료 처리 CTA, 미입금 강제 취소</dd>
+          <dt>규칙·로직</dt><dd><b>1 예약번호 = N 항목</b>(항목마다 상품·옵션·이용일 상이 가능), <b>입금액은 유효 항목 합계</b>. 입금 확인 시 상태 <b>완료</b>, 접수 후 <b>24시간 내 미입금</b> 시 '미입금' 표시 → 강제 취소(재고 즉시 복원, <b>예약 전체 단위</b> — 입금 전이므로 부분취소 없음). 일부 항목만 취소된 예약은 <b>'부분취소' 뱃지</b>로 표시하고 예약 상태는 유효 항목 기준 유지</dd>
           <dt>화면 이동</dt><dd>완료 처리/강제 취소 → 예약 관리 목록 상태 반영</dd>
         </dl>
       </div>
@@ -354,21 +460,37 @@
       <div class="cap"><span class="id">S1-A9</span><span class="nm">취소요청 처리</span><span class="dsc">수수료·환불</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>CANCEL</span></div><div class="vp">
         <div class="abar"><span class="mn">←</span><span class="ti">취소요청 처리</span><span class="sp"></span><span class="tag b">취소요청</span></div>
-        <div class="kv"><span class="k">결제액</span><span class="v">₩ 20,000</span></div>
-        <div class="kv"><span class="k">취소 수수료(차등)</span><span class="v">− ₩ 4,000</span></div>
-        <div class="kv"><span class="k">환불 예정액</span><span class="v">₩ 16,000</span></div>
+        <div class="kv"><span class="k">예약번호</span><span class="v">FR-27070003</span></div>
+        <div class="lbl" style="margin-top:10px">고객이 취소 요청한 항목 (2 / 3건) · 오늘 2027-06-28</div>
+        <div class="card2">
+          <div class="row" style="align-items:center;gap:6px"><span style="flex:1;font-size:11px;font-weight:600">전기 자전거 · 1일</span><span class="tag b" style="flex:0 0 auto">취소요청</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">이용일 · 수량</span><span class="v">2027-07-07 · ×2</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">금액 · 수수료율</span><span class="v">₩ 20,000 · D-9 10%</span></div>
+        </div>
+        <div class="card2">
+          <div class="row" style="align-items:center;gap:6px"><span style="flex:1;font-size:11px;font-weight:600">일반 자전거 · 2시간</span><span class="tag b" style="flex:0 0 auto">취소요청</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">이용일 · 수량</span><span class="v">2027-06-30 · ×1</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">금액 · 수수료율</span><span class="v">₩ 4,000 · D-2 30%</span></div>
+        </div>
+        <div class="card2" style="opacity:.6">
+          <div class="row" style="align-items:center;gap:6px"><span style="flex:1;font-size:11px;font-weight:600">전기 자전거 · 야간</span><span class="tag k" style="flex:0 0 auto">유지</span></div>
+          <div class="kv" style="border-bottom:none;padding:3px 0"><span class="k">이용일 · 수량</span><span class="v">2027-07-08 · ×1</span></div>
+        </div>
+        <div class="kv"><span class="k">요청 항목 결제액</span><span class="v">₩ 24,000</span></div>
+        <div class="kv"><span class="k">취소 수수료(항목별 합산)</span><span class="v">− ₩ 3,200</span></div>
+        <div class="kv"><span class="k">환불 예정액</span><span class="v">₩ 20,800</span></div>
         <div class="kv"><span class="k">고객 환불계좌</span><span class="v">○○ 000-000</span></div>
-        <div class="note">환불 이체는 <b>수동</b>. 이체 후 '취소' 이벤트 처리 → 재고 즉시 복원.</div>
-        <a class="btn pri">취소 확정(환불완료)</a>
+        <div class="note">수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 계산해 <b>합산</b>(한 예약 안에서도 항목마다 요율이 다르다). 환불 이체는 <b>수동</b>. 이체 후 '취소' 처리 → <b>해당 항목·날짜의 재고만</b> 즉시 복원.<br><b>부분취소</b>면 남은 유효 항목은 그대로 두고 예약에 <b>'부분취소' 뱃지</b>를 붙인다(예약 상태는 유효 항목 기준 유지). <b>전체 항목</b>이 요청됐으면 예약 상태를 <b>취소</b>로 전이.</div>
+        <a class="btn pri">선택 항목 취소 확정(환불완료)</a>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>고객 <b>취소요청</b> 검토 후 환불·취소 확정</dd>
+          <dt>목적</dt><dd>고객 <b>취소요청</b>을 <b>항목 단위</b>로 검토해 환불·취소 확정</dd>
           <dt>진입</dt><dd>예약 관리(취소요청 탭)의 예약 카드</dd>
-          <dt>주요 요소</dt><dd>결제액·취소 수수료(차등)·환불 예정액·고객 환불계좌, 취소 확정 CTA</dd>
-          <dt>규칙·로직</dt><dd>수수료는 <b>이용일 기준 차등</b>, 환불 이체는 <b>수동</b>, 이체 후 '취소' 처리 → 재고 즉시 복원</dd>
-          <dt>화면 이동</dt><dd>취소 확정 → 예약 상태 취소</dd>
+          <dt>주요 요소</dt><dd>예약번호, <b>취소 요청 항목 리스트</b>(항목별 이용일·수량·금액·수수료율, 유지 항목은 흐리게), 요청 항목 결제액·수수료 합산·환불 예정액·고객 환불계좌, 취소 확정 CTA</dd>
+          <dt>규칙·로직</dt><dd>수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 산정 후 <b>합산</b>, 환불 이체는 <b>수동</b>, 이체 후 '취소' 처리 → <b>해당 항목·날짜 재고만</b> 즉시 복원. <b>부분취소</b>면 남은 유효 항목 유지 + 예약에 <b>'부분취소' 뱃지</b>(별도 상태값 없음), <b>전체 항목</b> 요청이면 예약 상태를 <b>취소</b>로 전이</dd>
+          <dt>화면 이동</dt><dd>취소 확정 → 예약 상태 반영(전체: 취소 / 부분: 유효 항목 기준 유지 + 부분취소 뱃지)</dd>
         </dl>
       </div>
     </div>
@@ -467,7 +589,7 @@
         <div class="row"><div class="field" style="margin:0">ABC 투어</div><div class="field" style="margin:0">전기 자전거</div></div>
         <div class="row" style="margin-top:8px"><div class="field" style="margin:0">2027-07-07</div>
           <div class="field" style="margin:0;color:var(--ink)"><span class="stepper"><b>−</b> 3 <b>＋</b></span></div></div>
-        <div class="note"><b>할당 단위 = 자전거 종류 · 날짜별 수량</b>. 총 보유 − 할당 = 고객 가용(자동). 여행사 예약기간 <b>+3일 ~ +3개월</b>.</div>
+        <div class="note"><b>할당 단위 = 자산 × 날짜별 수량</b>(S1-A3와 동일 단위). 총 보유 − 할당 = 고객 가용(자동). 총 보유는 S1-A3의 <b>기준 보유량 + 재고 조정</b> 결과값이며, <b>할당 합계가 총 보유를 넘지 않도록 방어</b>한다. 여행사 예약기간 <b>+3일 ~ +3개월</b>.</div>
         <a class="btn pri">저장</a>
       </div></div>
       <div class="desc">
@@ -475,8 +597,8 @@
         <dl>
           <dt>목적</dt><dd>여행사별·날짜별 <b>재고 할당 수량</b> 세팅</dd>
           <dt>진입</dt><dd>메뉴 → 할당 세팅</dd>
-          <dt>주요 요소</dt><dd>여행사·상품·날짜 선택, 수량 스테퍼, 저장</dd>
-          <dt>규칙·로직</dt><dd>할당 단위 = <b>자전거 종류·날짜별 수량</b>, <b>총 보유 − 할당 = 고객 가용</b>(자동), 여행사 예약기간 <b>+3일 ~ +3개월</b></dd>
+          <dt>주요 요소</dt><dd>여행사·<b>자산</b>·날짜 선택, 수량 스테퍼, 저장</dd>
+          <dt>규칙·로직</dt><dd>할당 단위 = <b>자산 × 날짜별 수량</b>(S1-A3와 동일 단위), <b>총 보유 − 할당 = 고객 가용</b>(자동) · 총 보유는 S1-A3의 <b>기준 보유량 + 재고 조정</b> 결과값이며 <b>할당 합계가 총 보유를 넘지 않도록 방어</b> 필요, 여행사 예약기간 <b>+3일 ~ +3개월</b></dd>
           <dt>화면 이동</dt><dd>저장 → 재고 세팅·여행사 예약에 반영</dd>
         </dl>
       </div>
