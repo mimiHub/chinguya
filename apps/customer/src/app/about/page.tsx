@@ -46,7 +46,7 @@ export default function AboutPage() {
 
   return (
     <main>
-      <Banner size="lg" title="회사소개" image="/banner-about.png" />
+      <Banner size="lg" title="서비스 소개" image="/banner-about.png" />
 
       <div className="mx-auto max-w-2xl p-6">
         <Tab variant="capsule" items={TABS} activeKey={tab} onChange={(key) => setTab(key as AboutTab)} />

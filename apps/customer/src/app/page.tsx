@@ -3,6 +3,7 @@ import type { RentalCategoryKey } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Card } from "@chinguya/ui/card";
+import { Button } from "@chinguya/ui/button";
 import { HomeCarousel } from "@/components/HomeCarousel";
 import { CATEGORY_LABEL, rentalProducts } from "@/data/rentalData";
 
@@ -55,6 +56,15 @@ export default function Page() {
           <br />
           여행이 주는 행복을 마음껏 느껴보세요.
         </Text>
+
+        {/*
+          와이어프레임 랜딩(안 A, 확정)의 최상단 CTA. "신규·재방문 고객 모두 서비스 이해를
+          먼저 유도"하는 목적이라 카테고리 섹션보다 위, 인트로 문구 바로 아래에 둔다.
+          진입: 서비스 소개(S4-C2, apps/customer/src/app/about) 단일 페이지.
+        */}
+        <Button href="/about" fullWidth size="lg" className="mt-5">
+          서비스 소개
+        </Button>
 
         <hr className="mt-5 border-line" />
 
