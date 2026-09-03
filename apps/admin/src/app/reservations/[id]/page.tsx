@@ -12,11 +12,8 @@ import { Text } from "@chinguya/ui/text";
 import { Toast } from "@chinguya/ui/toast";
 import { FormMessage } from "@chinguya/ui/form-message";
 import { findAdminReservationById, getElapsedHours, UNPAID_AFTER_HOURS } from "@/data/reservationData";
+import { cancellationFeeRules, daysBeforeUse, resolveCancellationFeeRate } from "@/data/settingsData";
 import { Stack } from "@chinguya/ui/stack";
-
-// 취소 수수료율은 실제로는 이용일까지 남은 일수 기준 차등 요율표(CancellationFeeRule, 관리자 설정)에서
-// 가져와야 한다 — 여기서는 화면 데모용으로 20% 고정값을 쓴다.
-const DEMO_CANCEL_FEE_RATE = 0.2;
 
 /** 금액 표시(전용 Price 컴포넌트 제거 후 Kv 안에서 직접 포맷). sign은 취소 수수료처럼
  * 마이너스 금액 앞에 "− " 등을 붙이고 싶을 때만 넘긴다. */
@@ -41,7 +38,13 @@ export default function AdminReservationDetailPage() {
     return <ComingSoon label="존재하지 않는 예약입니다" />;
   }
 
-  const cancelFee = Math.round(reservation.amountKrw * DEMO_CANCEL_FEE_RATE);
+  // 취소 수수료율은 관리자 설정(계좌·정책, /settings)의 차등 요율표를 이용일까지 남은
+  // 일수로 조회해서 정한다. 단, /settings 화면의 "저장"은 아직 실제로 값을 반영하지 않는
+  // 목업이라(그 화면의 TODO 주석 참고), 여기서 읽는 cancellationFeeRules는 항상 초기
+  // 시드값이다 — 관리자가 설정 화면에서 요율을 고쳐도 이 화면엔 아직 반영되지 않는다.
+  const daysLeft = daysBeforeUse(reservation.useDate);
+  const cancelFeeRate = resolveCancellationFeeRate(cancellationFeeRules, daysLeft);
+  const cancelFee = Math.round(reservation.amountKrw * cancelFeeRate);
   const refundAmount = reservation.amountKrw - cancelFee;
 
   const elapsedHours = getElapsedHours(reservation.createdAt);

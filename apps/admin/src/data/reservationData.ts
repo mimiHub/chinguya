@@ -23,6 +23,19 @@ export interface AdminReservationRow {
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 
+/**
+ * 오늘로부터 n일 후 날짜(YYYY-MM-DD). 취소 수수료 차등 요율(daysBeforeUse) 데모가 의미
+ * 있으려면 "이용일까지 남은 일수"가 테스트 시점과 무관하게 항상 그럴듯해야 하는데, 다른
+ * 항목들처럼 고정된 미래 날짜(예: "2027-07-09")를 쓰면 테스트하는 날짜에 따라 남은 일수가
+ * 계속 달라져 버린다(예: 요율표 최상위 구간에 걸려 늘 0%로만 보일 수 있음). 그래서 취소
+ * 수수료 화면이 실제로 보여지는 예약(FR-27060999)만 상대 날짜로 만든다.
+ */
+const daysFromNow = (d: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + d);
+  return date.toISOString().slice(0, 10);
+};
+
 export const adminReservations: AdminReservationRow[] = [
   {
     id: "FR-27070001",
@@ -59,7 +72,7 @@ export const adminReservations: AdminReservationRow[] = [
     customer: "jiwon",
     passportName: "JIWON LEE",
     product: "전기자전거 2일 × 1",
-    useDate: "2027-07-09",
+    useDate: daysFromNow(5), // 취소 수수료 차등 요율 데모용 상대 날짜 — daysFromNow 주석 참고
     amountKrw: 27000,
     status: "cancel_requested",
     createdAt: hoursAgo(40),
