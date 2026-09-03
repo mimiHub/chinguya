@@ -1,6 +1,7 @@
-import type { Invoice } from "@chinguya/types";
+import type { AgencyReservationStatus, Invoice, RentalOptionKey } from "@chinguya/types";
 import { agencies } from "./agencyData";
 import { agencyReservations } from "./agencyReservationData";
+import { CATALOG_TITLES } from "./productData";
 
 /**
  * 인보이스(정산서) 목업 데이터.
@@ -57,6 +58,51 @@ issueDueInvoices();
 
 export function findInvoicesByAgency(agencyId: string): Invoice[] {
   return invoices.filter((inv) => inv.agencyId === agencyId);
+}
+
+export function findInvoiceById(id: string): Invoice | undefined {
+  return invoices.find((inv) => inv.id === id);
+}
+
+/** 인보이스 상세(S2-A6)의 라인아이템 한 건 — 예약번호·상품·수량·금액. */
+export interface InvoiceLineItem {
+  reservationId: string;
+  productTitle: string;
+  option: RentalOptionKey;
+  quantity: number;
+  status: AgencyReservationStatus;
+  /** 완료 건은 예약 금액 그대로, 취소 건은 0(아래 규칙 설명 참고) — 합계에 그대로 더하면 된다. */
+  amountKrw: number;
+}
+
+/**
+ * 인보이스 하나(여행사 × 기간)에 속한 여행사 예약 라인아이템 목록을 반환한다. 완료·취소 예약을
+ * 모두 보여주되(어떤 예약이 취소됐는지 확인할 수 있도록), 금액은 완료 건만 반영한다.
+ *
+ * 비동기 데일리 로그(2026-08-24, "인보이스 기획 상세페이지 누락 수정")는 합계를 "완료 예약 금액
+ * 합 + 취소 건은 취소 수수료만 반영"으로 정의했다. 하지만 여행사 예약(AgencyReservation)은 고객
+ * 예약과 달리 입금 흐름이 없어 "예약=즉시 완료, 취소=즉시"로 단순화된 모델이라 애초에 취소
+ * 수수료 개념이 없다(apps/agency/src/data/reservationData.ts 주석 참고, cancelFeeRate 필드도
+ * CustomerReservation에만 있다). 그래서 취소 건은 라인에는 표시하되 금액은 0으로 두고, 합계는
+ * 완료 예약 금액 합(=invoice.amountKrw)만 더한다 — 여행사 취소 수수료가 실제로 필요해지면
+ * AgencyReservation에 별도 필드(예: cancelFeeKrw)를 추가하는 게 먼저다.
+ */
+export function getInvoiceLineItems(invoice: Invoice): InvoiceLineItem[] {
+  return agencyReservations
+    .filter((r) => r.agencyId === invoice.agencyId && periodOf(r.useDate) === invoice.period)
+    .map((r) => ({
+      reservationId: r.id,
+      productTitle: CATALOG_TITLES.find((c) => c.slug === r.productId)?.title ?? r.productId,
+      option: r.rentalOption,
+      quantity: r.quantity,
+      status: r.status,
+      amountKrw: r.status === "completed" ? r.amountKrw : 0,
+    }));
+}
+
+export function setInvoiceSettled(id: string, settled: boolean): void {
+  const invoice = invoices.find((inv) => inv.id === id);
+  if (invoice) invoice.settled = settled;
 }
 
 /**
