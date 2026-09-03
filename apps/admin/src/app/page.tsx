@@ -6,21 +6,26 @@ import { Stack } from "@chinguya/ui/stack";
 import { Text } from "@chinguya/ui/text";
 import { StatusBadge, Badge } from "@chinguya/ui/badge";
 import { adminReservations, getAdminTab } from "@/data/reservationData";
+import { initialInquiries } from "@/data/inquiryData";
 
 /**
- * S1-A1 대시보드. 와이어프레임 상단 3개 지표(신규 예약/입금확인 요청/취소요청)를
+ * S1-A1 대시보드. 와이어프레임 상단 지표(신규 예약/입금확인 요청/취소요청)를
  * adminReservations 목업으로부터 계산한다(원본 cafe-next는 이 세 숫자가 5/3/1로 고정된
  * 하드코딩 값이었는데, 여기서는 실제 데이터에서 파생시켜서 서로 값이 어긋나지 않게 했다).
+ * 미답변 문의(S4-A2 문의 관리 진입점) 지표를 하나 더 붙여서 "대시보드/알림"에서 문의 관리로
+ * 들어가는 경로(기획서 명시)를 만든다.
  */
 export default function AdminDashboardPage() {
   const newCount = adminReservations.filter((r) => r.status === "received").length;
   const pendingDepositCount = adminReservations.filter((r) => getAdminTab(r) === "received").length;
   const cancelRequestCount = adminReservations.filter((r) => r.status === "cancel_requested").length;
+  const unansweredInquiryCount = initialInquiries.filter((q) => !q.answer).length;
 
   const stats = [
     { label: "신규 예약", value: newCount, href: "/reservations?tab=received" },
     { label: "입금확인 요청", value: pendingDepositCount, href: "/reservations?tab=unpaid" },
     { label: "취소요청", value: cancelRequestCount, href: "/reservations?tab=cancel_requested" },
+    { label: "미답변 문의", value: unansweredInquiryCount, href: "/inquiries" },
   ];
 
   // TODO: 실제 연동 시 "오늘"은 일본 기준(JST)으로 판정하고, useDate === 오늘인 건만 필터링한다.

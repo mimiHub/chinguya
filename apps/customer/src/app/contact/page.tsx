@@ -16,91 +16,16 @@ import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Badge } from "@chinguya/ui/badge";
 import { IconX } from "@chinguya/ui/icon-x";
 import { FormMessage } from "@chinguya/ui/form-message";
+import type { InquiryEntry } from "@chinguya/types";
+import { faqEntries } from "@/data/faqData";
+import { initialInquiries } from "@/data/inquiryData";
 
 type ContactTab = "faq" | "qna";
 type QnaView = "list" | "write" | "detail";
 
-interface FaqEntry {
-  id: string;
-  question: string;
-  answer: string;
-}
 
-// FAQ 목업 — 기획서(S4-C3)엔 검색·카테고리 분류가 없다고 명시돼 있어 그냥 고정 순서로 나열한다.
-const FAQ_ITEMS: FaqEntry[] = [
-  {
-    id: "faq-1",
-    question: "대여 시간은 언제까지 연장할 수 있나요?",
-    answer:
-      "영업 종료 시간까지 매장에 방문해 반납 전 연장 요청을 주시면 됩니다. 예약된 다음 이용자가 있는 경우 연장이 어려울 수 있어요.",
-  },
-  {
-    id: "faq-2",
-    question: "예약 없이 현장에서 바로 대여할 수 있나요?",
-    answer: "가능합니다. 다만 재고가 남아 있을 때만 현장 대여가 가능해서, 미리 예약해 두시는 걸 권장드려요.",
-  },
-  {
-    id: "faq-3",
-    question: "우천 시에도 자전거 대여가 가능한가요?",
-    answer: "우천 시에는 안전을 위해 자전거 대여가 제한될 수 있어요. 낚싯대는 우천 시에도 정상적으로 대여됩니다.",
-  },
-  {
-    id: "faq-4",
-    question: "결제 수단은 어떤 게 있나요?",
-    answer: "예약 후 안내되는 계좌로 무통장 입금만 가능합니다. 현장 카드 결제는 아직 준비 중이에요.",
-  },
-  {
-    id: "faq-5",
-    question: "여권 정보는 왜 입력해야 하나요?",
-    answer: "예약자 본인 확인을 위해 여권 영문명을 받고 있어요. 대여하실 때 실물 여권을 함께 보여주시면 됩니다.",
-  },
-];
-
-interface QnaEntry {
-  id: string;
-  title: string;
-  content: string;
-  isPublic: boolean;
-  /** 비공개 글만 있음 — 상세를 열람할 때 이 값과 맞는지 확인한다. */
-  pin?: string;
-  /** 없으면 "답변 대기 중"으로 표시 */
-  answer?: string;
-  /** 같은 글 상세 화면에서 이어서 남긴 추가 질문들 — 기획서(S4-C4 상세/작성)처럼 답변을
-   *  보고 나서도 같은 스레드에 바로 새 질문을 남길 수 있게 한다. */
-  followUps?: string[];
-}
-
-const INITIAL_QNA: QnaEntry[] = [
-  {
-    id: "qna-1",
-    title: "대여 취소 시 환불은 언제 되나요?",
-    content: "취소 신청을 했는데 환불은 언제쯤 받을 수 있나요?",
-    isPublic: true,
-    answer: "무통장 입금 취소 건은 확인 후 영업일 기준 3일 이내로 입금하신 계좌로 환불해 드리고 있어요.",
-  },
-  {
-    id: "qna-2",
-    title: "여권 사본도 미리 보내야 하나요?",
-    content: "여권 사본을 미리 이메일로 보내둬야 할까요?",
-    isPublic: false,
-    pin: "1234",
-    answer: "아니요, 예약 확정 안내와 함께 사본 제출 링크를 보내드리니 그때 보내주시면 됩니다.",
-  },
-  {
-    id: "qna-3",
-    title: "자전거 대여 시 헬멧도 포함인가요?",
-    content: "자전거 대여할 때 헬멧도 같이 대여할 수 있나요?",
-    isPublic: true,
-    answer: "네, 전 상품에 헬멧이 기본 포함되어 있어요. 사이즈가 필요하시면 현장에서 요청해 주세요.",
-  },
-  {
-    id: "qna-4",
-    title: "결제 관련 문의",
-    content: "해외에서도 입금(결제)할 수 있는 방법이 있을까요?",
-    isPublic: false,
-    pin: "1234",
-  },
-];
+/** packages/types의 InquiryEntry(S4-C4 문의)를 이 파일 안에서는 짧게 QnaEntry로 부른다. */
+type QnaEntry = InquiryEntry;
 
 /**
  * 고객지원(S4-C3 FAQ / S4-C4 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ와 1:1
@@ -114,9 +39,10 @@ const INITIAL_QNA: QnaEntry[] = [
  */
 export default function ContactPage() {
   const [tab, setTab] = useState<ContactTab>("faq");
-  const [openFaqId, setOpenFaqId] = useState<string | null>(FAQ_ITEMS[0]?.id ?? null);
+  const sortedFaqEntries = [...faqEntries].sort((a, b) => a.order - b.order);
+  const [openFaqId, setOpenFaqId] = useState<string | null>(sortedFaqEntries[0]?.id ?? null);
 
-  const [qnaItems, setQnaItems] = useState<QnaEntry[]>(INITIAL_QNA);
+  const [qnaItems, setQnaItems] = useState<QnaEntry[]>(initialInquiries);
   const [qnaView, setQnaView] = useState<QnaView>("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
@@ -183,6 +109,7 @@ export default function ContactPage() {
       content: writeContent.trim(),
       isPublic: writePublic,
       pin: writePublic ? undefined : writePin.trim(),
+      createdAt: new Date().toISOString(),
     };
     setQnaItems((prev) => [entry, ...prev]);
     resetWriteForm();
@@ -235,7 +162,7 @@ export default function ContactPage() {
               </Title>
 
               <Stack direction="column" gap="sm">
-                {FAQ_ITEMS.map((faq) => {
+                {sortedFaqEntries.map((faq) => {
                   const open = openFaqId === faq.id;
                   return (
                     <Card key={faq.id} padding="sm" tint="primary">

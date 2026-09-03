@@ -32,9 +32,13 @@ export function Tab({ items = [], activeKey, onChange, variant = "underline", cl
       ].join(" ");
     }
     if (variant === "segment") {
+      // "bg-ink"는 라이트 테마 기준 "짙은 잉크색"을 가리키는 이름이지만, 다크 테마 앱(관리자)에서는
+      // --color-ink 자체가 밝은 텍스트색으로 재정의돼 있어서(packages/ui는 앱마다 색 토큰이 다시
+      // 정의되는 걸 전제로 한다) bg-ink를 배경으로 쓰면 흰 텍스트와 거의 같은 밝기가 되어 글자가
+      // 안 보이는 문제가 있었다. 테마와 무관하게 항상 뚜렷한 강조색인 primary-500으로 바꿨다.
       return [
         "flex-1 cursor-pointer rounded-md py-2 text-center text-sm font-medium whitespace-nowrap transition-colors",
-        active ? "bg-ink text-white shadow-sm" : "text-muted hover:text-ink",
+        active ? "bg-primary-500 text-white shadow-sm" : "text-muted hover:text-ink",
       ].join(" ");
     }
     return [

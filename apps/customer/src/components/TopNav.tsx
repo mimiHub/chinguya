@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { href: "/rental", label: "상품" },
   { href: "/mypage", label: "예약" },
   { href: "/profile", label: "내정보" },
-  { href: "/about", label: "회사소개" },
+  { href: "/about", label: "서비스 소개" },
   { href: "/notice", label: "공지사항" },
   { href: "/contact", label: "고객지원" },
 ];

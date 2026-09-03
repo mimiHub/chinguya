@@ -7,8 +7,8 @@ import { Button } from "@chinguya/ui/button";
 
 /**
  * S1 더보기 메뉴. 하단 탭바 4번째 탭 — 예약/상품처럼 이미 자기 탭이 따로 있는 화면 말고,
- * 나머지 관리 기능(자산·재고·계좌/정책·관리자 관리)으로 가는 통로 역할만 한다.
- * 계좌·정책, 관리자 관리는 아직 화면이 없어서 ComingSoon 스텁으로 연결해뒀다.
+ * 나머지 관리 기능(자산·재고·계좌/정책·관리자 관리·여행사·인보이스·문의·FAQ)으로 가는
+ * 통로 역할만 한다.
  */
 const MENU_ITEMS: { label: string; href: string; description: string }[] = [
   { label: "예약 관리", href: "/reservations", description: "예약 목록 조회 · 상태 변경 · 미입금 강제 취소" },
@@ -20,6 +20,8 @@ const MENU_ITEMS: { label: string; href: string; description: string }[] = [
   { label: "관리자 관리", href: "/admins", description: "관리자 계정 추가/삭제, 슈퍼어드민 권한 관리" },
   { label: "여행사 관리", href: "/agencies", description: "여행사(거래처) 등록, 담당자 연락처, 활성/비활성 관리" },
   { label: "인보이스 관리", href: "/invoices", description: "여행사별 인보이스 발행, 정산 여부 확인" },
+  { label: "문의 관리", href: "/inquiries", description: "고객 1:1 문의 확인 및 답변 등록" },
+  { label: "FAQ · 콘텐츠 관리", href: "/content", description: "FAQ 등록/수정/삭제·순서, 랜딩·서비스 소개 콘텐츠 편집" },
 ];
 
 export default function AdminMorePage() {
