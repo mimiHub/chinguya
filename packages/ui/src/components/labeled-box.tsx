@@ -29,7 +29,7 @@ export function LabeledBox({
   children,
 }: LabeledBoxProps) {
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div className={`flex flex-col ${emphasis ? "gap-2" : "gap-1"} ${className}`}>
       {label && (
         <span
           className={`flex items-center gap-1.5 ${emphasis ? "text-base font-bold text-ink" : "text-sm font-medium text-muted"} ${required ? "after:content-['_*'] after:text-error" : ""}`}

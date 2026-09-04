@@ -16,6 +16,7 @@
     "./chip": "./src/components/chip.tsx",
     "./coming-soon": "./src/components/coming-soon.tsx",
     "./confirm-popup": "./src/components/confirm-popup.tsx",
+    "./dropdown": "./src/components/dropdown.tsx",
     "./form-message": "./src/components/form-message.tsx",
     "./hold-timer": "./src/components/hold-timer.tsx",
     "./icon-hamburger": "./src/components/icon-hamburger.tsx",

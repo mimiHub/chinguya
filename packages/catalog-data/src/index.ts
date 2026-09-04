@@ -10,14 +10,15 @@ import type { RentalCategoryKey } from "@chinguya/types";
  * '표출 ON'한 상품이 노출 가능한 수량만큼 나열되는 것 — 쿠팡류 쇼핑몰의 검색 결과 목록과 같은
  * 형태). 여행사앱 예약 화면(S2-G4/G5)의 "가용(할당)"도 같은 여행사 할당 수량을 기준값으로 쓴다.
  *
- * apps/admin/src/data/assetData.ts의 총 보유 대수(totalCount)와 같은 값을 가리키는 사본이다 —
- * 실제로는 관리자의 재고 세팅·할당 세팅(날짜별 Inventory/AgencyAllocation) 결과가 그대로
- * 여기 반영되게 될 자리다. 지금은 날짜 구분 없이 고정된 데모값 하나만 쓴다.
+ * admin의 재고 세팅(apps/admin/src/data/inventoryData.ts, S1-A3 — 기준 보유량/날짜별 조정)과
+ * 같은 값을 가리키는 사본이다 — 실제로는 관리자의 재고 세팅·할당 세팅(날짜별 Inventory/
+ * AgencyAllocation) 결과가 그대로 여기 반영되게 될 자리다. 지금은 날짜 구분 없이 고정된 데모값
+ * 하나만 쓴다.
  */
 export interface ProductStock {
   productId: string;
   category: RentalCategoryKey;
-  /** 총 보유 대수 (admin의 Asset.totalCount와 같은 값) */
+  /** 총 보유 대수 (admin의 기준 보유량/날짜별 재고 세팅과 같은 값) */
   totalCount: number;
   /** 여행사에 할당한 수량 (admin의 여행사 할당 세팅 결과) */
   agencyAllocated: number;

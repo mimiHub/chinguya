@@ -78,3 +78,11 @@ body {
   background: var(--color-bg);
   font-family: var(--font-sans);
 }
+
+/* input[type=date]의 브라우저 기본 달력 아이콘은 color(currentColor)를 안 따르고 항상
+   짙은 색으로 고정되어 있어서, 다크 배경(bg-surface) 위에서 거의 안 보이는 문제가 있었다.
+   color-scheme: dark를 주면 브라우저가 그 아이콘(과 네이티브 날짜 선택 팝업)을 다크 테마에
+   맞는 밝은 색으로 그려준다. */
+input[type="date"] {
+  color-scheme: dark;
+}

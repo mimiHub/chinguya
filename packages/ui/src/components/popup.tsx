@@ -25,7 +25,7 @@ export function Popup({ open, onClose, title, className = "", children }: PopupP
       >
         {title && (
           <div className="mb-6 flex items-center justify-between">
-            <h3>{title}</h3>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
             <span className="cursor-pointer text-lg text-muted hover:text-ink" onClick={onClose}>
               &times;
             </span>
