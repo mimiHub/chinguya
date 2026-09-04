@@ -21,7 +21,8 @@ const toneClass: Record<Tone, string> = {
 };
 
 export interface KvItem {
-  key: string;
+  /** 보통 문자열이지만, 라벨 안에 <Badge /> 등을 끼워 넣어야 할 때는 ReactNode도 가능하다. */
+  key: ReactNode;
   /** 여러 줄 문자열(string[])이거나, <Text /> 같은 컴포넌트 하나(ReactNode)도 넣을 수 있다. */
   value: ReactNode | ReactNode[];
   align?: "right" | "left";

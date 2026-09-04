@@ -4,10 +4,11 @@ import { useMemo, useState } from "react";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Chip } from "@chinguya/ui/chip";
+import { Badge } from "@chinguya/ui/badge";
+import { Kv } from "@chinguya/ui/kv";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
-import { Kv } from "@chinguya/ui/kv";
 import { Toggle } from "@chinguya/ui/toggle";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
@@ -318,7 +319,7 @@ export default function AdminInventoryPage() {
                       되도록 점을 붙였다. */}
                   <Text weight="bold" as="span" className="inline-flex items-center gap-1.5">
                     <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
-                    이날 조정 {adj.tag && <span className="text-muted">[{adj.tag}]</span>}
+                    이날 조정 {adj.tag && <Badge>{adj.tag}</Badge>}
                   </Text>
                   <Text weight="bold" as="span" tone={adj.delta < 0 ? "error" : "success"}>
                     {adj.delta > 0 ? `+${adj.delta}` : adj.delta}
@@ -342,15 +343,27 @@ export default function AdminInventoryPage() {
 
             <Kv
               items={[
-                { key: "그날 총 보유 = 고객 가용", value: `${selectedSnapshot.totalStock}개` },
+                {
+                  key: (
+                    <>
+                      그날 총 보유 = <Badge>고객 가용</Badge>
+                    </>
+                  ),
+                  value: `${selectedSnapshot.totalStock}개`,
+                },
+              ]}
+            />
+
+            <Kv
+              items={[
                 { key: "예약", value: `${selectedSnapshot.reserved}개` },
                 { key: "잔여", value: `${selectedSnapshot.remaining}개` },
               ]}
             />
 
             <Stack justify="between" align="center">
-              <Text variant="sub" as="span">
-                매장 휴무 <span className="text-muted">[전 자산 공통]</span>
+              <Text variant="sub" as="span" className="inline-flex items-center gap-1.5">
+                매장 휴무 <Badge>전 자산 공통</Badge>
               </Text>
               <Toggle on={selectedSnapshot.closed} onChange={handleToggleClosed} />
             </Stack>
