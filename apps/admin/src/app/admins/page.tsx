@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import type { AdminLevel } from "@chinguya/types";
+import type { AdminRole } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Card } from "@chinguya/ui/card";
@@ -18,17 +18,17 @@ import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Alert } from "@chinguya/ui/alert";
 import { adminAccounts, type AdminAccount } from "@/data/authData";
 
-const LEVEL_LABEL: Record<AdminLevel, string> = {
-  admin: "관리자",
-  superadmin: "슈퍼어드민",
+const ROLE_LABEL: Record<AdminRole, string> = {
+  STAFF: "관리자",
+  SUPER_ADMIN: "슈퍼어드민",
 };
 
 /**
  * S0-A5/A6 관리자 관리.
- * 일반 관리자는 조회 전용, 슈퍼어드민만 계정을 추가/삭제할 수 있다는 규칙(packages/types의
- * AdminLevel 주석)이 있지만, 지금은 로그인 세션이 없어서 "현재 내가 슈퍼어드민인지"를 알 방법이
- * 없다 — 그래서 지금은 로그인 여부와 무관하게 등록/삭제 버튼을 그대로 보여준다. 실제 로그인
- * 연동 후에는 여기서 현재 로그인한 계정의 level을 확인해서 버튼을 숨기거나 막아야 한다.
+ * 일반 관리자는 조회 전용, 슈퍼어드민만 계정을 추가/삭제할 수 있다는 규칙이 있고, 이제
+ * useAdminAuth().isSuperAdmin 으로 현재 등급을 알 수 있다 — 다만 등록/삭제 버튼 게이팅은
+ * 다른 쓰기 화면들과 함께 별도 작업으로 미뤄둔 상태다(서버는 이미 403으로 막고 있다).
+ * 계정 CRUD API도 아직 없어서 이 화면은 목 데이터로만 동작한다.
  */
 export default function AdminAccountsPage() {
   const [accounts, setAccounts] = useState<AdminAccount[]>(adminAccounts);
@@ -36,7 +36,7 @@ export default function AdminAccountsPage() {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [level, setLevel] = useState<AdminLevel>("admin");
+  const [role, setRole] = useState<AdminRole>("STAFF");
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminAccount | null>(null);
 
@@ -44,7 +44,7 @@ export default function AdminAccountsPage() {
     setId("");
     setPassword("");
     setName("");
-    setLevel("admin");
+    setRole("STAFF");
     setError(null);
   };
 
@@ -57,7 +57,7 @@ export default function AdminAccountsPage() {
       setError("이미 사용 중인 아이디입니다.");
       return;
     }
-    setAccounts((prev) => [...prev, { id: id.trim(), password, name: name.trim(), level }]);
+    setAccounts((prev) => [...prev, { id: id.trim(), password, name: name.trim(), role }]);
     setPopupOpen(false);
     resetForm();
   };
@@ -96,8 +96,8 @@ export default function AdminAccountsPage() {
               <Stack direction="column" gap="xs">
                 <Stack gap="xs" align="center">
                   <Text weight="bold">{account.name}</Text>
-                  <Badge variant={account.level === "superadmin" ? "primary" : "gray"}>
-                    {LEVEL_LABEL[account.level]}
+                  <Badge variant={account.role === "SUPER_ADMIN" ? "primary" : "gray"}>
+                    {ROLE_LABEL[account.role]}
                   </Badge>
                 </Stack>
                 <Text variant="sub">{account.id}</Text>
@@ -121,9 +121,9 @@ export default function AdminAccountsPage() {
           </LabeledBox>
           <LabeledBox label="권한" required>
             <Chip.List>
-              {(["admin", "superadmin"] as AdminLevel[]).map((key) => (
-                <Chip key={key} on={key === level} onClick={() => setLevel(key)}>
-                  {LEVEL_LABEL[key]}
+              {(["STAFF", "SUPER_ADMIN"] as AdminRole[]).map((key) => (
+                <Chip key={key} on={key === role} onClick={() => setRole(key)}>
+                  {ROLE_LABEL[key]}
                 </Chip>
               ))}
             </Chip.List>

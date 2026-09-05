@@ -1,9 +1,12 @@
+"use client";
+
 import NextLink from "next/link";
 import { Title } from "@chinguya/ui/title";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Text } from "@chinguya/ui/text";
 import { Button } from "@chinguya/ui/button";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
  * S1 더보기 메뉴. 하단 탭바 4번째 탭 — 예약/상품처럼 이미 자기 탭이 따로 있는 화면 말고,
@@ -25,6 +28,8 @@ const MENU_ITEMS: { label: string; href: string; description: string }[] = [
 ];
 
 export default function AdminMorePage() {
+  const { logout } = useAdminAuth();
+
   return (
     <main className="mx-auto max-w-2xl p-6">
       <Title size="md">더보기</Title>
@@ -47,8 +52,7 @@ export default function AdminMorePage() {
         ))}
       </Stack>
 
-      {/* 아직 실제 로그인 세션이 없어서 "로그아웃"은 로그인 화면으로 돌아가는 것으로 대신한다 */}
-      <Button href="/login" fullWidth className="mt-6">
+      <Button onClick={() => void logout()} fullWidth className="mt-6">
         로그아웃
       </Button>
     </main>

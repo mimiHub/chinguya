@@ -1,0 +1,224 @@
+openapi: 3.1.0
+
+# =============================================================================
+# 친구야 — 관리자 대상 Core API 명세 [v0.1]
+#
+# 범위: 관리자 인증(S0-A2 로그인). 관리자 운영 API(자산·재고·상품·예약·인보이스)는
+#       아직 이 문서에 없다 — 구현되는 대로 이 파일에 이어 붙인다.
+#
+# 고객 대상 계약은 chinguya-slice1-openapi.yaml 에 따로 있다. 그 문서는 헤더에서
+# 스스로를 '고객 대상 Core API'로 한정하므로 관리자 계약은 이 파일로 분리한다.
+#
+# 아키텍처: 관리자 앱(Next.js)은 자체 Route Handler(BFF)를 거쳐 이 Core API를
+#           호출한다. Core가 내려준 JWT를 BFF가 자기 오리진 쿠키로 다시 심는다
+#           (Core에는 CORS 설정이 없고 쿠키가 SameSite=Lax라 브라우저 직접 호출 불가).
+#
+# ⚠ 이 문서는 **구현을 역문서화**한 것이다. 통상은 스펙이 먼저이지만(README 참고),
+#   관리자 인증은 백엔드(chinguya-api)에 먼저 구현됐다. 아래 내용은 구현
+#   (admin/auth/AdminAuthController.java, security/SecurityConfig.java,
+#   security/JwtTokenProvider.java)과 1:1로 맞춰 적었다. 이후 변경은 이 문서를
+#   먼저 고치는 정상 순서로 돌아간다.
+#
+# 미확정(TODO 협의):
+#   1. AdminSessionResponse 에 **표시 이름(name) 필드가 없다.** 화면(S0-A2 이후
+#      공통 헤더 드로어)은 지금 loginId 만 보여줄 수 있다. 이름을 노출하려면
+#      admin_account 에 컬럼 추가 + 이 응답 확장이 필요하다.
+#   2. **S0-A1(슈퍼어드민 최초 생성) 플로우가 없다.** 현재는 마이그레이션
+#      V3__admin_auth.sql 의 임시 시드 계정으로 대체 중이며, 그 파일 주석도
+#      운영 배포 전 교체를 경고하고 있다.
+#   3. **관리자 계정 CRUD(S0-A5/A6) API가 없다.** V3 마이그레이션이 범위 밖으로
+#      명시했다. 프론트의 해당 화면은 그때까지 목 데이터로 동작한다.
+#   4. 토큰 만료(4시간) 시 UX가 미정 — 자동 갱신(리프레시 토큰)인지 재로그인인지.
+#      갱신 엔드포인트는 아직 없다.
+#   5. 로그인 실패 횟수 제한·계정 잠금 정책 없음.
+# =============================================================================
+
+info:
+  title: 친구야 관리자 Core API
+  version: 0.1.0
+  description: |
+    관리자(A) 앱이 쓰는 Core API 계약. 현재는 인증만 정의한다.
+
+    **권한 모델** — 서버가 강제한다(SecurityConfig):
+    - `/admin/**` 는 전부 쿠키 인증 필수(로그인 엔드포인트만 예외). 미인증 시 401.
+    - 쓰기 메서드(POST·PUT·PATCH·DELETE)는 **SUPER_ADMIN만** 허용. STAFF가 시도하면 403.
+    - 조회(GET)는 인증된 관리자면 누구나.
+
+    즉 '일반 관리자는 조회 전용, 쓰기는 슈퍼어드민'(와이어프레임 공통 규칙)은
+    프론트 UI가 아니라 **서버가 최종 강제**한다. 프론트의 버튼 숨김은 정합성을
+    맞추는 것일 뿐 보안 경계가 아니다.
+
+servers:
+  - url: https://api.chinguya.co.kr
+    description: 운영(prod)
+  - url: http://localhost:8080
+    description: 로컬 개발
+
+# ⚠ 고객 문서(slice1)의 서버 URL에는 `/v1` 프리픽스가 붙지만 관리자 컨트롤러에는
+#   없다(@RequestMapping("/admin/auth")). 경로를 그대로 복사하지 말 것.
+
+tags:
+  - name: admin-auth
+    description: 관리자 로그인·로그아웃·세션 조회 (S0-A2)
+
+# -----------------------------------------------------------------------------
+paths:
+
+  /admin/auth/login:
+    post:
+      tags: [admin-auth]
+      summary: 관리자 로그인 (S0-A2)
+      description: |
+        아이디·비밀번호로 인증하고 액세스 토큰(JWT)을 **HttpOnly 쿠키로** 발급한다.
+        비밀번호는 BCrypt 해시와 대조한다.
+
+        아이디가 없는 경우와 비밀번호가 틀린 경우 모두 **같은 401
+        (`INVALID_CREDENTIALS`)** 로 응답한다 — 계정 존재 여부가 새지 않게.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: 로그인 성공
+          headers:
+            Set-Cookie:
+              description: |
+                `admin_access_token=<JWT>; HttpOnly; SameSite=Lax; Path=/; Max-Age=<4시간>`
+                `Secure` 는 환경변수(ADMIN_COOKIE_SECURE)로 결정된다 — 운영은 반드시 true.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSessionResponse' }
+        '400':
+          description: loginId·password 누락(검증 실패)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+
+  /admin/auth/logout:
+    post:
+      tags: [admin-auth]
+      summary: 관리자 로그아웃
+      description: 액세스 토큰 쿠키를 Max-Age=0 으로 만료시킨다. 서버는 stateless라 토큰 폐기 목록은 두지 않는다.
+      responses:
+        '204':
+          description: 로그아웃 완료
+          headers:
+            Set-Cookie:
+              description: '`admin_access_token=; Max-Age=0` (쿠키 삭제)'
+              schema: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/auth/me:
+    get:
+      tags: [admin-auth]
+      summary: 현재 로그인 세션 조회
+      description: |
+        쿠키의 JWT를 검증해 현재 관리자 정보를 돌려준다. 화면 재진입·새로고침 때
+        '내가 누구이고 슈퍼어드민인지'를 확인하는 용도.
+      responses:
+        '200':
+          description: 유효한 세션
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSessionResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# -----------------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    adminCookieAuth:
+      type: apiKey
+      in: cookie
+      name: admin_access_token
+      description: |
+        관리자 액세스 토큰(JWT). 클레임 = adminId·loginId·role, 유효 **4시간**.
+
+        ⚠ 고객 문서(chinguya-slice1-openapi.yaml)의 `cookieAuth` 와 **다른 쿠키다**.
+        고객은 `access_token`(30분), 관리자는 `admin_access_token`(4시간).
+        미들웨어·BFF가 쿠키 이름을 혼동하면 인증이 조용히 어긋난다.
+
+  responses:
+    Unauthorized:
+      description: 인증 필요/만료 — 쿠키가 없거나 토큰이 유효하지 않다.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InvalidCredentials:
+      description: 아이디 또는 비밀번호 불일치
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: INVALID_CREDENTIALS
+            message: 아이디 또는 비밀번호가 올바르지 않습니다.
+    Forbidden:
+      description: 권한 부족 — STAFF가 쓰기 메서드를 시도한 경우.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+
+    AdminRole:
+      type: string
+      enum: [SUPER_ADMIN, STAFF]
+      description: |
+        관리자 등급.
+        - `SUPER_ADMIN` — 전체 권한. 쓰기 가능.
+        - `STAFF` — 일반 관리자. **조회 전용**(접객용).
+
+    LoginRequest:
+      type: object
+      required: [loginId, password]
+      properties:
+        loginId:
+          type: string
+          description: 관리자 아이디. admin_account.login_id 와 대조(고유).
+        password:
+          type: string
+          format: password
+          description: 평문 비밀번호. 서버가 BCrypt 해시와 대조한다.
+
+    AdminSessionResponse:
+      type: object
+      required: [adminId, loginId, role, expiresAt]
+      properties:
+        adminId:
+          type: string
+          description: 관리자 PK(숫자지만 문자열로 직렬화된다).
+        loginId: { type: string }
+        role: { $ref: '#/components/schemas/AdminRole' }
+        expiresAt:
+          type: string
+          format: date-time
+          description: 액세스 토큰 만료 시각(UTC). 발급 시점 +4시간.
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            도메인 에러 코드. 인증 범위에서는:
+            - `INVALID_CREDENTIALS` — 아이디 없음 또는 비밀번호 불일치(둘을 구분하지 않는다).
+        message: { type: string }
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              reason: { type: string }
+
+security:
+  - adminCookieAuth: []

@@ -6,8 +6,21 @@
 /** 사용자군 접두어: C=고객, A=관리자, G=여행사 */
 export type UserRole = "customer" | "admin" | "agency";
 
-/** 관리자 권한: 일반 관리자는 조회 전용, 슈퍼어드민만 쓰기 가능 */
-export type AdminLevel = "admin" | "superadmin";
+/**
+ * 관리자 등급: STAFF(일반)는 조회 전용, SUPER_ADMIN만 쓰기 가능.
+ * 값은 Core API 계약(api-spec/openapi/chinguya-admin-api.yaml)의 AdminRole 을 그대로 따른다 —
+ * 서버가 쓰기 메서드를 SUPER_ADMIN으로 제한(403)하므로 프론트가 별도 표기를 쓰면 어긋난다.
+ */
+export type AdminRole = "SUPER_ADMIN" | "STAFF";
+
+/** 관리자 로그인 세션. GET /admin/auth/me · POST /admin/auth/login 응답과 같은 모양. */
+export interface AdminSession {
+  adminId: string;
+  loginId: string;
+  role: AdminRole;
+  /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
+  expiresAt: string;
+}
 
 /**
  * 고객 예약 상태 흐름: 접수 → 완료(입금확인) → 취소요청 → 취소

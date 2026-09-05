@@ -5,12 +5,7 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
-import { adminAccounts } from "@/data/authData";
-
-// 아직 실제 로그인 세션이 없어서(로그인해도 새로고침하면 풀림 — authData.ts 주석 참고),
-// 드로어의 "로그인 정보"는 목업 계정 중 첫 번째를 그대로 보여준다. 실제 세션이 생기면
-// 여기를 로그인한 계정 정보로 교체한다.
-const currentAdmin = adminAccounts[0];
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
  * 모든 관리자 화면 상단에 공통으로 뜨는 헤더. 왼쪽엔 고객 사이트와 같은 나뭇잎 로고(누르면
@@ -20,6 +15,7 @@ const currentAdmin = adminAccounts[0];
  */
 export function TopHeader() {
   const pathname = usePathname();
+  const { session, logout } = useAdminAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // 라우트가 바뀌면 드로어를 자동으로 닫는다(고객앱 TopNav와 동일한 동작).
@@ -69,25 +65,30 @@ export function TopHeader() {
           <IconX size="lg" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)} />
         </div>
 
-        {currentAdmin && (
+        {/* Core API의 세션 응답에는 표시 이름(name)이 없어서 아이디와 등급만 보여준다.
+            이름 노출이 필요해지면 백엔드 응답에 필드를 추가해야 한다(api-spec TODO 1번). */}
+        {session && (
           <div className="flex flex-col gap-1 border-b border-line px-6 py-4">
             <span className="text-xs text-muted">로그인 정보</span>
-            <span className="text-base font-bold">{currentAdmin.name}</span>
+            <span className="text-base font-bold">{session.loginId}</span>
             <span className="text-sm text-muted">
-              {currentAdmin.id} · {currentAdmin.level === "superadmin" ? "슈퍼어드민" : "관리자"}
+              {session.role === "SUPER_ADMIN" ? "슈퍼어드민" : "관리자"}
             </span>
           </div>
         )}
 
         <div className="flex-1" />
 
-        <NextLink
-          href="/login"
-          onClick={() => setMenuOpen(false)}
-          className="border-t border-line px-6 py-4 text-left text-sm text-muted hover:text-ink"
+        <button
+          type="button"
+          onClick={() => {
+            setMenuOpen(false);
+            void logout();
+          }}
+          className="cursor-pointer border-t border-line px-6 py-4 text-left text-sm text-muted hover:text-ink"
         >
           로그아웃
-        </NextLink>
+        </button>
       </div>
     </>
   );
