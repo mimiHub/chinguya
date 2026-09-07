@@ -59,6 +59,10 @@
      살짝 띄워서 흰 글자와의 대비도 확보하고 페이지 배경과도 구분되게 했다. */
   --color-toast-bg: var(--color-gray-300);
 
+  /* Tooltip 배경 — Toast와 같은 이유로 같은 값을 쓴다(공용 기본값은 이 어두운 배경 위에서
+     안 보임). */
+  --color-tooltip-bg: var(--color-gray-300);
+
   /* Input 포커스 테두리 — 다크 배경 위에서 또렷하게 보이도록 화이트로 지정 */
   --color-input-focus: #ffffff;
 
@@ -71,6 +75,14 @@
      gray-300, 글자는 ink로 올려서 눈에 띄게 했다. */
   --color-badge-gray-bg: var(--color-gray-300);
   --color-badge-gray-text: var(--color-ink);
+
+  /* info 상태(Alert) — 공용 기본값은 옅은 회색 배경(#e6e9ec)에 짙은 글자라 라이트 테마 전용이다.
+     이 어두운 배경 위에 그대로 얹으면 다크 UI 한가운데 흰 박스가 붕 뜬 것처럼 보여서(다른 상태
+     success/warning/error는 파스텔 톤이 은은한 색감이라도 남아 어색함이 덜한데, info는 거의
+     무채색 흰 배경이라 유독 튄다), 크롬 다크 모드 정보 배너 톤(옅은 블루 글자 + 짙은 남색 배경)을
+     참고해 이 앱에서만 다시 정의한다. */
+  --color-info: #8ab4f8;
+  --color-info-light: #2b3a4d;
 }
 
 body {
