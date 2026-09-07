@@ -118,6 +118,8 @@
   "116": "@chinguya/api-spec",
   "117": "dropdown.tsx",
   "118": "calendar-icon.tsx",
-  "119": "typescript",
-  "120": "page.tsx"
+  "119": "BottomNav.tsx",
+  "120": "page.tsx",
+  "121": "dropdown.tsx",
+  "122": "typescript"
 }
