@@ -88,6 +88,11 @@
      있었다. Toast는 항상 "어두운 배경 + 흰 글자" pill이어야 하므로 테마와 무관한 전용 색으로 분리. */
   --color-toast-bg: #1c1c1a;
 
+  /* Tooltip 배경 전용 토큰 — Toast와 같은 이유(ink가 다크 테마에서 뒤집히는 문제)로 분리했다.
+     툴팁도 Toast처럼 앱 테마와 무관하게 항상 "어두운 배경 + 흰 글자" 말풍선이어야 한다. 값은
+     Toast와 같지만, 나중에 둘의 색을 따로 바꿀 수 있도록(예: 툴팁만 더 어둡게) 토큰은 분리해 둔다. */
+  --color-tooltip-bg: #1c1c1a;
+
   /* Gray scale */
   --color-gray-0: #ffffff;
   --color-gray-50: #fafafa;

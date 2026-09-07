@@ -165,7 +165,10 @@ export default function CartPage() {
 
       {items.length === 0 ? (
         <Stack direction="column" gap="md" className="mt-8 items-center text-center">
-          <Text tone="secondary">장바구니가 비어 있습니다.</Text>
+          <Card className="w-full">
+            <Text tone="secondary">장바구니가 비어 있습니다.</Text>
+          </Card>
+          <div className="w-full border-t border-line" />
           <NextLink href="/rental">
             <Button>상품 보러가기</Button>
           </NextLink>
