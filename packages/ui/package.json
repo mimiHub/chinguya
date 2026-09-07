@@ -37,7 +37,8 @@
     "./text": "./src/components/text.tsx",
     "./title": "./src/components/title.tsx",
     "./toast": "./src/components/toast.tsx",
-    "./toggle": "./src/components/toggle.tsx"
+    "./toggle": "./src/components/toggle.tsx",
+    "./tooltip": "./src/components/tooltip.tsx"
   },
   "scripts": {
     "lint": "eslint .",
