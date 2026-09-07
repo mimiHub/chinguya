@@ -45,13 +45,24 @@ chinguya/
 
 ```bash
 pnpm install          # 전체 워크스페이스 설치
-pnpm dev              # 세 앱 동시 실행 (turbo)
+pnpm dev              # 세 앱 동시 실행 — 개발(AWS EC2) API를 본다
+pnpm dev:local        # 내 머신의 자바 Core API(:8080)를 본다
+pnpm dev:mock         # Core API 없이 MSW 목으로만 실행
 pnpm --filter @chinguya/customer dev   # 특정 앱만
 
 pnpm build            # 전체 빌드
 pnpm lint             # 전체 lint
 pnpm typecheck        # 전체 타입체크
 ```
+
+## 실행 환경 (local / dev / prod)
+
+환경별 설정은 `env/*.env` 한 곳에 모여 있고 세 앱이 공유한다. 앱 디렉터리에 `.env*` 를 두지 않는다.
+자세한 내용과 운영 배포 명령은 [`env/README.md`](env/README.md) 참고.
+
+브라우저는 Core API를 직접 부르지 않고 항상 자기 오리진의 프록시 라우트(`/api/core/*`)를 거친다
+— 운영의 internal-IP는 브라우저가 접근할 수 없기 때문이다. 따라서 화면 코드에서는
+`createApiClient()` 를 인자 없이 쓰면 되고, Core 주소는 서버에만 존재한다.
 
 ## 앱에서 공용 패키지 사용
 
