@@ -15,6 +15,25 @@ import type { AdminSession } from "@chinguya/types";
 
 const COOKIE_NAME = "admin_access_token";
 
+/**
+ * [퍼블 작업용 임시 우회] Core API(:8080)가 아직 안 떠 있어도 화면 작업을 계속할 수 있게
+ * 하는 로컬 전용 스위치다. 기본값은 꺼짐(false)이라 아무 데도 영향을 주지 않는다.
+ * 켜려면 apps/admin/.env.local 에 ADMIN_MOCK_AUTH=true 를 넣는다 — .env.local은
+ * .gitignore 대상이라 커밋되지 않고, 각자 컴퓨터에만 적용된다. Core API 로그인이 실제로
+ * 연동되면(또는 그 전이라도 실 서버로 테스트하고 싶으면) 이 스위치는 꺼두면 된다.
+ */
+const MOCK_AUTH = process.env.ADMIN_MOCK_AUTH === "true";
+const MOCK_TOKEN = "mock-admin-token";
+
+function mockSession(): AdminSession {
+  return {
+    adminId: "mock-admin",
+    loginId: "admin",
+    role: "SUPER_ADMIN",
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
 function coreBaseUrl(): string {
   const base = process.env.ADMIN_CORE_API_BASE_URL;
   if (!base) {
@@ -35,6 +54,20 @@ function readTokenFromSetCookie(res: Response): string | null {
 /** POST — 로그인. Core에 인증을 위임하고 발급된 토큰을 이 오리진 쿠키로 옮겨 심는다. */
 export async function POST(request: Request) {
   const body = await request.json();
+
+  if (MOCK_AUTH) {
+    // 퍼블 작업용 우회: 아이디/비밀번호를 검증하지 않고 바로 통과시킨다.
+    const session = mockSession();
+    const maxAge = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
+    (await cookies()).set(COOKIE_NAME, MOCK_TOKEN, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge,
+    });
+    return NextResponse.json(session);
+  }
 
   const res = await fetch(`${coreBaseUrl()}/admin/auth/login`, {
     method: "POST",
@@ -76,6 +109,10 @@ export async function GET() {
     return NextResponse.json({ code: "UNAUTHORIZED", message: "로그인이 필요합니다." }, { status: 401 });
   }
 
+  if (MOCK_AUTH) {
+    return NextResponse.json(mockSession());
+  }
+
   const res = await fetch(`${coreBaseUrl()}/admin/auth/me`, {
     headers: { cookie: `${COOKIE_NAME}=${token}` },
     cache: "no-store",
@@ -92,7 +129,7 @@ export async function DELETE() {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
 
-  if (token) {
+  if (token && !MOCK_AUTH) {
     try {
       await fetch(`${coreBaseUrl()}/admin/auth/logout`, {
         method: "POST",

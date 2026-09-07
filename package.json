@@ -9,6 +9,7 @@
     "dev": "turbo run dev",
     "dev:customer": "turbo run dev --filter @chinguya/customer",
     "dev:admin": "turbo run dev --filter @chinguya/admin",
+    "dev:mock": "turbo run dev:mock --filter @chinguya/admin",
     "dev:agency": "turbo run dev --filter @chinguya/agency",
     "wireframe": "http-server -p 3003 -c-1 -o /chinguya-wireframes/",
     "build": "turbo run build",
