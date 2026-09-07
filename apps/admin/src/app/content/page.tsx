@@ -14,6 +14,8 @@ import { IconX } from "@chinguya/ui/icon-x";
 import { Popup } from "@chinguya/ui/popup";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { LabeledBox } from "@chinguya/ui/labeled-box";
+import { Alert } from "@chinguya/ui/alert";
+import { Tooltip } from "@chinguya/ui/tooltip";
 import { Toast } from "@chinguya/ui/toast";
 import { initialFaqEntries } from "@/data/faqData";
 import { introContent, bannerSlides, type BannerSlide } from "@/data/contentData";
@@ -85,6 +87,45 @@ function ImageAttachField({
         </Stack>
       )}
     </LabeledBox>
+  );
+}
+
+/**
+ * 배너 사이즈 권장값 안내. 기본은 사이즈 숫자까지만 보여주고, 우측 상단 +/- 버튼으로 왜 이
+ * 비율이어야 하는지(자르는 기준) 설명을 펼치고 접는다 — 미미님이 사이즈 설명을 더 길게
+ * 고쳐 넣으면서 한 화면에 다 펼쳐두면 모바일에서 너무 길어져 요청받은 대로 바꿨다. 배너
+ * 3개 모두에 공통으로 적용되는 안내라 배너 섹션 맨 위에 한 번만 둔다(탭마다 반복 안 함).
+ */
+function BannerSizeGuide() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Alert status="info" icon={false}>
+      <div className="flex items-start justify-between gap-2">
+        <p>
+          [권장 사이즈] <br />
+          PC: 1920 × 1080px(16:9) <br />
+          모바일: 1080 × 1920px(9:16)
+        </p>
+        <Tooltip label={expanded ? "접기" : "더보기"}>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={expanded ? "접기" : "더보기"}
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-sm font-bold leading-none hover:bg-current/10"
+          >
+            {expanded ? "−" : "+"}
+          </button>
+        </Tooltip>
+      </div>
+      {expanded && (
+        <p>
+          화면을 꽉 채우도록 잘라서 보여주는 방식이라(가운데/위쪽 기준으로 자름), 이 비율과 다르면 중요한 부분이
+          잘릴 수 있어요. PC는 가운데, 모바일은 위쪽을 기준으로 잘리니 핵심 요소는 그 쪽에 배치해 주세요.
+        </p>
+      )}
+    </Alert>
   );
 }
 
@@ -287,6 +328,7 @@ export default function AdminContentPage() {
           <Text variant="sub">
             고객앱 홈 화면 상단에서 자동으로 넘어가는 배너예요. 배너마다 PC용·모바일용 이미지가 따로 필요합니다.
           </Text>
+          <BannerSizeGuide />
 
           <Tab
             variant="segment"
