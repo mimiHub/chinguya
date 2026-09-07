@@ -12,6 +12,7 @@ import { Kv } from "@chinguya/ui/kv";
 import { Button } from "@chinguya/ui/button";
 import { Input } from "@chinguya/ui/input";
 import { FormMessage } from "@chinguya/ui/form-message";
+import { Alert } from "@chinguya/ui/alert";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Toast } from "@chinguya/ui/toast";
 import { StatusBadge } from "@chinguya/ui/badge";
@@ -115,9 +116,11 @@ export default function ProfilePage() {
               {passportError ? (
                 <FormMessage type="error">{passportError}</FormMessage>
               ) : (
-                <FormMessage type="helper">예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.</FormMessage>
+                <Alert status="info" icon={false}>
+                  예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.
+                </Alert>
               )}
-              <Button onClick={handleSavePassportName} align="end">
+              <Button onClick={handleSavePassportName} className="mt-4" fullWidth>
                 저장
               </Button>
             </Stack>
@@ -126,7 +129,7 @@ export default function ProfilePage() {
               <Button variant="outline" fullWidth onClick={handleLogout}>
                 로그아웃
               </Button>
-              <Button variant="text" fullWidth className="text-error" onClick={() => setWithdrawOpen(true)}>
+              <Button fullWidth className="text-error" onClick={() => setWithdrawOpen(true)}>
                 회원 탈퇴
               </Button>
             </div>
@@ -158,7 +161,7 @@ export default function ProfilePage() {
                 })
               )}
             </Stack>
-
+            <div className="border-t border-line" />
             <Button href="/mypage" fullWidth className="mt-4">
               내 예약 전체보기
             </Button>
@@ -193,7 +196,7 @@ export default function ProfilePage() {
                 })
               )}
             </Stack>
-
+            <div className="border-t border-line" />
             <Button href="/cart" fullWidth className="mt-4">
               내 장바구니 전체보기
             </Button>
