@@ -680,18 +680,45 @@
         <div class="abar"><span class="mn">≡</span><span class="ti">FAQ · 콘텐츠</span><span class="sp"></span><span class="btn sm sec">+ FAQ</span></div>
         <div class="card2"><div class="row" style="align-items:center"><span style="color:var(--muted)">⋮⋮</span><div style="flex:1" class="line w7"></div><span class="tag">순서</span></div></div>
         <div class="card2"><div class="row" style="align-items:center"><span style="color:var(--muted)">⋮⋮</span><div style="flex:1" class="line w5"></div><span class="tag">순서</span></div></div>
+        <div class="lbl" style="margin-top:14px">랜딩 히어로 배너 (3개, 탭으로 전환)</div>
+        <div class="note blue" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <span>[권장 사이즈]<br>PC: 1920×1080px(16:9)<br>모바일: 1080×1920px(9:16)</span>
+          <span style="font-weight:700">+</span>
+        </div>
+        <div class="tabs"><span class="on">배너 1</span><span>배너 2</span><span>배너 3</span></div>
+        <div class="card2">
+          <div class="lbl em">제목</div><div class="line w7"></div>
+          <div class="lbl em">부제(선택 입력)</div><div class="line w5"></div>
+          <div class="row" style="margin-top:8px;align-items:start">
+            <div>
+              <div class="lbl em">PC 이미지</div>
+              <div class="imgph wide" style="height:40px"></div>
+              <span class="btn sm sec" style="margin-top:4px">파일 선택</span>
+            </div>
+            <div>
+              <div class="lbl em">모바일 이미지</div>
+              <div class="imgph wide" style="height:40px"></div>
+              <span class="btn sm sec" style="margin-top:4px">파일 선택</span>
+            </div>
+          </div>
+        </div>
+        <div class="note">배너 3장을 한 화면에 다 펼치면 스크롤이 너무 길어져서 <b>탭으로 하나씩만</b> 보여준다(탭 선택 시 그 배너의 제목·부제·이미지만 아래 카드에 표시). 배너마다 <b>PC용·모바일용 이미지가 따로</b> 필요하다(반응형으로 한 장을 늘려 쓰는 게 아니라, 화면 폭에 맞는 이미지를 통째로 다르게 보여주는 방식 — 고객앱 홈 캐러셀과 동일). 이미지는 첨부해서 <b>미리보기</b>까지 가능하지만, 실제 업로드·저장 연동은 아직 없다(새로고침하면 사라짐, 이연).</div>
+        <div class="note blue">이 배너 3장의 값은 <b>여행사 로그인 화면 배경</b>(S2-G1/G2)에도 그대로 쓰인다 — 고객 홈 캐러셀·여행사 로그인 배경·이 편집 화면이 모두 같은 배너 데이터(packages/catalog-data)에서 출발한다. 다만 위 <b>배너 저장</b> 버튼은 아직 실제 저장 연동 전이라, 지금 여기서 고쳐도 두 화면에는 반영되지 않는다(저장 연동 시 자동 반영될 자리).</div>
+        <div class="note">권장 이미지 사이즈 안내는 기본 접힘 — 사이즈 숫자(<b>PC: 1920×1080px(16:9)</b> · <b>모바일: 1080×1920px(9:16)</b>)까지만 보이고, 우측 상단 <b>+</b> 버튼을 누르면 왜 이 비율이어야 하는지(화면을 꽉 채우도록 잘라서 보여주는 방식이라 이 비율과 다르면 중요한 부분이 잘릴 수 있다 — <b>PC는 가운데</b>, <b>모바일은 위쪽</b> 기준으로 잘림) 설명이 펼쳐지고 버튼이 <b>−</b>로 바뀐다. 다시 누르면 접힌다. +/− 버튼에는 <b>더보기/접기</b> 툴팁(마우스 올리면 표시, 키보드로 포커스해도 표시)이 붙어 있다 — 브라우저 기본 툴팁이 아니라 디자인 시스템 전용 <b>Tooltip 컴포넌트</b>(packages/ui/src/components/tooltip.tsx)로, 라이트·다크 테마 어디서든 항상 어두운 말풍선으로 보인다. 실 구현(apps/admin/src/app/content/page.tsx의 BannerSizeGuide) 화면에 그대로 노출됨(실 구현과 동기화).</div>
+        <a class="btn pri">배너 저장</a>
+
         <div class="h s" style="margin:12px 0 6px"></div>
         <div class="card2">랜딩 · 서비스 소개 콘텐츠 편집 <div class="imgph wide" style="margin-top:8px"></div></div>
-        <div class="note blue">FAQ 등록/수정/삭제·노출 순서. 분류·검색 없음. 랜딩/소개 텍스트·이미지 편집.</div>
+        <div class="note blue">FAQ 등록/수정/삭제·노출 순서. 분류·검색 없음. 랜딩 히어로 배너(3장, PC/모바일 이미지 각각) 편집. 소개 텍스트·이미지 편집.</div>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd><b>FAQ·랜딩·서비스 소개</b> 콘텐츠 편집(CMS-lite)</dd>
+          <dt>목적</dt><dd><b>FAQ·랜딩 히어로 배너·서비스 소개</b> 콘텐츠 편집(CMS-lite)</dd>
           <dt>진입</dt><dd>메뉴 → FAQ·콘텐츠</dd>
-          <dt>주요 요소</dt><dd>FAQ 항목(순서 드래그), + FAQ 버튼, 랜딩·소개 콘텐츠 편집 영역</dd>
-          <dt>규칙·로직</dt><dd>FAQ 등록/수정/삭제·<b>노출 순서</b> 관리, <b>분류·검색 없음</b>, 랜딩/소개 텍스트·이미지 편집</dd>
-          <dt>화면 이동</dt><dd>편집 → 고객 FAQ·랜딩·서비스 소개에 반영</dd>
+          <dt>주요 요소</dt><dd>FAQ 항목(순서 드래그), + FAQ 버튼, <b>랜딩 히어로 배너 3장(탭으로 전환)</b> — 탭당 제목·부제(선택 입력)·PC/모바일 이미지 각각 첨부, 서비스 소개 콘텐츠 편집 영역</dd>
+          <dt>규칙·로직</dt><dd>FAQ 등록/수정/삭제·<b>노출 순서</b> 관리, <b>분류·검색 없음</b>. 배너는 <b>3장 고정</b>이며 장마다 <b>PC용·모바일용 이미지가 각각</b> 필요하다(고객앱 홈 캐러셀과 동일 방식) — 3장을 한 화면에 다 펼치면 스크롤이 너무 길어져 <b>탭으로 하나씩만</b> 편집한다. 이미지는 <b>선택 시 미리보기</b>까지만 되고 실제 업로드·저장 연동은 이연 상태. <b>이미지 권장 사이즈</b>: PC 1920×1080px(16:9) · 모바일 1080×1920px(9:16) — 안내는 기본 접힘 상태이며 우측 상단 <b>+</b>/<b>−</b> 버튼으로 펼치고 접는다. 버튼에는 브라우저 기본 툴팁이 아닌 디자인 시스템 <b>Tooltip 컴포넌트</b>(packages/ui)가 붙는다(실 구현 BannerSizeGuide와 동기화). 랜딩/소개 텍스트·이미지 편집</dd>
+          <dt>화면 이동</dt><dd>편집 → 고객 FAQ·랜딩·서비스 소개·<b>여행사 로그인 배경</b>(S2-G1/G2)에 반영</dd>
         </dl>
       </div>
     </div>
