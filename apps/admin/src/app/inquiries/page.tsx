@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import type { InquiryEntry } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Badge } from "@chinguya/ui/badge";
@@ -136,7 +137,7 @@ export default function AdminInquiriesPage() {
           </Card>
         ))}
 
-        {inquiries.length === 0 && <Text variant="sub">접수된 문의가 없습니다.</Text>}
+        {inquiries.length === 0 && <EmptyState>접수된 문의가 없습니다.</EmptyState>}
       </Stack>
 
       <Toast open={toastOpen} onClose={() => setToastOpen(false)} message="답변이 등록되었습니다" />

@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import type { FaqEntry } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Card } from "@chinguya/ui/card";
 import { Tab } from "@chinguya/ui/tab";
 import { Stack } from "@chinguya/ui/stack";
@@ -314,7 +315,7 @@ export default function AdminContentPage() {
               </Card>
             ))}
 
-            {sortedFaqs.length === 0 && <Text variant="sub">등록된 FAQ가 없습니다.</Text>}
+            {sortedFaqs.length === 0 && <EmptyState>등록된 FAQ가 없습니다.</EmptyState>}
           </Stack>
           <Text variant="sub">
             FAQ는 분류·검색 없이 위 순서 그대로 고객앱에 노출됩니다. 항목을 눌러 순서를 바꿀 수 있어요.

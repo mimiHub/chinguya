@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { useParams } from "next/navigation";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Badge } from "@chinguya/ui/badge";
@@ -84,7 +85,7 @@ export default function AdminInvoiceDetailPage() {
             </div>
           ))}
 
-          {lineItems.length === 0 && <Text variant="sub">해당 기간에 예약 내역이 없습니다.</Text>}
+          {lineItems.length === 0 && <EmptyState>해당 기간에 예약 내역이 없습니다.</EmptyState>}
         </Card>
 
         <Kv items={[{ key: "합계(완료 예약 금액 합)", value: `₩ ${invoice.amountKrw.toLocaleString()}` }]} />

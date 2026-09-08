@@ -9,6 +9,7 @@ import { Input } from "@chinguya/ui/input";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { StatusBadge, Badge } from "@chinguya/ui/badge";
 import {
   adminReservations,
@@ -70,7 +71,7 @@ function AdminReservationsPageInner() {
         />
 
         <Stack direction="column" gap="sm">
-          {filtered.length === 0 && <Text variant="sub">해당 상태의 예약이 없습니다.</Text>}
+          {filtered.length === 0 && <EmptyState>해당 상태의 예약이 없습니다.</EmptyState>}
           {filtered.map((r) => (
             <NextLink key={r.id} href={`/reservations/${r.id}`} className="block">
               <Card padding="sm">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import NextLink from "next/link";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Badge } from "@chinguya/ui/badge";
@@ -63,7 +64,7 @@ export default function AdminInvoicesPage() {
             </div>
           ))}
 
-          {activeAgencies.length === 0 && <Text variant="sub">등록된 여행사가 없습니다.</Text>}
+          {activeAgencies.length === 0 && <EmptyState>등록된 여행사가 없습니다.</EmptyState>}
         </Card>
 
         <Text weight="bold" leaf>
@@ -98,7 +99,7 @@ export default function AdminInvoicesPage() {
             </NextLink>
           ))}
 
-          {filteredInvoices.length === 0 && <Text variant="sub">아직 발행된 인보이스가 없습니다.</Text>}
+          {filteredInvoices.length === 0 && <EmptyState>아직 발행된 인보이스가 없습니다.</EmptyState>}
         </Stack>
 
         <NoticeBox tone="gray">
