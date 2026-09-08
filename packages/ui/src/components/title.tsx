@@ -35,6 +35,13 @@ export interface TitleProps {
   weight?: Weight;
   /** true면 제목 앞에 로고 나뭇잎 포인트 아이콘이 붙는다. 아이콘 이미지는 각 앱 public/logo-mb.png 필요. */
   leaf?: boolean;
+  /**
+   * true면 제목 바로 아래에 구분선(border-b border-line)을 붙인다. 원래는 화면마다
+   * <Title leaf>제목</Title> 뒤에 <div className="w-full border-b border-line" />를
+   * 손으로 따로 그려서 썼는데(예: 여행사 "예약 요약" 패널), 화면마다 간격이 제각각이 되기
+   * 쉬워서 Title 자체 옵션으로 흡수했다 — 구분선 유무·간격을 이 컴포넌트가 통일해서 관리한다.
+   */
+  divider?: boolean;
   tone?: Tone;
   className?: string;
   children?: ReactNode;
@@ -57,6 +64,7 @@ export function Title({
   action,
   weight,
   leaf = false,
+  divider = false,
   tone = "default",
   className = "",
   children,
@@ -94,6 +102,7 @@ export function Title({
   const subtitleEl = subtitle && (
     <p className={`mt-1 text-sm font-normal text-muted ${center ? "text-center" : ""}`}>{subtitle}</p>
   );
+  const dividerEl = divider && <div className="mt-2 w-full border-b border-line" />;
 
   if (action) {
     return (
@@ -103,6 +112,7 @@ export function Title({
           {action}
         </div>
         {subtitleEl}
+        {dividerEl}
       </div>
     );
   }
@@ -111,6 +121,7 @@ export function Title({
     <div>
       {titleEl}
       {subtitleEl}
+      {dividerEl}
     </div>
   );
 }
