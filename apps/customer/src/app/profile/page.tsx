@@ -7,6 +7,7 @@ import { Banner } from "@chinguya/ui/banner";
 import { Card } from "@chinguya/ui/card";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Stack } from "@chinguya/ui/stack";
 import { Kv } from "@chinguya/ui/kv";
 import { Button } from "@chinguya/ui/button";
@@ -20,9 +21,11 @@ import { useCart, type CartLine } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { getMember, updatePassportName } from "@/data/memberData";
+import { getIsLoggedIn, logout } from "@/data/authData";
 
-// 미리보기라 너무 길어지지 않게 최근 몇 건만 보여준다 — 전체는 "전체보기" 버튼으로 이동.
-const PREVIEW_COUNT = 3;
+// 미리보기는 최근 1건만 보여준다(2건 이상 나열하지 않음) — 더 보고 싶으면 아래
+// "전체보기" 버튼으로 실제 목록/장바구니 화면으로 유도한다.
+const PREVIEW_COUNT = 1;
 
 function rentalDaysOf(line: CartLine): number {
   const start = new Date(line.useDateStart);
@@ -39,17 +42,17 @@ function lineAmount(line: CartLine): number {
 }
 
 /**
- * 하단 탭 "내정보" — 로그인 기능이 없어서 회원정보 수정 화면(S0-C3)을 그대로 만들 수는
- * 없지만, 로그인이 붙었을 때 개발자가 세션 연동만 하면 되도록 그 화면의 요소(아이디·연결
- * 소셜 읽기 / 여권 영문명 변경·저장 / 로그아웃 / 회원 탈퇴)는 전부 미리 만들어뒀다. 여기에
- * 이 앱 다른 화면(예약 목록·장바구니)의 미리보기도 함께 모아 대시보드 형태로 구성했다.
+ * 하단 탭 "내정보" — 회원정보 수정 화면(S0-C3)에 이 앱 다른 화면(예약 목록·장바구니)의
+ * 미리보기도 함께 모아 대시보드 형태로 구성했다. 로그인 세션은 authData.ts 목업(모듈 변수)
+ * 기준이라 로그아웃 상태에서는 대시보드 대신 "로그인이 필요합니다" 안내만 보여준다.
  *
  * - 계정 정보는 getMember()/updatePassportName()(memberData.ts, 목업 저장소)로 다룬다.
  *   실제로는 로그인 세션의 사용자 계정 API로 대체될 자리다.
- * - 로그아웃·회원 탈퇴는 실제 세션이 없어서 지금은 "그 상태를 흉내만" 낸다 — 확인 팝업 →
- *   토스트 → 홈으로 이동까지는 기획(S0-C3 화면 이동: 로그아웃/탈퇴 → 로그아웃 상태 홈)대로
- *   동작하지만, 진짜로 로그아웃/탈퇴 처리를 하는 API 호출은 없다. TODO: 실제 연동 시
- *   로그아웃은 POST /api/customer/logout, 탈퇴는 DELETE /api/customer/member 호출로 교체.
+ * - 로그인 여부는 getIsLoggedIn()(authData.ts)으로 읽는다. 로그아웃·회원 탈퇴는 logout()을
+ *   호출해 실제로 로그인 상태를 false로 바꾼다 — 확인 팝업 → 토스트 → 홈으로 이동까지는
+ *   기획(S0-C3 화면 이동: 로그아웃/탈퇴 → 로그아웃 상태 홈)대로 동작한다. TODO: 실제 연동
+ *   시 로그아웃은 POST /api/customer/logout, 탈퇴는 DELETE /api/customer/member 호출로
+ *   교체(지금은 목업 세션 플래그만 바꾼다).
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -62,6 +65,8 @@ export default function ProfilePage() {
   const [passportError, setPassportError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+
+  const loggedIn = getIsLoggedIn();
 
   const handleSavePassportName = () => {
     const trimmed = passportName.trim();
@@ -76,16 +81,36 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    // 실제 로그인 세션이 없어서 지금은 홈으로 보내는 것으로 "로그아웃 상태 홈" 이동만 흉내낸다.
+    logout();
     setToastMessage("로그아웃되었습니다");
     router.push("/");
   };
 
   const handleWithdraw = () => {
     setWithdrawOpen(false);
+    logout();
     setToastMessage("회원 탈퇴가 처리되었습니다");
     router.push("/");
   };
+
+  if (!loggedIn) {
+    return (
+      <main>
+        <Banner size="lg" title="계정" image="/banner-store.png" />
+        <div className="mx-auto max-w-2xl p-6">
+          <Card>
+            <Stack direction="column" align="center" gap="sm" className="py-10 text-center">
+              <Title size="md">로그인이 필요합니다</Title>
+              <Text tone="secondary">내정보·예약 내역·장바구니를 보려면 먼저 로그인해 주세요.</Text>
+              <Button href="/login?redirect=/profile" className="mt-2">
+                로그인하러 가기
+              </Button>
+            </Stack>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -140,7 +165,7 @@ export default function ProfilePage() {
 
             <Stack direction="column" gap="xs" className="mt-3">
               {reservations.length === 0 ? (
-                <Text tone="secondary" className="py-4 text-center">아직 예약 내역이 없습니다.</Text>
+                <EmptyState>아직 예약 내역이 없습니다.</EmptyState>
               ) : (
                 reservations.map((reservation) => {
                   const product = findRentalProductById(reservation.productId);

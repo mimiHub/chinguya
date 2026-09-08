@@ -57,8 +57,9 @@ const ICONS: Record<string, ReactNode> = {
  * "예약" 탭은 장바구니(/cart)가 아니라 내 예약 목록(/mypage, 기획서 S1-C4)으로 연결한다 —
  * 장바구니는 예약 흐름(상품상세→날짜선택→"장바구니 담기") 중간 단계라 하단 탭에서 바로
  * 들어가는 진입점이 아니고, /mypage가 실제로 "내 예약" 화면이기 때문이다.
- * "내정보" 탭(/profile, 기획서 S0-C3 회원정보)은 이 앱에 아직 로그인 기능이 없어
- * ComingSoon 스텁으로 연결해뒀다.
+ * "내정보" 탭(/profile, 기획서 S0-C3 회원정보)은 로그인 상태와 무관하게 항상 같은 경로로
+ * 연결한다 — 로그인 여부에 따른 화면 분기(대시보드 / "로그인이 필요합니다" 안내)는
+ * profile/page.tsx 안에서 authData.ts 목업 세션을 보고 스스로 처리한다.
  */
 export function BottomNav() {
   const pathname = usePathname();
