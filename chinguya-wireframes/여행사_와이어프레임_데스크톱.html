@@ -85,6 +85,7 @@
 
 <main>
   <div class="group"><h2>여행사 — 데스크톱</h2><p class="sub">계정 초대 등록 → 예약 → 정산까지.</p><hr></div>
+    <div class="note" style="margin:0 0 20px"><b>공통 UI 변경(2026-09-08)</b> 로그인 이후 화면(대시보드·상품 예약·예약 목록·인보이스) 상단에 햄버거 버튼 + 여행사명 헤더 바 추가 — <b>좌측 메뉴는 항상 고정 노출이 아니라 이 버튼으로 열고 닫는 토글형</b>이며, 접으면 우측 콘텐츠 영역이 그만큼 넓어진다. 표가 비었을 때는 표 헤더는 그대로 두고 <b>표 본문 자리에 '데이터 없음' 메시지를 표시</b>(표 밖에 별도 문구를 붙이지 않음 — 아래 각 화면 노트 참고).</div>
   <div class="stack">
 
     <div class="screen" id="g-invite">
@@ -124,9 +125,10 @@
     <div class="screen" id="g-dash">
       <div class="cap"><span class="id">S2-G3</span><span class="nm">여행사 대시보드</span><span class="dsc">신규 예약 · 오늘 이용자</span></div>
       <div class="win"><div class="cr"><i></i><i></i><i></i><span class="url">friendya.example.com/agency/dashboard</span></div>
+        <div style="height:38px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px"><div style="width:16px;height:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span></div><span style="font-weight:700;font-size:12px">ABC 투어</span></div>
         <div class="app">
-          <div class="aside"><div class="lg">ABC 투어</div>
-            <a class="on">대시보드</a><a>상품 예약</a><a>예약 목록</a><a>인보이스</a><a style="margin-top:18px;color:#9a3b2c">로그아웃</a>
+          <div class="aside" style="padding-top:16px;display:flex;flex-direction:column">
+            <a class="on">대시보드</a><a>상품 예약</a><a>예약 목록</a><a>인보이스</a><a style="margin-top:auto;padding-top:10px;border-top:1px solid var(--line)">로그아웃</a>
           </div>
           <div class="amain">
             <div class="pt">대시보드</div>
@@ -140,6 +142,7 @@
               <tr><td>AG-27070012</td><td>일반 · 1일</td><td>1</td><td>LEE JIWON</td><td><span class="tag g">완료</span></td></tr>
             </table>
             <div class="note">여행사 예약은 상태 단순: <b>예약=즉시 완료 / 취소=즉시</b>. 입금 흐름 없음.</div>
+            <div class="note blue">표가 비어 있으면(오늘 이용 예정 예약 없음) 표 헤더는 유지한 채 <b>본문 자리에</b> '오늘 이용 예정인 예약이 없습니다' 메시지를 표시한다.</div>
           </div>
         </div>
       </div>
@@ -148,8 +151,8 @@
         <dl>
           <dt>목적</dt><dd>신규 예약 현황과 <b>오늘 이용자 명단</b> 확인</dd>
           <dt>진입</dt><dd>로그인 직후, 좌측 사이드바 '대시보드'</dd>
-          <dt>주요 요소</dt><dd>신규 예약 지표 카드, 오늘 이용자 명단 표(예약번호·상품·수량·여권명·상태)</dd>
-          <dt>규칙·로직</dt><dd>여행사 예약은 상태 단순: <b>예약=즉시 완료 / 취소=즉시</b>, 입금 흐름 없음</dd>
+          <dt>주요 요소</dt><dd>상단 헤더(햄버거 토글 + 여행사명), 신규 예약 지표 카드, 오늘 이용자 명단 표(예약번호·상품·수량·여권명·상태)</dd>
+          <dt>규칙·로직</dt><dd>여행사 예약은 상태 단순: <b>예약=즉시 완료 / 취소=즉시</b>, 입금 흐름 없음. 좌측 메뉴는 헤더 햄버거로 열고 닫는 <b>토글형</b>(고정 노출 아님). 표가 비면 헤더는 유지한 채 <b>본문 자리</b>에 '데이터 없음' 메시지 표시</dd>
           <dt>화면 이동</dt><dd>사이드바 → 상품 예약·예약 목록·인보이스</dd>
         </dl>
       </div>
@@ -158,8 +161,9 @@
     <div class="screen" id="g-book">
       <div class="cap"><span class="id">S2-G4/G5</span><span class="nm">상품 조회 · 예약</span><span class="dsc">할당 범위 내</span></div>
       <div class="win"><div class="cr"><i></i><i></i><i></i><span class="url">friendya.example.com/agency/book</span></div>
+        <div style="height:38px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px"><div style="width:16px;height:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span></div><span style="font-weight:700;font-size:12px">ABC 투어</span></div>
         <div class="app">
-          <div class="aside"><div class="lg">ABC 투어</div><a>대시보드</a><a class="on">상품 예약</a><a>예약 목록</a><a>인보이스</a></div>
+          <div class="aside" style="padding-top:16px;display:flex;flex-direction:column"><a>대시보드</a><a class="on">상품 예약</a><a>예약 목록</a><a>인보이스</a></div>
           <div class="amain">
             <div class="pt">상품 예약</div>
             <div style="display:flex;gap:20px">
@@ -181,6 +185,7 @@
                   <a class="btn pri" style="margin-top:8px">예약 (즉시 완료)</a>
                 </div>
                 <div class="note">가용 = <b>여행사 할당 수량</b> 상한. 초과 선택 불가.</div>
+                <div class="note blue">담긴 상품이 없으면 예약 요약 자리에 '담긴 상품이 없습니다' 메시지를 표시하고, 예약(즉시 완료) 버튼은 비활성.</div>
               </div>
             </div>
           </div>
@@ -191,8 +196,8 @@
         <dl>
           <dt>목적</dt><dd>할당 범위 내에서 상품 조회 후 <b>즉시 예약</b></dd>
           <dt>진입</dt><dd>사이드바 '상품 예약'</dd>
-          <dt>주요 요소</dt><dd>이용 날짜, 상품 표(여행사가·가용·수량 스테퍼), 예약 요약·합계, 예약(즉시 완료) CTA</dd>
-          <dt>규칙·로직</dt><dd>가용 = <b>여행사 할당 수량</b> 상한(초과 불가), 예약 가능 기간 <b>오늘 +3일 ~ +3개월</b>, 여행사가 적용</dd>
+          <dt>주요 요소</dt><dd>상단 헤더(햄버거 토글 + 여행사명), 이용 날짜, 상품 표(여행사가·가용·수량 스테퍼), 예약 요약·합계, 예약(즉시 완료) CTA</dd>
+          <dt>규칙·로직</dt><dd>가용 = <b>여행사 할당 수량</b> 상한(초과 불가), 예약 가능 기간 <b>오늘 +3일 ~ +3개월</b>, 여행사가 적용. 좌측 메뉴는 헤더 햄버거로 열고 닫는 <b>토글형</b>. 담긴 상품이 없으면 예약 요약 자리에 '담긴 상품이 없습니다' 표시, CTA 비활성</dd>
           <dt>화면 이동</dt><dd>예약 → 예약 목록/대시보드</dd>
         </dl>
       </div>
@@ -201,8 +206,9 @@
     <div class="screen" id="g-list">
       <div class="cap"><span class="id">S2-G6</span><span class="nm">여행사 예약 목록</span><span class="dsc">즉시 취소</span></div>
       <div class="win"><div class="cr"><i></i><i></i><i></i><span class="url">friendya.example.com/agency/reservations</span></div>
+        <div style="height:38px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px"><div style="width:16px;height:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span></div><span style="font-weight:700;font-size:12px">ABC 투어</span></div>
         <div class="app">
-          <div class="aside"><div class="lg">ABC 투어</div><a>대시보드</a><a>상품 예약</a><a class="on">예약 목록</a><a>인보이스</a></div>
+          <div class="aside" style="padding-top:16px;display:flex;flex-direction:column"><a>대시보드</a><a>상품 예약</a><a class="on">예약 목록</a><a>인보이스</a></div>
           <div class="amain">
             <div class="pt">예약 목록</div>
             <table class="tb">
@@ -212,6 +218,7 @@
               <tr><td>AG-27070005</td><td>2027-07-04</td><td>전기·2일 ×1</td><td>₩15,000</td><td><span class="tag r">취소</span></td><td></td></tr>
             </table>
             <div class="note">취소 = 즉시(재고 즉시 복원). 기본 <b>이용일 3일 전(D-3)까지</b>만 가능하며, 이 기준일은 관리자가 <b>유연 조정</b>(D-2·D-1 등).</div>
+            <div class="note blue">표가 비어 있으면(예약 내역 없음) 표 헤더는 유지한 채 <b>본문 자리에</b> '아직 예약 내역이 없습니다' 메시지를 표시한다.</div>
           </div>
         </div>
       </div>
@@ -220,8 +227,8 @@
         <dl>
           <dt>목적</dt><dd>여행사 예약 내역 조회 및 <b>즉시 취소</b></dd>
           <dt>진입</dt><dd>사이드바 '예약 목록'</dd>
-          <dt>주요 요소</dt><dd>예약 표(예약번호·이용일·상품·수량·금액·상태), 취소 버튼</dd>
-          <dt>규칙·로직</dt><dd>취소 = <b>즉시</b>(재고 즉시 복원), 기본 <b>이용일 3일 전(D-3)까지</b>만 가능, 기준일은 관리자가 <b>유연 조정</b></dd>
+          <dt>주요 요소</dt><dd>상단 헤더(햄버거 토글 + 여행사명), 예약 표(예약번호·이용일·상품·수량·금액·상태), 취소 버튼</dd>
+          <dt>규칙·로직</dt><dd>취소 = <b>즉시</b>(재고 즉시 복원), 기본 <b>이용일 3일 전(D-3)까지</b>만 가능, 기준일은 관리자가 <b>유연 조정</b>. 좌측 메뉴는 헤더 햄버거로 열고 닫는 <b>토글형</b>. 표가 비면 헤더는 유지한 채 <b>본문 자리</b>에 '데이터 없음' 메시지 표시</dd>
           <dt>화면 이동</dt><dd>취소 → 상태 취소로 갱신</dd>
         </dl>
       </div>
@@ -230,8 +237,9 @@
     <div class="screen" id="g-invoice">
       <div class="cap"><span class="id">S2-G7</span><span class="nm">여행사 인보이스</span><span class="dsc">이번달 발행</span></div>
       <div class="win"><div class="cr"><i></i><i></i><i></i><span class="url">friendya.example.com/agency/invoice</span></div>
+        <div style="height:38px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 16px"><div style="width:16px;height:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span><span style="height:2px;background:var(--muted);border-radius:1px"></span></div><span style="font-weight:700;font-size:12px">ABC 투어</span></div>
         <div class="app">
-          <div class="aside"><div class="lg">ABC 투어</div><a>대시보드</a><a>상품 예약</a><a>예약 목록</a><a class="on">인보이스</a></div>
+          <div class="aside" style="padding-top:16px;display:flex;flex-direction:column"><a>대시보드</a><a>상품 예약</a><a>예약 목록</a><a class="on">인보이스</a></div>
           <div class="amain">
             <div class="pt">인보이스 <span class="tag">2027-06 · KRW</span></div>
             <table class="tb">
@@ -242,6 +250,7 @@
               <tr><td colspan="5" style="text-align:right;color:var(--muted)">합계</td><td>₩46,000</td></tr>
             </table>
             <div class="note">인보이스는 <b>매월 1일 전월 기준</b> 발행, <b>KRW·세금 라인 없음</b>. 실제 정산(입금)은 시스템 밖 수동 확인.</div>
+            <div class="note blue">해당 기간 발행 대상 예약이 없으면 표 헤더는 유지한 채 <b>본문 자리에</b> '{기간} 발행 대상 예약이 없습니다' 메시지를 표시하고, 합계 줄은 숨긴다.</div>
           </div>
         </div>
       </div>
@@ -250,8 +259,8 @@
         <dl>
           <dt>목적</dt><dd>월별 <b>인보이스(정산 내역)</b> 확인</dd>
           <dt>진입</dt><dd>사이드바 '인보이스'</dd>
-          <dt>주요 요소</dt><dd>월·통화 표시, 라인아이템 표(일자·예약번호·상품·수량·단가·금액), 합계</dd>
-          <dt>규칙·로직</dt><dd><b>매월 1일 전월 기준</b> 발행, <b>KRW·세금 라인 없음</b>, 실제 정산(입금)은 시스템 밖 <b>수동 확인</b></dd>
+          <dt>주요 요소</dt><dd>상단 헤더(햄버거 토글 + 여행사명), 월·통화 표시, 라인아이템 표(일자·예약번호·상품·수량·단가·금액), 합계</dd>
+          <dt>규칙·로직</dt><dd><b>매월 1일 전월 기준</b> 발행, <b>KRW·세금 라인 없음</b>, 실제 정산(입금)은 시스템 밖 <b>수동 확인</b>. 좌측 메뉴는 헤더 햄버거로 열고 닫는 <b>토글형</b>. 발행 대상이 없으면 표 헤더는 유지한 채 <b>본문 자리</b>에 '데이터 없음' 메시지 표시, 합계 줄은 숨김</dd>
           <dt>화면 이동</dt><dd>(조회 전용)</dd>
         </dl>
       </div>
