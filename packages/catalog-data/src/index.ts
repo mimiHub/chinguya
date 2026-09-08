@@ -1,4 +1,4 @@
-import type { RentalCategoryKey } from "@chinguya/types";
+import type { HeroBannerSlide, RentalCategoryKey } from "@chinguya/types";
 
 /**
  * 상품별 재고 배분 목업 — customer/admin/agency 세 앱이 전부 이 패키지를 가져다 써서 같은
@@ -46,3 +46,39 @@ export function getCustomerExposedQty(productId: string): number {
 export function getAgencyExposedQty(productId: string): number {
   return getProductStock(productId)?.agencyAllocated ?? 0;
 }
+
+
+/**
+ * 랜딩 히어로 배너 3장 — customer(홈 캐러셀)·admin(콘텐츠 관리 편집)·agency(로그인 배경)
+ * 세 앱이 전부 이 배열을 가져다 쓴다(각 앱 안에 따로 복제하지 않는다). 타입은
+ * `packages/types`의 HeroBannerSlide.
+ *
+ * admin의 콘텐츠 관리 화면(S4-A1/A3)이 이 값을 편집하는 화면이지만, 아직 실제 저장 API가
+ * 없어서 admin에서 "저장"해도 여기(파일)까지는 반영되지 않는다 — 지금 당장 보장하는 건
+ * "세 앱이 항상 같은 배너 목록에서 출발한다"는 것까지다. 실제 PUT /api/admin/content/banners
+ * 연동 시 이 배열이 그 응답으로 대체될 자리.
+ */
+export const heroBannerSlides: HeroBannerSlide[] = [
+  {
+    id: "banner-1",
+    title: "따뜻한 순간,\n친구야 카페",
+    subtitle:
+      "일상의 작은 행복을 함께 나누는 공간\n향긋한 커피와 맛있는 디저트,\n그리고 따뜻한 이야기들이 기다리고 있어요.",
+    pcImage: "/banner-pc-1.png",
+    mobileImage: "/banner-mobile-1.png",
+  },
+  {
+    id: "banner-2",
+    title: "해안도로\n자전거 투어",
+    subtitle: "전기자전거 대여 오픈 기념 이벤트",
+    pcImage: "/banner-pc-2.png",
+    mobileImage: "/banner-mobile-2.png",
+  },
+  {
+    id: "banner-3",
+    title: "낚시 체험",
+    subtitle: "주말 한정 특가 진행 중",
+    pcImage: "/banner-pc-3.png",
+    mobileImage: "/banner-mobile-3.png",
+  },
+];

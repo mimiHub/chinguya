@@ -18,47 +18,12 @@ export const introContent: IntroContent = {
 };
 
 /**
- * 랜딩 히어로 배너. 고객앱 홈 화면 캐러셀(apps/customer/src/components/HomeCarousel.tsx의
- * SLIDES)과 같은 3장·같은 문구·같은 이미지 경로로 시작한다 — 실제로는 한 백엔드를 공유해서
- * 여기서 편집하면 고객앱 캐러셀도 그대로 바뀌어야 하지만, 지금은 두 앱이 독립된 프로토타입이라
- * 반영되지 않는다.
- *
- * 배너마다 PC용과 모바일용 이미지가 따로 필요하다 — 반응형으로 한 이미지를 늘리고 줄이는
- * 방식이 아니라, 화면 폭에 맞는 이미지를 통째로 다르게 보여주는 방식이라서다
- * (HomeCarousel.tsx 상단 주석 참고).
+ * 랜딩 히어로 배너. 값 자체(3장·문구·이미지 경로)는 `@chinguya/catalog-data`의
+ * heroBannerSlides가 단일 출처 — customer 홈 캐러셀(HomeCarousel.tsx)과 agency 로그인
+ * 배경(AuthBackgroundSlides.tsx)도 같은 값을 가져다 쓴다. 이 화면에서 편집하는 배열은
+ * 그 초기값을 그대로 복사해온 React state라서, 세 앱이 항상 같은 배너에서 출발하는 건
+ * 보장되지만 실제 저장 API가 아직 없어 여기서 "저장"해도 catalog-data(및 다른 두 앱)에는
+ * 반영되지 않는다 — PUT /api/admin/content/banners 연동 시 그 응답으로 대체될 자리.
  */
-export interface BannerSlide {
-  id: string;
-  title: string;
-  /** 부제. 첫 배너처럼 없을 수도 있다 */
-  subtitle?: string;
-  /** 지금 고객앱에 노출 중인 PC용 이미지 경로(참고용 — 여기서 바꿔도 실제로 반영되지 않음) */
-  pcImage: string;
-  /** 지금 고객앱에 노출 중인 모바일용 이미지 경로(참고용 — 여기서 바꿔도 실제로 반영되지 않음) */
-  mobileImage: string;
-}
-
-export const bannerSlides: BannerSlide[] = [
-  {
-    id: "banner-1",
-    title: "따뜻한 순간,\n친구야 카페",
-    subtitle:
-      "일상의 작은 행복을 함께 나누는 공간\n향긋한 커피와 맛있는 디저트,\n그리고 따뜻한 이야기들이 기다리고 있어요.",
-    pcImage: "/banner-pc-1.png",
-    mobileImage: "/banner-mobile-1.png",
-  },
-  {
-    id: "banner-2",
-    title: "해안도로\n자전거 투어",
-    subtitle: "전기자전거 대여 오픈 기념 이벤트",
-    pcImage: "/banner-pc-2.png",
-    mobileImage: "/banner-mobile-2.png",
-  },
-  {
-    id: "banner-3",
-    title: "낚시 체험",
-    subtitle: "주말 한정 특가 진행 중",
-    pcImage: "/banner-pc-3.png",
-    mobileImage: "/banner-mobile-3.png",
-  },
-];
+export { heroBannerSlides as bannerSlides } from "@chinguya/catalog-data";
+export type { HeroBannerSlide as BannerSlide } from "@chinguya/types";

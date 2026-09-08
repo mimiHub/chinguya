@@ -2,31 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
+import { heroBannerSlides } from "@chinguya/catalog-data";
 
 // PC/모바일용 이미지가 세트로 준비돼 있어서, 화면 폭에 맞는 쪽만 보여준다(참고 사이트와 동일한
 // 방식) — 아래 슬라이드에서 두 버전을 겹쳐놓고 Tailwind 반응형 클래스(md:hidden/hidden md:block)로
-// 하나만 보이게 한다. title/subtitle은 참고 사이트(cafe-rose-one.vercel.app) 홈 히어로 3슬라이드
-// 문구를 그대로 옮겼다.
-const SLIDES = [
-  {
-    pc: "/banner-pc-1.png",
-    mobile: "/banner-mobile-1.png",
-    title: "따뜻한 순간,\n친구야 카페",
-    subtitle: "일상의 작은 행복을 함께 나누는 공간\n향긋한 커피와 맛있는 디저트,\n그리고 따뜻한 이야기들이 기다리고 있어요.",
-  },
-  {
-    pc: "/banner-pc-2.png",
-    mobile: "/banner-mobile-2.png",
-    title: "해안도로\n자전거 투어",
-    subtitle: "전기자전거 대여 오픈 기념 이벤트",
-  },
-  {
-    pc: "/banner-pc-3.png",
-    mobile: "/banner-mobile-3.png",
-    title: "낚시 체험",
-    subtitle: "주말 한정 특가 진행 중",
-  },
-];
+// 하나만 보이게 한다. 슬라이드 목록(이미지·title/subtitle)은 admin 콘텐츠 관리 화면(S4-A1/A3)에서
+// 편집하는 것과 같은 값이라 여기서 하드코딩하지 않고 @chinguya/catalog-data의 heroBannerSlides를
+// 그대로 쓴다 — agency 로그인 배경(AuthBackgroundSlides.tsx)도 같은 배열을 쓴다.
+const SLIDES = heroBannerSlides;
 
 const AUTOPLAY_MS = 5000;
 
@@ -73,8 +56,8 @@ export function HomeCarousel() {
           className={`absolute inset-0 transition-opacity duration-500 ${i === index ? "opacity-100" : "opacity-0"}`}
           aria-hidden={i !== index}
         >
-          <div className="absolute inset-0 bg-cover bg-top md:hidden" style={{ backgroundImage: `url(${s.mobile})` }} />
-          <div className="absolute inset-0 hidden bg-cover bg-center md:block" style={{ backgroundImage: `url(${s.pc})` }} />
+          <div className="absolute inset-0 bg-cover bg-top md:hidden" style={{ backgroundImage: `url(${s.mobileImage})` }} />
+          <div className="absolute inset-0 hidden bg-cover bg-center md:block" style={{ backgroundImage: `url(${s.pcImage})` }} />
         </div>
       ))}
 

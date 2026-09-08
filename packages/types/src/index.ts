@@ -256,3 +256,23 @@ export interface InquiryEntry {
   followUps?: string[];
   createdAt: string;
 }
+
+/**
+ * 랜딩 히어로 배너 한 장(S4-A1/A3 관리자 콘텐츠 관리에서 편집 / 고객앱 홈 캐러셀·여행사앱
+ * 로그인 배경에 노출). 값 자체는 `packages/catalog-data`가 단일 출처로 갖고 있고, 세 앱
+ * (admin/customer/agency) 모두 거기서 읽어온다 — admin에서 이 값을 고치면(실제 저장 연동
+ * 전까지는 그 세션 안에서만) customer 홈 배너와 agency 로그인 배경이 같은 이미지·문구를
+ * 보여주게 된다.
+ *
+ * 배너마다 PC용과 모바일용 이미지가 따로 필요하다 — 반응형으로 한 이미지를 늘리고 줄이는
+ * 방식이 아니라, 화면 폭에 맞는 이미지를 통째로 다르게 보여주는 방식이라서다. 여행사앱은
+ * 데스크톱 전용이라 pcImage만 쓴다.
+ */
+export interface HeroBannerSlide {
+  id: string;
+  title: string;
+  /** 부제. 첫 배너처럼 없을 수도 있다 */
+  subtitle?: string;
+  pcImage: string;
+  mobileImage: string;
+}
