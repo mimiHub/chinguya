@@ -33,7 +33,7 @@ export default function AdminAllocationsPage() {
   const activeAgencies = agencies.filter((a) => a.active);
   const agencyIds = activeAgencies.map((a) => a.id);
 
-  const [assetId, setAssetId] = useState(assets[0]?.id ?? "");
+  const [assetId, setAssetId] = useState(assets[0]?.assetId ?? "");
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
@@ -47,7 +47,7 @@ export default function AdminAllocationsPage() {
     agencies
       .filter((a) => a.active)
       .forEach((agency) => {
-        initial[agency.id] = getAllocatedQty(assets[0]?.id ?? "", agency.id, key);
+        initial[agency.id] = getAllocatedQty(assets[0]?.assetId ?? "", agency.id, key);
       });
     return initial;
   });
@@ -140,7 +140,7 @@ export default function AdminAllocationsPage() {
         <Text weight="bold" leaf>자산 선택</Text>
         <Chip.List scrollArrows>
           {assets.map((asset) => (
-            <Chip key={asset.id} on={asset.id === assetId} onClick={() => handleSelectAsset(asset.id)}>
+            <Chip key={asset.assetId} on={asset.assetId === assetId} onClick={() => handleSelectAsset(asset.assetId)}>
               {asset.name}
             </Chip>
           ))}

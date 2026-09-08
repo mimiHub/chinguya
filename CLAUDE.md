@@ -87,12 +87,30 @@ Slice 1 Core API 계약(엔드포인트·요청/응답 스키마)은 **`packages
 
 ```bash
 pnpm install                          # 전체 설치
-pnpm dev                              # 세 앱 동시 실행
+pnpm dev                              # 세 앱 동시 실행 (개발 = AWS EC2 API)
+pnpm dev:local                        # 로컬 자바 Core API(:8080) 참조
+pnpm dev:mock                         # Core API 없이 MSW 목으로 실행
 pnpm --filter @chinguya/customer dev  # 특정 앱만
 pnpm build                            # 전체 빌드
+pnpm build:prod && pnpm start:prod    # 운영 빌드·기동 (internal-IP)
 pnpm lint                             # 전체 lint
 pnpm typecheck                        # 전체 타입체크
 ```
+
+## ★ 핵심 규칙: 실행 환경 설정은 `env/*.env` 가 단일 출처
+
+`local` / `dev` / `prod` / `mock` 네 환경의 설정은 루트 `env/` 에 한 벌만 둔다. 앱 디렉터리에
+`.env*` 파일을 만들지 않는다. 자세한 내용은 `env/README.md`.
+
+- Core API 주소는 서버 전용 변수 **`CORE_API_BASE_URL`** 하나뿐이고 **오리진만** 담는다
+  (`/v1`, `/admin` 프리픽스는 프록시 라우트가 붙인다).
+- `NEXT_PUBLIC_` 접두사를 Core 주소에 붙이지 않는다 — 빌드 시 클라이언트 번들에 박혀서
+  운영의 internal-IP가 동작하지 않는다.
+- 브라우저는 항상 자기 오리진의 `/api/core/*`(각 앱의 `app/api/core/[...path]/route.ts`,
+  `@chinguya/api-client/core-proxy`)를 거쳐 Core로 간다. 화면 코드는 `createApiClient()` 를
+  인자 없이 쓴다.
+- 새 환경 변수를 추가하면 `turbo.json` 의 `globalEnv` 에도 등록한다. Turbo는 strict 모드라
+  선언하지 않은 변수는 태스크에 전달되지 않는다.
 
 ## 작업 마무리 전 자가 점검
 

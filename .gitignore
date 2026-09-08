@@ -4,6 +4,7 @@ dist/
 .turbo/
 *.log
 .env*.local
+env/*.local.env
 .DS_Store
 coverage/
 graphify-out/cache

@@ -5,7 +5,7 @@
 ## 파일
 
 - `openapi/chinguya-slice1-openapi.yaml` — **고객** 대상 Slice 1 Core API 계약(초안). Redocly lint 통과 기준.
-- `openapi/chinguya-admin-api.yaml` — **관리자** 대상 Core API 계약. 현재는 인증(S0-A2)만. 관리자 운영 API는 구현되는 대로 이어 붙인다.
+- `openapi/chinguya-admin-api.yaml` — **관리자** 대상 Core API 계약. 현재는 인증(S0-A2)과 자산 관리(S1-A2). 나머지 관리자 운영 API는 구현되는 대로 이어 붙인다.
 
 두 문서는 쿠키가 다르다 — 고객 `access_token`(30분) / 관리자 `admin_access_token`(4시간). 경로도 관리자 쪽엔 `/v1` 프리픽스가 없다.
 

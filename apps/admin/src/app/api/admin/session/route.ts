@@ -35,9 +35,9 @@ function mockSession(): AdminSession {
 }
 
 function coreBaseUrl(): string {
-  const base = process.env.ADMIN_CORE_API_BASE_URL;
+  const base = process.env.CORE_API_BASE_URL;
   if (!base) {
-    throw new Error("ADMIN_CORE_API_BASE_URL 환경변수가 없습니다. apps/admin/.env.example 참고.");
+    throw new Error("CORE_API_BASE_URL 환경변수가 없습니다. env/README.md 참고.");
   }
   return base.replace(/\/$/, "");
 }

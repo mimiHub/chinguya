@@ -25,6 +25,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // 세션 API(로그인 자체)와 정적 자원은 제외한다 — 로그인 요청까지 막으면 들어올 길이 없다.
-  matcher: ["/((?!api/admin/session|_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
+  // 세션 API(로그인 자체)·Core 프록시·정적 자원은 제외한다.
+  // 로그인 요청까지 막으면 들어올 길이 없고, API 경로를 /login 으로 리다이렉트하면
+  // fetch 하는 쪽이 401 대신 로그인 HTML을 받아 에러 처리를 못 한다 — 인가는 Core가 한다.
+  matcher: ["/((?!api/admin/session|api/core|_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
 };

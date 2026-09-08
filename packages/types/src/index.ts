@@ -88,14 +88,33 @@ export interface Product {
  * 하나라도 있으면 소프트삭제(deleted 플래그) — 목록 하단에 "삭제됨"으로 노출하고 복원할 수
  * 있다. 활성 자산끼리만 명칭 중복을 검사하므로, 삭제된 자산의 명칭은 새로 등록할 때 재사용
  * 가능하다.
+ *
+ * 필드 구성은 Core API 계약(api-spec/openapi/chinguya-admin-api.yaml 의 Asset 스키마)을
+ * 그대로 따른다 — 계약이 먼저 바뀌고 이 타입이 뒤따른다.
  */
 export interface Asset {
-  id: string;
+  /** 자산 PK. Core는 숫자 PK를 문자열로 직렬화해 내려준다. */
+  assetId: string;
   /** 자산 명칭 (예: "전기자전거", "일반자전거") */
   name: string;
   /** 소프트삭제 플래그. true면 "삭제됨"으로 노출하고 재고 화면 선택기에서는 제외한다(복원 가능). */
-  deleted?: boolean;
+  deleted: boolean;
+  /**
+   * 이 자산을 참조하는 날짜별 재고 레코드가 1건 이상인지. 삭제 모달(A2-M3)이 삭제를
+   * 호출하기 전에 CASE 1(완전 삭제) / CASE 2(소프트삭제) 문구를 고르는 데 쓴다.
+   *
+   * ⚠ 재고 테이블(S1-A3)이 아직 없어 서버가 항상 false로 내려준다 — 그래서 현재
+   * 삭제는 늘 완전 삭제다(api-spec 헤더 TODO 6).
+   */
+  hasInventoryRecords: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** 소프트삭제 시각(ISO). deleted가 false면 null. */
+  deletedAt: string | null;
 }
+
+/** 자산 삭제(A2-M3)가 실제로 어떻게 처리됐는지. 화면은 이 값으로 토스트 문구를 고른다. */
+export type AssetDeletionMode = "HARD" | "SOFT";
 
 /**
  * 2일 대여에서만 선택 가능한 타지역 반납 옵션의 추가요금(KRW). 전 상품 공통 고정값.
