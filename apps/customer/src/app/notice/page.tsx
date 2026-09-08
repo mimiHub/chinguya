@@ -7,6 +7,7 @@ import { Card } from "@chinguya/ui/card";
 import { Badge } from "@chinguya/ui/badge";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Stack } from "@chinguya/ui/stack";
 import { Button } from "@chinguya/ui/button";
 
@@ -100,9 +101,7 @@ export default function NoticePage() {
               </Button>
             </Stack>
           ) : items.length === 0 ? (
-            <Text tone="secondary" className="py-8 text-center">
-              등록된 글이 없습니다.
-            </Text>
+            <EmptyState>등록된 글이 없습니다.</EmptyState>
           ) : (
             <Card padding="sm">
               <Stack direction="column">

@@ -7,6 +7,7 @@ import type { RentalCategoryKey } from "@chinguya/types";
 import { getCustomerExposedQty } from "@chinguya/catalog-data";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Chip } from "@chinguya/ui/chip";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { Banner } from "@chinguya/ui/banner";
@@ -93,11 +94,7 @@ function RentalListContent() {
         </div>
       </div>
 
-      {listings.length === 0 && (
-        <Text tone="secondary" className="mt-6 text-center">
-          해당 분류의 상품이 없습니다.
-        </Text>
-      )}
+      {listings.length === 0 && <EmptyState className="mt-6">해당 분류의 상품이 없습니다.</EmptyState>}
 
       <NoticeBox
         title={

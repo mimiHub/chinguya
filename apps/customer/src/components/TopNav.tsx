@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
+import { getIsLoggedIn, logout } from "@/data/authData";
 
 // PC 상단 네비게이션 전용 메뉴. "메뉴" 탭은 불필요해서 뺐다. "회사소개"·"공지사항"은 한때
 // /news 한 페이지로 합쳐서 칩으로 전환했었는데, 파일이 너무 커져서 다시 각자 대메뉴로 뺐다
@@ -42,8 +43,13 @@ function getScrollThreshold(): number {
  */
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // authData.ts 목업 세션을 렌더링 시점에 그대로 읽는다 — 로그인/로그아웃은 항상 페이지
+  // 이동(router.push)을 동반해서 pathname이 바뀌고, 그때 이 컴포넌트가 다시 렌더링되며
+  // 최신값을 읽는다(memberData.ts 등 다른 목업 저장소와 같은 "이동할 때마다 새로 읽기" 방식).
+  const loggedIn = getIsLoggedIn();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > getScrollThreshold());
@@ -172,38 +178,56 @@ export function TopNav() {
             onClick={() => setMenuOpen(false)}
           />
         </div>
-        <nav className="flex flex-col px-6">
+        <nav className="flex flex-col gap-1 px-4">
           {MOBILE_NAV_ITEMS.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <NextLink
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-1.5 py-4 text-md"
+                className={`flex items-center gap-2 rounded-xl px-4 py-3 text-md transition-colors ${
+                  isActive ? "bg-secondary-800 font-medium text-white" : "text-white/90 hover:bg-white/5"
+                }`}
               >
-                {item.label}
+                {/* 선택된 메뉴에만 로고와 같은 나뭇잎 아이콘을 라벨 앞에 붙여서 표시한다 —
+                    사이드/드로어형 네비게이션(여행사 앱과 통일된 스타일)의 공통 규칙. */}
                 {isActive && (
                   <span
                     aria-hidden="true"
-                    className="h-6 w-6 shrink-0 bg-contain bg-center bg-no-repeat"
+                    className="h-5 w-5 shrink-0 bg-contain bg-center bg-no-repeat"
                     style={{ backgroundImage: "url(/logo-mb.png)" }}
                   />
                 )}
+                {item.label}
               </NextLink>
             );
           })}
         </nav>
 
-        {/* 로그인 기능이 아직 없어서 실제 로그아웃 동작은 없고, 메뉴만 닫는다. 나중에 인증이
-            붙으면 여기서 실제 로그아웃 처리를 하면 된다. */}
+        {/* 로그인 여부에 따라 로그아웃/로그인 버튼을 바꿔 보여준다. 로그아웃을 누르면
+            실제로 세션을 지우고(logout()) 홈으로 이동한다. */}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setMenuOpen(false)}
-          className="border-t border-white/10 px-6 py-4 text-left text-sm text-white/70"
-        >
-          로그아웃
-        </button>
+        {loggedIn ? (
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              setMenuOpen(false);
+              router.push("/");
+            }}
+            className="border-t border-white/10 px-6 py-4 text-left text-sm text-white/70"
+          >
+            로그아웃
+          </button>
+        ) : (
+          <NextLink
+            href="/login"
+            onClick={() => setMenuOpen(false)}
+            className="border-t border-white/10 px-6 py-4 text-left text-sm text-white/70"
+          >
+            로그인
+          </NextLink>
+        )}
       </div>
     </>
   );

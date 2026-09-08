@@ -4,6 +4,7 @@ import { useState } from "react";
 import NextLink from "next/link";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Stack } from "@chinguya/ui/stack";
 import { Tab } from "@chinguya/ui/tab";
 import { StatusBadge } from "@chinguya/ui/badge";
@@ -63,9 +64,9 @@ export default function MyPage() {
       </Stack>
 
       {filtered.length === 0 && (
-        <Text tone="secondary" className="mt-8 text-center">
+        <EmptyState className="mt-8">
           {tab === "all" ? "아직 예약 내역이 없습니다." : "해당 상태의 예약이 없습니다."}
-        </Text>
+        </EmptyState>
       )}      
       </div>
     </main>
