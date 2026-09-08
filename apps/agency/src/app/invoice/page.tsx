@@ -1,8 +1,10 @@
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Badge } from "@chinguya/ui/badge";
 import { Table } from "@chinguya/ui/table";
-import { NoticeBox } from "@chinguya/ui/notice-box";
+import { Stack } from "@chinguya/ui/stack";
+import { Card } from "@chinguya/ui/card";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { listReservations } from "@/data/reservationData";
 
@@ -19,8 +21,9 @@ export default function AgencyInvoicePage() {
   const total = reservations.reduce((sum, r) => sum + r.amountKrw, 0);
 
   return (
-    <main>
-      <Title
+    <main className="flex h-full min-h-0 flex-col">
+      <Stack direction="column" className="min-h-0 flex-1">
+        <Title
         size="md"
         action={
           <Badge variant="gray">
@@ -31,8 +34,9 @@ export default function AgencyInvoicePage() {
         인보이스
       </Title>
 
-      <Table
-        className="mt-4"
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Table
+        className="min-h-0 flex-1 overflow-y-auto"
         columns={[
           { key: "date", label: "일자" },
           { key: "id", label: "예약번호" },
@@ -53,22 +57,16 @@ export default function AgencyInvoicePage() {
             amount: r.amountKrw.toLocaleString(),
           };
         })}
+        emptyMessage={<EmptyState>{period} 발행 대상 예약이 없습니다.</EmptyState>}
       />
+      </Card>
+      </Stack>
 
-      {reservations.length === 0 ? (
-        <Text tone="secondary" className="mt-4">
-          {period} 발행 대상 예약이 없습니다.
-        </Text>
-      ) : (
+      {reservations.length > 0 && (
         <div className="mt-2 flex justify-end pr-2">
           <Text weight="bold">합계 ₩{total.toLocaleString()}</Text>
         </div>
       )}
-
-      <NoticeBox tone="gray" className="mt-6">
-        인보이스는 매월 1일 전월 기준으로 발행됩니다. 통화는 KRW(세금 라인 없음)이며, 실제 정산(입금)은
-        시스템 밖에서 수동으로 확인합니다.
-      </NoticeBox>
     </main>
   );
 }

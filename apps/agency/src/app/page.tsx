@@ -1,10 +1,12 @@
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Table } from "@chinguya/ui/table";
 import { StatusBadge } from "@chinguya/ui/badge";
-import { NoticeBox } from "@chinguya/ui/notice-box";
+import {Card} from "@chinguya/ui/card";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { listReservations } from "@/data/reservationData";
+import { CURRENT_AGENCY } from "@/data/authData";
 
 function todayKey(): string {
   const d = new Date();
@@ -19,21 +21,23 @@ export default function AgencyDashboardPage() {
   const newCount = reservations.filter((r) => r.status === "completed").length;
 
   return (
-    <main>
-      <Title size="md">대시보드</Title>
+    <main className="flex h-full min-h-0 flex-col">
+      <Title size="lg">{CURRENT_AGENCY.name}</Title>
 
-      <div className="mt-4 flex gap-4">
-        <div className="w-40 rounded-lg border border-line p-4">
-          <div className="text-2xl font-bold">{newCount}</div>
-          <div className="text-xs text-muted">신규 예약</div>
+      <div className="mt-4 flex shrink-0 gap-4">
+        <div className="w-40 rounded-lg border border-line bg-surface p-4">
+          <div className="text-2xl font-bold text-center">{newCount}</div>
+          <div className="text-xs text-muted text-center">신규 예약</div>
         </div>
       </div>
 
-      <Text weight="bold" className="mt-6 mb-2">
+      <Text weight="bold" leaf className="mt-6 mb-2 shrink-0">
         오늘 이용자 명단
       </Text>
 
-      <Table
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Table
+        className="min-h-0 flex-1 overflow-y-auto"
         columns={[
           { key: "id", label: "예약번호" },
           { key: "product", label: "상품·옵션" },
@@ -51,17 +55,9 @@ export default function AgencyDashboardPage() {
             status: <StatusBadge status={r.status} />,
           };
         })}
+        emptyMessage={<EmptyState>오늘 이용 예정인 예약이 없습니다.</EmptyState>}
       />
-
-      {todayReservations.length === 0 && (
-        <Text tone="secondary" className="mt-4">
-          오늘 이용 예정인 예약이 없습니다.
-        </Text>
-      )}
-
-      <NoticeBox tone="gray" className="mt-6">
-        여행사 예약은 상태가 단순합니다: 예약 = 즉시 완료 / 취소 = 즉시. 입금 흐름은 없습니다.
-      </NoticeBox>
+      </Card>
     </main>
   );
 }

@@ -3,15 +3,18 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Table } from "@chinguya/ui/table";
 import { Stepper } from "@chinguya/ui/stepper";
 import { Kv } from "@chinguya/ui/kv";
 import { Button } from "@chinguya/ui/button";
+import { Stack } from "@chinguya/ui/stack";
+import { Card } from "@chinguya/ui/card";
 import { Toast } from "@chinguya/ui/toast";
 import { getBookingRows } from "@/data/bookingData";
 import { RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { createReservation } from "@/data/reservationData";
+import { Alert } from "@chinguya/ui/alert";
 
 // 여행사 예약 가능 기간: 오늘 +3일 ~ +3개월 (packages/types의 BOOKING_WINDOW.agency 규칙과 동일)
 const MIN_LEAD_DAYS = 3;
@@ -75,82 +78,97 @@ export default function AgencyBookPage() {
   };
 
   return (
-    <main>
-      <Title size="md">상품 예약</Title>
-
-      <div className="mt-4 flex gap-6">
-        <div className="flex-1">
-          <Text variant="sub" as="span">
-            이용 날짜
-          </Text>
-          <div className="mt-1">
-            <input
-              type="date"
-              value={useDate}
-              min={minSelectableDate()}
-              max={maxSelectableDate()}
-              onChange={(e) => setUseDate(e.target.value)}
-              className="h-10 rounded-md border border-line px-3 text-sm"
-            />
-          </div>
-          <Text variant="sub" className="mt-1.5">
-            여행사 예약 가능: 오늘 +3일 ~ +3개월.
-          </Text>
-
-          <Table
-            className="mt-4"
-            columns={[
-              { key: "product", label: "상품" },
-              { key: "price", label: "여행사가" },
-              { key: "available", label: "가용(할당)" },
-              { key: "qty", label: "수량" },
-            ]}
-            rows={rows.map((row) => ({
-              product: `${row.title} · ${RENTAL_OPTION_LABEL[row.option]}`,
-              price: `₩${row.agencyPrice.toLocaleString()}`,
-              available: row.allocatedQty,
-              qty: (
-                <Stepper
-                  value={qtyByRow[row.id] ?? 0}
-                  min={0}
-                  max={row.allocatedQty}
-                  onChange={(v) => setQty(row.id, v)}
+    <main className="flex h-full min-h-0 flex-col">
+      <Stack direction="column" className="min-h-0 flex-1">
+        <Title size="md">상품 예약</Title>
+        <Stack className="min-h-0 flex-1  flex gap-6">
+          <Stack direction="column" className="min-h-0 flex-1">
+            
+            <Card className="shrink-0">
+              <Stack direction="column" gap="sm">
+                <Title as="label" htmlFor="use-date" size="sm" leaf tone="secondary">
+                이용 날짜
+              </Title>
+              <div>
+                <input
+                  id="use-date"
+                  type="date"
+                  value={useDate}
+                  min={minSelectableDate()}
+                  max={maxSelectableDate()}
+                  onChange={(e) => setUseDate(e.target.value)}
+                  className="h-10 rounded-md border border-line px-3 text-sm"
                 />
-              ),
-            }))}
-          />
-        </div>
+              </div>
+              <Alert status="info" icon={true}>
+                  예약 가능 기간 오늘 +3일 ~ +3개월 입니다.
+              </Alert>
+              </Stack>
+            </Card>
 
-        <div className="w-64 shrink-0">
-          <div className="rounded-lg border border-line p-4">
-            <Text weight="bold" className="mb-2">
-              예약 요약
-            </Text>
+            <Stack className="min-h-0 flex-1">
+              {/* 스크롤은 Card(둥근 모서리+테두리가 있는 바깥 박스)가 아니라 Table 자신의
+                  안쪽(각 없는) div가 담당한다 — overflow-y-auto를 둥근 모서리 요소에 바로
+                  주면 브라우저 스크롤바가 카드 모서리를 파고들어 보이는 문제가 있었다. Card는
+                  overflow-hidden으로 둥근 모양대로 잘라내는 역할만 한다. */}
+              <Card className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+                  <Table
+                    className="min-h-0 flex-1 overflow-y-auto"
+                    columns={[
+                      { key: "product", label: "상품" },
+                      { key: "price", label: "여행사가" },
+                      { key: "available", label: "가용(할당)" },
+                      { key: "qty", label: "수량" },
+                    ]}
+                    rows={rows.map((row) => ({
+                      product: `${row.title} · ${RENTAL_OPTION_LABEL[row.option]}`,
+                      price: `₩${row.agencyPrice.toLocaleString()}`,
+                      available: row.allocatedQty,
+                      qty: (
+                        <Stepper
+                          value={qtyByRow[row.id] ?? 0}
+                          min={0}
+                          max={row.allocatedQty}
+                          onChange={(v) => setQty(row.id, v)}
+                        />
+                      ),
+                    }))}
+                  />
+              </Card>
+              <Stack direction="column" className="min-h-0 w-64 shrink-0">
+              <Card className="flex min-h-0 flex-1 flex-col">
+                <Stack direction="column" justify="between" className="min-h-0 flex-1">
+                   <Stack direction="column" gap="sm" className="min-h-0 overflow-y-auto">
+                    <Title leaf divider size="md">
+                      예약 요약
+                    </Title>
+                    {selectedRows.length === 0 ? (
+                      <EmptyState>담긴 상품이 없습니다.</EmptyState>
+                    ) : (
+                      <Kv
+                        items={[
+                          ...selectedRows.map((row) => ({
+                            key: `${row.title}·${RENTAL_OPTION_LABEL[row.option]} ×${qtyByRow[row.id]}`,
+                            value: `${(row.agencyPrice * (qtyByRow[row.id] ?? 0)).toLocaleString()}`,
+                          })),
+                          { key: "합계", value: `₩${total.toLocaleString()}` },
+                        ]}
+                      />
+                    )}
 
-            {selectedRows.length === 0 ? (
-              <Text variant="sub">담긴 상품이 없습니다.</Text>
-            ) : (
-              <Kv
-                items={[
-                  ...selectedRows.map((row) => ({
-                    key: `${row.title}·${RENTAL_OPTION_LABEL[row.option]} ×${qtyByRow[row.id]}`,
-                    value: `${(row.agencyPrice * (qtyByRow[row.id] ?? 0)).toLocaleString()}`,
-                  })),
-                  { key: "합계", value: `₩${total.toLocaleString()}` },
-                ]}
-              />
-            )}
+                   </Stack>
+                  <Button fullWidth  disabled={!canSubmit} onClick={handleSubmit}>
+                    예약 (즉시 완료)
+                  </Button>
+                </Stack>
+              </Card>          
+              </Stack>
+            </Stack>
+          </Stack>
 
-            <Button fullWidth className="mt-3" disabled={!canSubmit} onClick={handleSubmit}>
-              예약 (즉시 완료)
-            </Button>
-          </div>
-
-          <Text variant="sub" className="mt-3">
-            가용 = 여행사 할당 수량 상한. 초과 선택 불가.
-          </Text>
-        </div>
-      </div>
+          
+        </Stack>
+      </Stack>
 
       <Toast
         open={toastOpen}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Sidebar } from "@/components/Sidebar";
+import { AgencyShell } from "@/components/AgencyShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,10 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="flex-1 p-8">{children}</div>
-        </div>
+        <AgencyShell>{children}</AgencyShell>
       </body>
     </html>
   );

@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
+import { EmptyState } from "@chinguya/ui/empty-state";
 import { Table } from "@chinguya/ui/table";
 import { StatusBadge } from "@chinguya/ui/badge";
 import { Button } from "@chinguya/ui/button";
+import { Card } from "@chinguya/ui/card";
+import { Stack } from "@chinguya/ui/stack";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { NoticeBox } from "@chinguya/ui/notice-box";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { listReservations, updateReservationStatus } from "@/data/reservationData";
 import type { AgencyReservation } from "@chinguya/types";
@@ -35,11 +37,13 @@ export default function AgencyReservationsPage() {
   };
 
   return (
-    <main>
-      <Title size="md">예약 목록</Title>
+    <main className="flex h-full min-h-0 flex-col">
+      <Stack direction="column" className="min-h-0 flex-1">
+        <Title size="md">예약 목록</Title>
 
-      <Table
-        className="mt-4"
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Table
+        className="min-h-0 flex-1 overflow-y-auto"
         columns={[
           { key: "id", label: "예약번호" },
           { key: "useDate", label: "이용일" },
@@ -73,18 +77,10 @@ export default function AgencyReservationsPage() {
               ) : null,
           };
         })}
+        emptyMessage={<EmptyState>아직 예약 내역이 없습니다.</EmptyState>}
       />
-
-      {reservations.length === 0 && (
-        <Text tone="secondary" className="mt-4">
-          아직 예약 내역이 없습니다.
-        </Text>
-      )}
-
-      <NoticeBox tone="gray" className="mt-6">
-        취소 = 즉시(재고 즉시 복원). 기본 이용일 3일 전(D-3)까지만 가능하며, 이 기준일은 관리자가
-        유연 조정할 수 있습니다.
-      </NoticeBox>
+      </Card>
+      </Stack>
 
       <ConfirmPopup
         open={Boolean(cancelTarget)}
