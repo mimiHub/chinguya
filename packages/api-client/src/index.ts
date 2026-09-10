@@ -44,6 +44,9 @@ export interface InventoryDaySnapshot {
   date: string;
   baseline: number;
   totalStock: number;
+  /** 고객 가용에서 빠지는 여행사 할당 합. 여행사 예약 마감(D-3) 뒤면 여행사 예약 수만 남는다. */
+  allocated: number;
+  /** max(totalStock − allocated, 0) */
   customerAvailable: number;
   closed: boolean;
   /** ⚠ 예약 백엔드가 없어 항상 0(api-spec 헤더 TODO 7). */
@@ -55,6 +58,10 @@ export interface InventoryDaySnapshot {
 export interface InventoryAdjustment {
   id: string;
   assetId: string;
+  /** null이면 보유 조정, 값이 있으면 그 여행사의 할당 조정. */
+  agencyId: string | null;
+  /** 할당 조정의 대상 여행사명. 보유 조정이면 null. */
+  agencyName: string | null;
   tag: string;
   delta: number;
   startDate: string;
@@ -68,14 +75,45 @@ export interface InventoryDayDetail {
   date: string;
   baseline: number;
   totalStock: number;
+  allocated: number;
+  /** 여행사 예약 마감(이용일 D-3)이 지나 안 팔린 할당이 고객 가용으로 반환된 날짜인지. */
+  allocationReleased: boolean;
   customerAvailable: number;
   closed: boolean;
   reserved: number;
   remaining: number;
+  /** 그날 할당이 있거나 할당 조정이 걸린 여행사별 줄(등록 순). */
+  allocations: AgencyAllocationLine[];
+  /** 보유 조정과 할당 조정이 섞여 있다 — agencyId로 구분한다. */
   adjustments: InventoryAdjustment[];
 }
 
+export interface AgencyAllocationLine {
+  agencyId: string;
+  agencyName: string;
+  /** 그 날짜에 적용되던 기준 할당 */
+  baseline: number;
+  /** 기준 할당 + 그 여행사 할당 조정 합(0 미만 불가) */
+  allocated: number;
+}
+
+/** 여행사의 "지금"(오늘 기준) 기준 할당 — 기준 카드·A3-M4 모달이 쓴다. */
+export interface AgencyAllocation {
+  agencyId: string;
+  agencyName: string;
+  value: number;
+}
+
+export interface AllocationChangeRequest {
+  agencyId: string;
+  value: number;
+  startDate: string;
+  memo: string;
+}
+
 export interface AdjustmentRequest {
+  /** 대상. null이면 보유 조정, 값이 있으면 그 여행사의 할당 조정. */
+  agencyId: string | null;
   tag: string;
   delta: number;
   startDate: string;
@@ -88,6 +126,8 @@ export interface OverCapacityDate {
   date: string;
   reserved: number;
   totalStockAfter: number;
+  /** 적용 후 여행사 할당 합. totalStockAfter보다 크면 할당 초과. */
+  allocated: number;
 }
 
 export class ApiError extends Error {
@@ -206,10 +246,11 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<AgencyInvitationResult>(`/agencies/${agencyId}/invitations`, { method: "POST" }),
     },
     /**
-     * 날짜별 재고 세팅(S1-A3). 계약: api-spec/openapi/chinguya-admin-api.yaml.
+     * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.
      *
      * preview 계열(previewAdd/previewEdit)은 아무것도 저장하지 않는 계산 전용이라
      * 서버가 슈퍼어드민이 아니어도 부를 수 있게 허용한다. 그 외 쓰기는 슈퍼어드민만.
+     * 할당을 늘리는 쓰기가 할당 합 > 총 보유를 만들면 409(ALLOCATION_EXCEEDS_STOCK).
      */
     inventory: {
       snapshot: (assetId: string, year: number, month: number) =>
@@ -222,6 +263,13 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<{ value: number }>(`/inventory/assets/${assetId}/baseline`, {
           method: "POST",
           body: JSON.stringify({ value, startDate, memo }),
+        }),
+      currentAllocations: (assetId: string) =>
+        request<AgencyAllocation[]>(`/inventory/assets/${assetId}/allocations/current`),
+      changeAllocation: (assetId: string, body: AllocationChangeRequest) =>
+        request<AgencyAllocation[]>(`/inventory/assets/${assetId}/allocations`, {
+          method: "POST",
+          body: JSON.stringify(body),
         }),
       addAdjustment: (assetId: string, body: AdjustmentRequest) =>
         request<InventoryAdjustment>(`/inventory/assets/${assetId}/adjustments`, {

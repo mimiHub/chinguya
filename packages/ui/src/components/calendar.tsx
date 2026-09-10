@@ -27,7 +27,7 @@ export interface CalendarProps {
   days?: CalendarDay[];
   showLegend?: boolean;
   /** "booking"(기본) = 고객 예약 캘린더용 3항목 범례(예약가능/선택/마감·불가).
-   *  "inventory" = 재고 세팅(S1-A3)용 6항목 범례(여유/임박/마감(0)/초과/매장 휴무/재고 조정 있음). */
+   *  "inventory" = 재고 세팅(S1-A3)용 6항목 범례(여유/임박/마감(0)/초과/매장 휴무/조정 있음(보유·할당)). */
   legend?: "booking" | "inventory";
   mode?: "single" | "range";
   selected?: number;
@@ -254,7 +254,7 @@ export function Calendar({
           </span>
           <span>
             <i className="mr-[3px] inline-block h-[5px] w-[5px] rounded-full align-[-1px] bg-error" />
-            재고 조정 있음
+            조정 있음(보유·할당)
           </span>
         </div>
       )}

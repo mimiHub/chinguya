@@ -67,8 +67,6 @@
   .toggle{width:34px;height:19px;border-radius:999px;background:var(--fill);border:1px solid var(--line);position:relative;display:inline-block;vertical-align:middle}
   .toggle::after{content:"";position:absolute;top:1px;left:1px;width:15px;height:15px;border-radius:50%;background:#fff;border:1px solid var(--line)}
   .toggle.on{background:var(--accent);border-color:var(--accent)}.toggle.on::after{left:16px}
-  .stepper{display:inline-flex;align-items:center;gap:8px}
-  .stepper b{width:24px;height:24px;border:1px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--fill);font-weight:400}
   .stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .stat .s{border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center}
   .stat .s .n{font-size:18px;font-weight:700}.stat .s .l{font-size:9px;color:var(--muted)}
@@ -128,7 +126,7 @@
     <a href="#a-login">로그인</a><a href="#a-dash">대시보드</a><a href="#a-asset">자산</a><a href="#a-inv">재고 세팅</a>
     <a href="#a-prod">상품 목록</a><a href="#a-prodedit">상품 등록</a><a href="#a-res">예약 목록</a><a href="#a-resdetail">예약 상세·입금</a>
     <a href="#a-cancel">취소 처리</a><a href="#a-set">계좌·정책</a><a href="#a-admins">관리자 관리</a>
-    <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅</a><a href="#a-invoice">인보이스</a><a href="#a-invoicedetail">인보이스 상세</a>
+    <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅(통합됨)</a><a href="#a-invoice">인보이스</a><a href="#a-invoicedetail">인보이스 상세</a>
     <a href="#a-qna">문의 관리</a><a href="#a-cms">FAQ·콘텐츠</a>
   </nav>
 </header>
@@ -180,7 +178,7 @@
           <dt>목적</dt><dd>운영 현황과 <b>오늘 방문 예약</b>을 한눈에 파악</dd>
           <dt>진입</dt><dd>로그인 직후, 하단 탭 '홈'</dd>
           <dt>주요 요소</dt><dd>지표 카드(신규 예약/입금확인 요청/취소요청), <b>재고 초과 알림 줄</b>, 오늘 방문 예약 목록, 하단 탭</dd>
-          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘') · <b>재고 초과 알림</b> = 그 날짜의 예약 수가 총 보유를 넘은 날(S1-A3에서 재고를 낮춰 발생), 해소될 때까지 상시 노출</dd>
+          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘') · <b>재고 초과 알림</b> = 그 날짜의 예약 수가 총 보유를 넘은 날(S1-A3에서 재고를 낮춰 발생) · 여행사 할당 합이 총 보유를 넘은 날(<b>할당 초과</b>)도 같은 줄에 표시, 해소될 때까지 상시 노출</dd>
           <dt>화면 이동</dt><dd>예약 카드 → 예약 상세, 지표 → 해당 목록, <b>초과 알림 → 재고 세팅(a-inv)</b>의 해당 날짜</dd>
         </dl>
       </div>
@@ -255,46 +253,54 @@
     </div>
 
     <div class="screen" id="a-inv">
-      <div class="cap"><span class="id">S1-A3</span><span class="nm">날짜별 재고 세팅</span><span class="dsc">기준 보유량 · 재고 조정 · 매장 휴무</span></div>
+      <div class="cap"><span class="id">S1-A3</span><span class="nm">날짜별 재고 세팅</span><span class="dsc">기준 보유량 · 여행사 할당 · 재고 조정 · 매장 휴무</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>INVENTORY</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">재고 세팅</span></div>
         <div class="row"><div class="field" style="margin:0">전기 자전거 ▾</div></div>
-        <div class="card2" style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:11px;color:var(--muted)">기준 보유량</span>
-          <span style="font-family:var(--mono);font-size:15px;font-weight:700">5</span>
-          <span style="font-size:10px;color:var(--muted)">대</span>
-          <span class="btn sm" style="margin-left:auto">변경</span>
+        <div class="card2">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--muted)">기준 보유량</span>
+            <span style="font-family:var(--mono);font-size:15px;font-weight:700">5</span>
+            <span style="font-size:10px;color:var(--muted)">대</span>
+            <span class="btn sm" style="margin-left:auto">변경</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+            <span style="font-size:11px;color:var(--muted)">여행사 기준 할당</span>
+            <span style="font-family:var(--mono);font-size:11px">ABC 투어 <b>1</b> · XYZ 투어 <b>1</b></span>
+            <span class="btn sm" style="margin-left:auto">변경</span>
+          </div>
         </div>
-        <div class="note">상단 선택은 <b>자산</b>(상품 아님). 세팅 단위는 <b>자산 × 날짜</b>. <b>기준 보유량</b>은 "지금 우리가 가진 대수"이고, 달력의 각 날짜는 이 값을 <b>상속</b>한다. 예외는 전부 <b>재고 조정</b>으로 건다.</div>
+        <div class="note">상단 선택은 <b>자산</b>(상품 아님). 세팅 단위는 <b>자산 × 날짜</b>. <b>기준 보유량</b>은 "지금 우리가 가진 대수"이고, 달력의 각 날짜는 이 값을 <b>상속</b>한다. 예외는 전부 <b>재고 조정</b>으로 건다. <b>여행사 기준 할당</b>도 같은 방식으로 상속하고, 특정 날짜만 바꿀 땐 재고 조정에서 <b>대상 = 여행사 할당</b>을 고른다. 할당 있는 여행사만 표시.</div>
         <div class="cal dual">
           <div class="m"><span>‹</span><span>2027 · 7월</span><span>›</span></div>
           <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
           <div class="days">
-            <div class="d off"></div><div class="d off"></div><div class="d off"></div>
-            <div class="d ok"><span class="dn">1</span><span class="q">5/5</span></div><div class="d ok"><span class="dn">2</span><span class="q">4/5</span></div><div class="d low adj"><span class="dn">3</span><span class="q">2/3</span></div><div class="d ok adj sel"><span class="dn">4</span><span class="q">4/6</span></div>
-            <div class="d ok adj"><span class="dn">5</span><span class="q">5/6</span></div><div class="d ok adj"><span class="dn">6</span><span class="q">3/3</span></div><div class="d low adj"><span class="dn">7</span><span class="q">1/3</span></div><div class="d ok adj"><span class="dn">8</span><span class="q">3/3</span></div>
-            <div class="d low"><span class="dn">9</span><span class="q">1/5</span></div><div class="d hol"><span class="dn">10</span><span class="q">휴무</span></div><div class="d ok adj"><span class="dn">11</span><span class="q">8/8</span></div><div class="d ok adj"><span class="dn">12</span><span class="q">7/8</span></div>
-            <div class="d ok"><span class="dn">13</span><span class="q">5/5</span></div><div class="d zero"><span class="dn">14</span><span class="q">0/5</span></div><div class="d ok"><span class="dn">15</span><span class="q">3/5</span></div><div class="d ok"><span class="dn">16</span><span class="q">5/5</span></div>
-            <div class="d ok"><span class="dn">17</span><span class="q">5/5</span></div><div class="d ok adj"><span class="dn">18</span><span class="q">6/8</span></div><div class="d low adj"><span class="dn">19</span><span class="q">2/8</span></div><div class="d ok"><span class="dn">20</span><span class="q">5/5</span></div>
-            <div class="d ok"><span class="dn">21</span><span class="q">5/5</span></div><div class="d hol"><span class="dn">22</span><span class="q">휴무</span></div><div class="d ok"><span class="dn">23</span><span class="q">4/5</span></div><div class="d ok"><span class="dn">24</span><span class="q">5/5</span></div>
-            <div class="d ok adj"><span class="dn">25</span><span class="q">8/8</span></div><div class="d ok adj"><span class="dn">26</span><span class="q">3/8</span></div><div class="d ok adj"><span class="dn">27</span><span class="q">4/4</span></div><div class="d over adj"><span class="dn">28</span><span class="q">−1/4</span></div>
-            <div class="d ok adj"><span class="dn">29</span><span class="q">4/4</span></div><div class="d ok adj"><span class="dn">30</span><span class="q">3/4</span></div><div class="d ok adj"><span class="dn">31</span><span class="q">4/4</span></div>
+            <div class="d off"></div><div class="d off"></div><div class="d off"></div><div class="d ok"><span class="dn">1</span><span class="q">3/3</span></div><div class="d ok"><span class="dn">2</span><span class="q">2/3</span></div><div class="d ok adj"><span class="dn">3</span><span class="q">1/1</span></div><div class="d ok adj sel"><span class="dn">4</span><span class="q">2/3</span></div>
+            <div class="d ok adj"><span class="dn">5</span><span class="q">3/4</span></div><div class="d ok adj"><span class="dn">6</span><span class="q">1/1</span></div><div class="d zero adj"><span class="dn">7</span><span class="q">0/1</span></div><div class="d ok adj"><span class="dn">8</span><span class="q">1/1</span></div><div class="d low"><span class="dn">9</span><span class="q">1/3</span></div><div class="d hol"><span class="dn">10</span><span class="q">휴무</span></div><div class="d ok adj"><span class="dn">11</span><span class="q">6/6</span></div>
+            <div class="d ok adj"><span class="dn">12</span><span class="q">5/6</span></div><div class="d ok"><span class="dn">13</span><span class="q">3/3</span></div><div class="d zero"><span class="dn">14</span><span class="q">0/3</span></div><div class="d ok"><span class="dn">15</span><span class="q">2/3</span></div><div class="d ok"><span class="dn">16</span><span class="q">3/3</span></div><div class="d ok"><span class="dn">17</span><span class="q">3/3</span></div><div class="d ok adj"><span class="dn">18</span><span class="q">4/6</span></div>
+            <div class="d low adj"><span class="dn">19</span><span class="q">2/6</span></div><div class="d ok"><span class="dn">20</span><span class="q">3/3</span></div><div class="d ok"><span class="dn">21</span><span class="q">3/3</span></div><div class="d hol"><span class="dn">22</span><span class="q">휴무</span></div><div class="d ok"><span class="dn">23</span><span class="q">2/3</span></div><div class="d ok"><span class="dn">24</span><span class="q">3/3</span></div><div class="d ok adj"><span class="dn">25</span><span class="q">6/6</span></div>
+            <div class="d low adj"><span class="dn">26</span><span class="q">3/6</span></div><div class="d ok adj"><span class="dn">27</span><span class="q">2/2</span></div><div class="d over adj"><span class="dn">28</span><span class="q">−1/2</span></div><div class="d ok adj"><span class="dn">29</span><span class="q">2/2</span></div><div class="d ok adj"><span class="dn">30</span><span class="q">2/2</span></div><div class="d ok adj"><span class="dn">31</span><span class="q">2/2</span></div>
           </div>
-          <div class="callegend"><span><i style="background:#e5efe7"></i>여유</span><span><i style="background:#f6ecd8"></i>임박</span><span><i style="background:#f3e0dd"></i>마감(0)</span><span><i style="background:#f3e0dd;border:1px solid #9a3b2c"></i>초과</span><span><i class="hz"></i>매장 휴무</span><span><i class="dot"></i>재고 조정 있음</span></div>
+          <div class="callegend"><span><i style="background:#e5efe7"></i>여유</span><span><i style="background:#f6ecd8"></i>임박</span><span><i style="background:#f3e0dd"></i>마감(0)</span><span><i style="background:#f3e0dd;border:1px solid #9a3b2c"></i>초과</span><span><i class="hz"></i>매장 휴무</span><span><i class="dot"></i>조정 있음(보유·할당)</span></div>
         </div>
-        <div class="note">셀 숫자 = <b>잔여 / 고객 가용</b>(예: <b>4/6</b> = 6대 중 4대 남음). 색상은 <b>잔여</b> 기준. 우상단 점 = <b>재고 조정</b>이 걸린 날. Slice 1은 할당이 없어 <b>고객 가용 = 그날 총 보유</b>.</div>
+        <div class="note">셀 숫자 = <b>잔여 / 고객 가용</b>(예: <b>2/3</b> = 고객용 3대 중 2대 남음). <b>고객 가용 = 총 보유 − 여행사 할당 합</b>, <b>잔여 = 고객 가용 − 고객 예약</b>. 색상은 <b>잔여</b> 기준. 우상단 점 = <b>재고 조정</b>(보유·할당)이 걸린 날.</div>
         <div class="h s" style="margin:12px 0 6px">7월 4일 (토, 선택)</div>
         <div class="kv"><span class="k">기준 보유량</span><span class="v">5</span></div>
         <div class="kv" style="border:none;padding-bottom:0"><span class="k">이 날 조정 <span class="tag b">임차</span></span><span class="v">+3</span></div>
         <div class="kv"><span class="k" style="padding-left:8px;font-size:10px">주말 임차 · 7~8월 토·일 반복</span><span class="v"><span class="btn sm" style="font-size:9px;padding:2px 8px">수정 · 해제</span></span></div>
         <div class="kv" style="border:none;padding-bottom:0"><span class="k">이 날 조정 <span class="tag y">수리</span></span><span class="v">−2</span></div>
         <div class="kv"><span class="k" style="padding-left:8px;font-size:10px">펑크 2대 · 7/3~7/8</span><span class="v"><span class="btn sm" style="font-size:9px;padding:2px 8px">수정 · 해제</span></span></div>
-        <div class="kv"><span class="k">그날 총 보유 <span class="tag k">= 고객 가용</span></span><span class="v">6</span></div>
-        <div class="kv"><span class="k">예약</span><span class="v">2</span></div>
-        <div class="kv"><span class="k"><b>잔여</b></span><span class="v"><b>4</b></span></div>
+        <div class="kv"><span class="k">그날 총 보유</span><span class="v">6</span></div>
+        <div class="kv" style="border:none;padding-bottom:0"><span class="k">여행사 할당</span><span class="v">3</span></div>
+        <div class="kv" style="border:none;padding-bottom:0"><span class="k" style="padding-left:8px">ABC 투어 <span style="font-size:10px">기준 1 · 조정 +1</span></span><span class="v">2</span></div>
+        <div class="kv" style="border:none;padding-bottom:0"><span class="k" style="padding-left:16px;font-size:10px"><span class="tag g">ABC 투어</span> 단체 추가 · 7/4 하루</span><span class="v"><span class="btn sm" style="font-size:9px;padding:2px 8px">수정 · 해제</span></span></div>
+        <div class="kv"><span class="k" style="padding-left:8px">XYZ 투어 <span style="font-size:10px">기준 1</span></span><span class="v">1</span></div>
+        <div class="kv"><span class="k">고객 가용 <span class="tag k">= 6 − 3</span></span><span class="v">3</span></div>
+        <div class="kv"><span class="k">예약 <span style="font-size:10px">고객 / 여행사</span></span><span class="v">1 / 2</span></div>
+        <div class="kv"><span class="k"><b>잔여</b> <span style="font-size:10px">고객</span></span><span class="v"><b>2</b></span></div>
         <div class="kv" style="border:none"><span class="k">매장 휴무 <span class="tag k">전 자산 공통</span></span><span class="v"><span class="toggle"></span></span></div>
-        <div class="note">한 날짜에 <b>재고 조정이 여러 개 겹칠 수 있고 전부 합산</b>된다(5 +3 −2 = 6). 조정은 <b>각각 개별로 수정·해제</b>하며, 해제하면 그 조정분만 빠진다. 태그(임차·수리)는 <b>메모 앞머리를 자동 표시</b>한 것으로 별도 코드값이 아니다.</div>
-        <div class="note blue">Slice 1은 <b>여행사 할당 = 0</b>으로 저장하므로 <b>고객 가용 = 총 보유</b>이고, 관리자는 숫자를 하나만 다룬다. Slice 2에서 이 자리에 <b>여행사 할당</b> 줄이 추가되고 <b>총 보유 − 할당 = 고객 가용</b>으로 자동 계산된다(스키마 변경 없음).</div>
+        <div class="note">한 날짜에 <b>재고 조정이 여러 개 겹칠 수 있고 전부 합산</b>된다(5 +3 −2 = 6). 조정은 <b>각각 개별로 수정·해제</b>하며, 해제하면 그 조정분만 빠진다. 태그(임차·수리)는 <b>메모 앞머리를 자동 표시</b>한 것으로 별도 코드값이 아니다. 할당 조정은 태그 자리에 <b>대상 여행사</b>를 표시한다.</div>
+        <div class="note blue"><b>여행사 할당 UI</b>(기준 할당 줄 · A3-M4 · 조정 대상 '여행사 할당')는 여행사가 생기는 <b>Slice 2부터</b> 노출. Slice 1은 할당이 없어 <b>고객 가용 = 총 보유</b>. 여행사 예약 마감(<b>이용일 D-3</b>)이 지나면 여행사가 못 판 할당분은 <b>고객 가용으로 자동 반환</b>.</div>
         <div class="row"><span class="btn sec">재고 조정 추가</span><span class="btn pri">저장</span></div>
       </div></div>
 
@@ -318,6 +324,8 @@
         <div class="mdscrim"><div class="md">
           <div class="mdh"><span class="mdt">재고 조정</span><span class="mdc">A3-M2</span></div>
           <div class="mdb">
+            <div class="lbl">대상 <span class="tag k">필수</span></div>
+            <div class="row"><div class="field">보유량 ▾</div><div class="field" style="background:var(--fill);color:var(--muted)">여행사 ▾ <span style="font-size:9px">할당일 때만</span></div></div>
             <div class="lbl">증감 <span class="tag k">필수</span></div>
             <div class="row"><div class="field">− ▾</div><div class="field">2</div></div>
             <div class="lbl">기간 <span class="tag k">필수</span></div>
@@ -325,7 +333,7 @@
             <div class="lbl">요일 지정 <span class="tag k">선택</span></div>
             <div><span class="chip">일</span><span class="chip">월</span><span class="chip">화</span><span class="chip">수</span><span class="chip">목</span><span class="chip">금</span><span class="chip">토</span></div>
             <div class="lbl">메모</div><div class="field">펑크 2대</div>
-            <div class="note" style="margin:8px 0 0"><b>수리·임시 임차 등 일시 변화</b>용. 하루짜리는 <b>시작일 = 종료일</b>, 수리처럼 복귀일을 모르면 <b>종료일 미정</b>으로 열어두고 복귀 시 종료 처리(그 이후 날짜는 기준값 상속으로 복구). 주말 임차처럼 반복되는 건 <b>요일 지정</b>으로 한 번에(예: 7~8월 토·일 +3). <b>조정 하나 = 레코드 하나</b>이며 같은 날에 여러 개가 겹치면 합산된다.</div>
+            <div class="note" style="margin:8px 0 0"><b>수리·임시 임차 등 일시 변화</b>용. 하루짜리는 <b>시작일 = 종료일</b>, 수리처럼 복귀일을 모르면 <b>종료일 미정</b>으로 열어두고 복귀 시 종료 처리(그 이후 날짜는 기준값 상속으로 복구). 주말 임차처럼 반복되는 건 <b>요일 지정</b>으로 한 번에(예: 7~8월 토·일 +3). <b>조정 하나 = 레코드 하나</b>이며 같은 날에 여러 개가 겹치면 합산된다. <b>대상</b>이 <b>보유량</b>이면 총 보유를, <b>여행사 할당</b>이면 고른 여행사의 할당만 증감한다. 할당 대상일 때 <b>할당 합 &gt; 총 보유</b>가 되는 날이 있으면 <b>적용 차단</b>.</div>
           </div>
           <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">적용</span></div>
         </div></div>
@@ -334,20 +342,37 @@
           <div class="mdh"><span class="mdt">재고 초과 경고</span><span class="mdc">A3-M3</span></div>
           <div class="mdb">
             <div class="txt"><b>7월 28일 · 예약 5건 / 총 보유 4대 — 1건 초과</b>입니다.<br>실제 파손·수리는 사실이므로 <b>저장은 허용</b>합니다.</div>
-            <div class="note" style="margin:2px 0 0">저장하면 그 날짜에 <b>'초과' 표시</b>가 붙고 <b>대시보드(S1-A1) 알림</b>에 남는다. 고객앱은 이미 0이라 <b>신규 예약은 유입되지 않으며</b>, 관리자가 개별 연락·취소로 해소한다. 기간을 걸친 조정이면 <b>초과가 생기는 날짜를 모두 나열</b>한다.</div>
+            <div class="note" style="margin:2px 0 0">저장하면 그 날짜에 <b>'초과' 표시</b>가 붙고 <b>대시보드(S1-A1) 알림</b>에 남는다. 고객앱은 이미 0이라 <b>신규 예약은 유입되지 않으며</b>, 관리자가 개별 연락·취소로 해소한다. 기간을 걸친 조정이면 <b>초과가 생기는 날짜를 모두 나열</b>한다. 보유 감소로 <b>여행사 할당 합 &gt; 총 보유</b>가 되는 날(<b>할당 초과</b>)과, 할당을 <b>그 여행사 예약 수보다 낮춘</b> 경우도 이 모달로 경고한다. 할당 초과 날은 고객 가용 0으로 막고, 어느 여행사 할당을 줄일지는 관리자가 판단한다.</div>
           </div>
           <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">초과 감수하고 저장</span></div>
+        </div></div>
+
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">여행사 기준 할당 변경</span><span class="mdc">A3-M4</span></div>
+          <div class="mdb">
+            <div class="lbl">여행사 <span class="tag k">필수</span></div><div class="field">ABC 투어 ▾</div>
+            <div class="lbl">기준 할당 <span class="tag k">필수</span></div>
+            <div class="row" style="align-items:center">
+              <div class="field" style="background:var(--fill);color:var(--ink)">1 <span style="color:var(--muted);font-size:9px">현재 · 수정 불가</span></div>
+              <div style="flex:0 0 auto;font-size:12px;color:var(--muted)">→</div>
+              <div class="field">2 <span style="color:var(--muted);font-size:9px">변경 후</span></div>
+            </div>
+            <div class="lbl">적용 시작일 <span class="tag k">필수</span></div><div class="field">2027-08-01</div>
+            <div class="lbl">메모</div><div class="field">예) 8월 성수기 계약</div>
+            <div class="note" style="margin:8px 0 0"><b>계약 변경 등 영구 변화</b>용. A3-M1과 같은 방식 — 시작일 <b>이후</b> 날짜의 할당 상속값이 바뀌고, <b>과거 날짜와 이미 걸린 할당 조정은 그대로</b>. <b>0</b>으로 두면 그날부터 할당 해제. 할당 합이 총 보유를 넘는 날이 생기면 <b>저장 차단</b>하고 그 날짜를 나열한다.</div>
+          </div>
+          <div class="mdf"><span class="btn sec">취소</span><span class="btn pri">저장</span></div>
         </div></div>
       </div>
 
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>자산별 <b>기준 보유량</b>과 <b>재고 조정·매장 휴무</b>를 달력 뷰로 관리</dd>
+          <dt>목적</dt><dd>자산별 <b>기준 보유량·여행사 할당</b>과 <b>재고 조정·매장 휴무</b>를 달력 뷰로 관리</dd>
           <dt>진입</dt><dd>메뉴 → 재고 세팅 (대시보드의 <b>재고 초과 알림</b>에서도 진입)</dd>
-          <dt>주요 요소</dt><dd><b>자산 선택</b>, 기준 보유량 카드(변경), 달력(잔여/고객 가용 · 여유/임박/마감/초과/휴무 · 재고 조정 있는 날 점 표시), 선택일 상세(기준 보유량 · <b>이 날 조정 N줄</b> · 총 보유 · 예약 · 잔여 · 매장 휴무), 모달 3종 <b>A3-M1 기준 보유량 변경 / A3-M2 재고 조정 / A3-M3 초과 경고</b></dd>
-          <dt>규칙·로직</dt><dd>세팅 단위 = <b>자산 × 날짜</b>(상품 아님) · <b>수량은 이 화면이 단일 소관</b>(S1-A2 자산은 명칭만) · 날짜별 값은 <b>기준 보유량을 상속</b>하고 예외는 <b>재고 조정</b>으로만 건다 · 구매·처분 등 <b>영구 변화는 기준값 변경 + 적용 시작일</b>(A3-M1: 현재값 읽기 전용 + 변경 후 값 2필드), 수리·임차 등 <b>일시 변화는 재고 조정</b>(A3-M2: ±N · 기간(하루는 시작=종료, 수리는 종료일 미정) · 요일 지정 · 메모 1줄) · <b>그날 총 보유 = 기준 보유량 + 그날 걸린 모든 조정의 합</b>, 조정은 <b>개별 수정·해제</b> 가능 · 셀 숫자 = <b>잔여 / 고객 가용</b>, 색상은 잔여 기준 · Slice 1은 <b>할당 0</b>으로 저장해 <b>고객 가용 = 총 보유</b>, Slice 2부터 <b>총 보유 − 여행사 할당 = 고객 가용</b> 자동 · <b>휴무는 매장 전역</b> 플래그(전 자산 공통, 수량 값은 보존한 채 판매만 차단), 자산 하나만 중단은 <b>수량 0</b>으로 표현 · 예약 수보다 낮아지면 <b>경고 후 저장 허용 + '초과' 표시 + 대시보드 알림</b> · <b>소프트 삭제된 자산</b>은 삭제 시점 <b>이후 날짜의 상속을 중단(0)</b>하고 과거 값·예약 이력은 보존, 조회만 가능 · 쓰기는 <b>슈퍼어드민만</b></dd>
-          <dt>화면 이동</dt><dd>자산 선택 → 해당 자산 달력, 기준 보유량 변경 → A3-M1, 재고 조정 추가/조정 줄의 수정 → A3-M2, 저장 시 초과 발생 → A3-M3 (<b>모달만 사용, 화면 전환 없음</b>)</dd>
+          <dt>주요 요소</dt><dd><b>자산 선택</b>, 기준 카드(기준 보유량 · <b>여행사 기준 할당</b>, 각각 변경), 달력(잔여/고객 가용 · 여유/임박/마감/초과/휴무 · 조정(보유·할당) 있는 날 점 표시), 선택일 상세(기준 보유량 · <b>이 날 조정 N줄</b> · 총 보유 · <b>여행사 할당(여행사별 기준·조정)</b> · 고객 가용 · 예약(고객/여행사) · 잔여 · 매장 휴무), 모달 4종 <b>A3-M1 기준 보유량 변경 / A3-M2 재고 조정 / A3-M3 초과 경고 / A3-M4 여행사 기준 할당 변경</b></dd>
+          <dt>규칙·로직</dt><dd>세팅 단위 = <b>자산 × 날짜</b>(상품 아님) · <b>수량은 이 화면이 단일 소관</b>(S1-A2 자산은 명칭만) · 날짜별 값은 <b>기준 보유량을 상속</b>하고 예외는 <b>재고 조정</b>으로만 건다 · 구매·처분 등 <b>영구 변화는 기준값 변경 + 적용 시작일</b>(A3-M1: 현재값 읽기 전용 + 변경 후 값 2필드), 수리·임차 등 <b>일시 변화는 재고 조정</b>(A3-M2: ±N · 기간(하루는 시작=종료, 수리는 종료일 미정) · 요일 지정 · 메모 1줄) · <b>그날 총 보유 = 기준 보유량 + 그날 걸린 모든 조정의 합</b>, 조정은 <b>개별 수정·해제</b> 가능 · 셀 숫자 = <b>잔여 / 고객 가용</b>, 색상은 잔여 기준 · <b>여행사 할당도 같은 방식</b>(구 S2-A4 흡수): 여행사 × 자산별 <b>기준 할당 + 적용 시작일</b>(A3-M4)을 상속, 특정 날짜만은 <b>재고 조정(대상 = 여행사 할당)</b> · <b>그날 여행사 할당 = 기준 할당 + 그 여행사 할당 조정 합</b>, <b>고객 가용 = 총 보유 − 모든 여행사 할당 합</b>, <b>잔여 = 고객 가용 − 고객 예약</b> · 할당 저장 시 <b>할당 합 &gt; 총 보유면 차단</b>, 보유 감소로 넘으면 <b>경고 후 허용 + 고객 가용 0 + '할당 초과' 알림</b>(A3-M3) · 여행사 예약 마감(<b>이용일 D-3</b>) 후 미판매 할당은 <b>고객 가용으로 자동 반환</b> · <b>삭제된 여행사</b>는 삭제 이후 할당 0 · 할당 UI는 <b>Slice 2부터</b>(Slice 1은 할당 없음 → 고객 가용 = 총 보유) · <b>휴무는 매장 전역</b> 플래그(전 자산 공통, 수량 값은 보존한 채 판매만 차단), 자산 하나만 중단은 <b>수량 0</b>으로 표현 · 예약 수보다 낮아지면 <b>경고 후 저장 허용 + '초과' 표시 + 대시보드 알림</b> · <b>소프트 삭제된 자산</b>은 삭제 시점 <b>이후 날짜의 상속을 중단(0)</b>하고 과거 값·예약 이력은 보존, 조회만 가능 · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>화면 이동</dt><dd>자산 선택 → 해당 자산 달력, 기준 보유량 변경 → A3-M1, 여행사 기준 할당 변경 → A3-M4, 재고 조정 추가/조정 줄의 수정 → A3-M2, 저장 시 초과 발생 → A3-M3 (<b>모달만 사용, 화면 전환 없음</b>)</dd>
         </dl>
       </div>
     </div>
@@ -583,23 +608,16 @@
     </div>
 
     <div class="screen" id="a-alloc">
-      <div class="cap"><span class="id">S2-A4</span><span class="nm">날짜별 할당 세팅</span><span class="dsc">여행사 수량</span></div>
+      <div class="cap"><span class="id">S2-A4</span><span class="nm">날짜별 할당 세팅</span><span class="dsc">삭제 · S1-A3로 통합</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>ALLOCATION</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">할당 세팅</span></div>
-        <div class="row"><div class="field" style="margin:0">ABC 투어</div><div class="field" style="margin:0">전기 자전거</div></div>
-        <div class="row" style="margin-top:8px"><div class="field" style="margin:0">2027-07-07</div>
-          <div class="field" style="margin:0;color:var(--ink)"><span class="stepper"><b>−</b> 3 <b>＋</b></span></div></div>
-        <div class="note"><b>할당 단위 = 자산 × 날짜별 수량</b>(S1-A3와 동일 단위). 총 보유 − 할당 = 고객 가용(자동). 총 보유는 S1-A3의 <b>기준 보유량 + 재고 조정</b> 결과값이며, <b>할당 합계가 총 보유를 넘지 않도록 방어</b>한다. 여행사 예약기간 <b>+3일 ~ +3개월</b>.</div>
-        <a class="btn pri">저장</a>
+        <div class="note">이 화면은 <b>삭제</b>. 여행사 할당은 <b>S1-A3 재고 세팅</b>에서 보유량과 같은 방식(<b>여행사 기준 할당 + 재고 조정</b>)으로 관리한다. 입력 창구를 하나로 두기 위함. 메뉴에서도 제거.</div>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd>여행사별·날짜별 <b>재고 할당 수량</b> 세팅</dd>
-          <dt>진입</dt><dd>메뉴 → 할당 세팅</dd>
-          <dt>주요 요소</dt><dd>여행사·<b>자산</b>·날짜 선택, 수량 스테퍼, 저장</dd>
-          <dt>규칙·로직</dt><dd>할당 단위 = <b>자산 × 날짜별 수량</b>(S1-A3와 동일 단위), <b>총 보유 − 할당 = 고객 가용</b>(자동) · 총 보유는 S1-A3의 <b>기준 보유량 + 재고 조정</b> 결과값이며 <b>할당 합계가 총 보유를 넘지 않도록 방어</b> 필요, 여행사 예약기간 <b>+3일 ~ +3개월</b></dd>
-          <dt>화면 이동</dt><dd>저장 → 재고 세팅·여행사 예약에 반영</dd>
+          <dt>상태</dt><dd><b>삭제 · S1-A3로 통합</b>(메뉴 제거)</dd>
+          <dt>규칙·로직</dt><dd>할당 규칙은 전부 <b>S1-A3</b> 참조(여행사 기준 할당 A3-M4 · 재고 조정 대상 '여행사 할당') · 여행사 예약기간 <b>+3일 ~ +3개월</b>은 그대로</dd>
         </dl>
       </div>
     </div>

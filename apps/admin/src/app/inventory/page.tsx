@@ -21,6 +21,8 @@ import {
   createApiClient,
   ApiError,
   type AdjustmentRequest,
+  type AgencyAllocation,
+  type InventoryAdjustment,
   type InventoryDaySnapshot,
   type InventoryDayDetail,
   type OverCapacityDate,
@@ -41,17 +43,20 @@ function errorMessage(err: unknown, fallback: string): string {
 /**
  * S1-A3 날짜별 재고 세팅.
  * 자산(전기자전거/일반자전거/일반낚시대/릴낚시대)을 고른 뒤 캘린더에서 날짜를 하나 선택하면,
- * 그날의 재고 상세(기준 보유량·조정 내역·총 보유·예약·잔여·매장 휴무)를 확인·조정한다. 총 보유는
- * 더 이상 직접 입력하는 숫자가 아니라 "기준 보유량 + 그날 걸리는 조정 합계"로 계산된다.
+ * 그날의 재고 상세(기준 보유량·조정 내역·총 보유·여행사 할당·고객 가용·예약·잔여·매장 휴무)를
+ * 확인·조정한다. 총 보유는 직접 입력하는 숫자가 아니라 "기준 보유량 + 그날 걸리는 보유 조정 합계"로,
+ * 여행사 할당은 "여행사 기준 할당 + 그 여행사 할당 조정 합계"로 계산된다(구 S2-A4 할당 세팅을 흡수).
+ * 고객 가용 = 총 보유 − 여행사 할당 합(0 미만 불가)이고, 여행사 예약 마감(이용일 D-3)이 지나면 안
+ * 팔린 할당은 고객 가용으로 반환된다 — 계산은 전부 서버가 하고 이 화면은 결과만 그린다.
  *
  * Core API(GET/POST/PUT/DELETE /admin/inventory/**)에 실연동돼 있다 — 계약은
  * packages/api-spec/openapi/chinguya-admin-api.yaml. 자산 선택기는 자산 관리(S1-A2)와
  * 동일한 /admin/assets 목록을 그대로 쓴다.
  *
- * ⚠ "예약" 수치는 고객 예약 백엔드가 아직 없어 서버가 항상 0을 내려준다 — 그래서 재고
- * 조정 저장 시 "초과 경고"(A3-M3) 모달은 배관은 남아 있지만 지금은 절대 뜨지 않는다.
+ * ⚠ "예약" 수치는 고객·여행사 예약 백엔드가 아직 없어 서버가 항상 0을 내려준다 — 그래서 재고
+ * 조정 저장 시 "초과 경고"(A3-M3) 모달은 지금은 보유를 줄여 할당 합이 총 보유를 넘을 때(할당 초과)만 뜬다.
  *
- * 쓰기(기준 보유량 변경·재고 조정 추가/수정/해제·매장 휴무 토글)는 슈퍼어드민만 가능하다.
+ * 쓰기(기준 보유량·여행사 기준 할당 변경·재고 조정 추가/수정/해제·매장 휴무 토글)는 슈퍼어드민만 가능하다.
  * 아래 버튼 숨김은 서버 403과 정합을 맞추는 것일 뿐 보안 경계가 아니다(경계는 SecurityConfig).
  */
 export default function AdminInventoryPage() {
@@ -91,6 +96,9 @@ export default function AdminInventoryPage() {
   const [snapshot, setSnapshot] = useState<InventoryDaySnapshot[] | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [currentBaseline, setCurrentBaseline] = useState(0);
+  // 삭제되지 않은 여행사 전부의 오늘 기준 기준 할당(없으면 0). 기준 카드는 value > 0만 보여 주고,
+  // A3-M4·재고 조정의 여행사 선택지는 이 목록 전체를 쓴다.
+  const [allocations, setAllocations] = useState<AgencyAllocation[]>([]);
 
   const [dayDetail, setDayDetail] = useState<InventoryDayDetail | null>(null);
 
@@ -101,8 +109,19 @@ export default function AdminInventoryPage() {
   const [baselineError, setBaselineError] = useState("");
   const [baselineSubmitting, setBaselineSubmitting] = useState(false);
 
+  const [allocationOpen, setAllocationOpen] = useState(false);
+  const [allocationAgencyId, setAllocationAgencyId] = useState("");
+  const [allocationInput, setAllocationInput] = useState(0);
+  const [allocationStartDate, setAllocationStartDate] = useState("");
+  const [allocationMemo, setAllocationMemo] = useState("");
+  const [allocationError, setAllocationError] = useState("");
+  const [allocationSubmitting, setAllocationSubmitting] = useState(false);
+
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null);
+  // 조정 대상 — "stock"이면 총 보유를, "agency"면 adjustAgencyId 여행사의 할당만 증감한다.
+  const [adjustTarget, setAdjustTarget] = useState<"stock" | "agency">("stock");
+  const [adjustAgencyId, setAdjustAgencyId] = useState("");
   const [adjustSign, setAdjustSign] = useState<"+" | "-">("+");
   const [adjustAmount, setAdjustAmount] = useState(1);
   const [adjustStartDate, setAdjustStartDate] = useState("");
@@ -126,11 +145,16 @@ export default function AdminInventoryPage() {
     if (!assetId) return;
     let alive = true;
     setSnapshotError(null);
-    Promise.all([api.inventory.snapshot(assetId, viewYear, viewMonth), api.inventory.currentBaseline(assetId)])
-      .then(([snapshotResult, baselineResult]) => {
+    Promise.all([
+      api.inventory.snapshot(assetId, viewYear, viewMonth),
+      api.inventory.currentBaseline(assetId),
+      api.inventory.currentAllocations(assetId),
+    ])
+      .then(([snapshotResult, baselineResult, allocationResult]) => {
         if (!alive) return;
         setSnapshot(snapshotResult);
         setCurrentBaseline(baselineResult.value);
+        setAllocations(allocationResult);
       })
       .catch((err) => {
         if (alive) setSnapshotError(errorMessage(err, "재고 정보를 불러오지 못했습니다."));
@@ -183,6 +207,10 @@ export default function AdminInventoryPage() {
   }, [snapshot, viewYear, viewMonth]);
 
   const adjustmentsForSelectedDay = dayDetail?.adjustments ?? [];
+  const stockAdjustments = adjustmentsForSelectedDay.filter((a) => a.agencyId === null);
+  const agencyAdjustments = adjustmentsForSelectedDay.filter((a) => a.agencyId !== null);
+  const allocatedAgencies = allocations.filter((a) => a.value > 0);
+  const agencyOptions = allocations.map((a) => ({ value: a.agencyId, label: a.agencyName }));
 
   const handleSelectDay = (day: number) => {
     setSelectedDay(day);
@@ -227,9 +255,49 @@ export default function AdminInventoryPage() {
     }
   };
 
+  const openAllocation = () => {
+    const initial = allocatedAgencies[0] ?? allocations[0];
+    if (!initial) return;
+    setAllocationAgencyId(initial.agencyId);
+    setAllocationInput(initial.value);
+    setAllocationStartDate(selectedDateKey ?? "");
+    setAllocationMemo("");
+    setAllocationError("");
+    setAllocationOpen(true);
+  };
+
+  const handleSelectAllocationAgency = (agencyId: string) => {
+    setAllocationAgencyId(agencyId);
+    setAllocationInput(allocations.find((a) => a.agencyId === agencyId)?.value ?? 0);
+  };
+
+  const handleSaveAllocation = async () => {
+    if (!allocationAgencyId || !allocationStartDate) return;
+    setAllocationSubmitting(true);
+    try {
+      const result = await api.inventory.changeAllocation(assetId, {
+        agencyId: allocationAgencyId,
+        value: allocationInput,
+        startDate: allocationStartDate,
+        memo: allocationMemo.trim(),
+      });
+      setAllocations(result);
+      setAllocationOpen(false);
+      setRefreshTick((t) => t + 1);
+      setToastMessage("여행사 기준 할당이 저장되었습니다");
+    } catch (err) {
+      // 409(ALLOCATION_EXCEEDS_STOCK)는 서버 문구에 초과 날짜가 나열돼 있어 그대로 보여 준다.
+      setAllocationError(errorMessage(err, "여행사 기준 할당을 저장하지 못했습니다."));
+    } finally {
+      setAllocationSubmitting(false);
+    }
+  };
+
   const openAddAdjustment = () => {
     if (!selectedDateKey) return;
     setEditingAdjustmentId(null);
+    setAdjustTarget("stock");
+    setAdjustAgencyId(allocations[0]?.agencyId ?? "");
     setAdjustSign("+");
     setAdjustAmount(1);
     setAdjustStartDate(selectedDateKey);
@@ -246,6 +314,8 @@ export default function AdminInventoryPage() {
     const record = adjustmentsForSelectedDay.find((a) => a.id === id);
     if (!record) return;
     setEditingAdjustmentId(id);
+    setAdjustTarget(record.agencyId === null ? "stock" : "agency");
+    setAdjustAgencyId(record.agencyId ?? allocations[0]?.agencyId ?? "");
     setAdjustSign(record.delta < 0 ? "-" : "+");
     setAdjustAmount(Math.abs(record.delta));
     setAdjustStartDate(record.startDate);
@@ -274,7 +344,9 @@ export default function AdminInventoryPage() {
 
   const buildAdjustInput = (): AdjustmentRequest | null => {
     if (!adjustStartDate || adjustAmount === 0) return null;
+    if (adjustTarget === "agency" && !adjustAgencyId) return null;
     return {
+      agencyId: adjustTarget === "agency" ? adjustAgencyId : null,
       tag: adjustTag.trim(),
       delta: adjustSign === "-" ? -adjustAmount : adjustAmount,
       startDate: adjustStartDate,
@@ -303,6 +375,17 @@ export default function AdminInventoryPage() {
       const overCapacity = editingAdjustmentId
         ? await api.inventory.previewEdit(editingAdjustmentId, input)
         : await api.inventory.previewAdd(assetId, input);
+      // 할당 조정이 할당 합 > 총 보유를 만들면 서버가 저장을 409로 막는다 — 미리 막고 날짜를 보여 준다.
+      // (보유 조정이 만든 할당 초과는 아래 A3-M3 경고 후 저장 허용.)
+      const allocationOver = overCapacity.filter((d) => d.allocated > d.totalStockAfter);
+      if (input.agencyId && allocationOver.length > 0) {
+        setAdjustError(
+          `여행사 할당 합이 총 보유를 넘는 날짜가 있어 저장할 수 없습니다: ${allocationOver
+            .map((d) => `${d.date}(할당 ${d.allocated} / 총 보유 ${d.totalStockAfter})`)
+            .join(", ")}`,
+        );
+        return;
+      }
       if (overCapacity.length > 0) {
         setOverCapacityDates(overCapacity);
         setPendingAdjustInput(input);
@@ -331,6 +414,39 @@ export default function AdminInventoryPage() {
       setPendingEditId(null);
     }
   };
+
+  // 조정 한 줄 — 보유 조정은 태그(임차·수리 등), 할당 조정은 태그 자리에 대상 여행사를 표시한다.
+  const renderAdjustment = (adj: InventoryAdjustment) => (
+    <Stack key={adj.id} direction="column" gap="xs" className="rounded-sm border border-line p-2">
+      <Stack justify="between" align="center">
+        {/* LabeledBox의 emphasis 라벨(강조색 점 + 굵고 큰 글씨)과 같은 스타일 — 이
+            카드 안에서 "이날 조정"이 아래 메모/기간 줄과 확실히 구분되는 부제목이
+            되도록 점을 붙였다. */}
+        <Text weight="bold" as="span" className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
+          이날 조정 {adj.agencyName ? <Badge>{adj.agencyName}</Badge> : adj.tag && <Badge>{adj.tag}</Badge>}
+        </Text>
+        <Text weight="bold" as="span" tone={adj.delta < 0 ? "error" : "success"}>
+          {adj.delta > 0 ? `+${adj.delta}` : adj.delta}
+        </Text>
+      </Stack>
+      <Stack justify="between" align="center">
+        <Text variant="sub" as="span">
+          {adj.memo || "메모 없음"} · {adj.startDate}~{adj.endDate ?? "미정"}
+        </Text>
+        {isSuperAdmin && (
+          <Stack gap="xs">
+            <button type="button" className="text-xs text-muted underline" onClick={() => openEditAdjustment(adj.id)}>
+              수정
+            </button>
+            <button type="button" className="text-xs text-muted underline" onClick={() => handleRemoveAdjustment(adj.id)}>
+              해제
+            </button>
+          </Stack>
+        )}
+      </Stack>
+    </Stack>
+  );
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -376,6 +492,23 @@ export default function AdminInventoryPage() {
               )}
             </Stack>
 
+            {/* 여행사가 하나도 없으면 할당 줄 자체를 숨긴다(고객 가용 = 총 보유). */}
+            {allocations.length > 0 && (
+              <Stack justify="between" align="center">
+                <Text variant="sub" as="span">
+                  여행사 기준 할당{" "}
+                  {allocatedAgencies.length > 0
+                    ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}`).join(" · ")
+                    : "없음"}
+                </Text>
+                {isSuperAdmin && (
+                  <Button variant="outline" size="sm" onClick={openAllocation}>
+                    변경
+                  </Button>
+                )}
+              </Stack>
+            )}
+
             <Card>
               <Calendar
                 year={viewYear}
@@ -414,47 +547,50 @@ export default function AdminInventoryPage() {
 
                 <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} />
 
-                {adjustmentsForSelectedDay.map((adj) => (
-                  <Stack key={adj.id} direction="column" gap="xs" className="rounded-sm border border-line p-2">
-                    <Stack justify="between" align="center">
-                      {/* LabeledBox의 emphasis 라벨(강조색 점 + 굵고 큰 글씨)과 같은 스타일 — 이
-                          카드 안에서 "이날 조정"이 아래 메모/기간 줄과 확실히 구분되는 부제목이
-                          되도록 점을 붙였다. */}
-                      <Text weight="bold" as="span" className="inline-flex items-center gap-1.5">
-                        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
-                        이날 조정 {adj.tag && <Badge>{adj.tag}</Badge>}
+                {stockAdjustments.map(renderAdjustment)}
+
+                <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} />
+
+                {(dayDetail.allocations.length > 0 || agencyAdjustments.length > 0) && (
+                  <Stack direction="column" gap="xs">
+                    <Kv
+                      items={[
+                        {
+                          key: (
+                            <>
+                              여행사 할당 {dayDetail.allocationReleased && <Badge>D-3 반환</Badge>}
+                            </>
+                          ),
+                          value: `${dayDetail.allocated}개`,
+                        },
+                      ]}
+                    />
+                    {dayDetail.allocations.map((line) => (
+                      <Stack key={line.agencyId} justify="between" align="center" className="pl-3">
+                        <Text variant="sub" as="span">
+                          {line.agencyName} · 기준 {line.baseline}
+                        </Text>
+                        <Text as="span">{line.allocated}개</Text>
+                      </Stack>
+                    ))}
+                    {agencyAdjustments.map(renderAdjustment)}
+                    {dayDetail.allocationReleased && (
+                      <Text variant="sub">
+                        여행사 예약 마감(이용일 D-3)이 지나 안 팔린 할당은 고객 가용으로 반환됐습니다.
                       </Text>
-                      <Text weight="bold" as="span" tone={adj.delta < 0 ? "error" : "success"}>
-                        {adj.delta > 0 ? `+${adj.delta}` : adj.delta}
-                      </Text>
-                    </Stack>
-                    <Stack justify="between" align="center">
-                      <Text variant="sub" as="span">
-                        {adj.memo || "메모 없음"} · {adj.startDate}~{adj.endDate ?? "미정"}
-                      </Text>
-                      {isSuperAdmin && (
-                        <Stack gap="xs">
-                          <button type="button" className="text-xs text-muted underline" onClick={() => openEditAdjustment(adj.id)}>
-                            수정
-                          </button>
-                          <button type="button" className="text-xs text-muted underline" onClick={() => handleRemoveAdjustment(adj.id)}>
-                            해제
-                          </button>
-                        </Stack>
-                      )}
-                    </Stack>
+                    )}
                   </Stack>
-                ))}
+                )}
 
                 <Kv
                   items={[
                     {
                       key: (
                         <>
-                          그날 총 보유 = <Badge>고객 가용</Badge>
+                          고객 가용 <Badge>총 보유 − 할당</Badge>
                         </>
                       ),
-                      value: `${dayDetail.totalStock}개`,
+                      value: `${dayDetail.customerAvailable}개`,
                     },
                   ]}
                 />
@@ -521,8 +657,71 @@ export default function AdminInventoryPage() {
         </Stack>
       </Popup>
 
+      <Popup open={allocationOpen} onClose={() => setAllocationOpen(false)} title="여행사 기준 할당 변경">
+        <Stack direction="column" gap="md">
+          <LabeledBox label="여행사" required emphasis>
+            <Dropdown options={agencyOptions} value={allocationAgencyId} onChange={handleSelectAllocationAgency} />
+          </LabeledBox>
+          {/* 기준 보유량 변경 모달과 같은 배치 — 화살표 오프셋(mt-10)도 그쪽 주석 참고. */}
+          <Stack justify="between" align="start">
+            <LabeledBox label="기준 할당" required emphasis>
+              <Input
+                type="number"
+                value={allocations.find((a) => a.agencyId === allocationAgencyId)?.value ?? 0}
+                disabled
+              />
+            </LabeledBox>
+            <Text className="mt-10">→</Text>
+            <LabeledBox label="변경 후" required emphasis>
+              <Input type="number" min={0} value={allocationInput} onChange={(e) => setAllocationInput(Number(e.target.value))} />
+            </LabeledBox>
+          </Stack>
+          <LabeledBox label="적용 시작일" required emphasis>
+            <Input type="date" value={allocationStartDate} onChange={(e) => setAllocationStartDate(e.target.value)} />
+          </LabeledBox>
+          <LabeledBox label="메모" emphasis error={allocationError}>
+            <Input value={allocationMemo} onChange={(e) => setAllocationMemo(e.target.value)} placeholder="예) 8월 성수기 계약" />
+          </LabeledBox>
+          <Text variant="sub">0으로 두면 그날부터 할당이 해제됩니다. 할당 합이 총 보유를 넘는 날이 생기면 저장되지 않습니다.</Text>
+          <Stack gap="sm">
+            <Button variant="outline" fullWidth onClick={() => setAllocationOpen(false)}>
+              취소
+            </Button>
+            <Button
+              fullWidth
+              disabled={!allocationAgencyId || !allocationStartDate || allocationSubmitting}
+              onClick={handleSaveAllocation}
+            >
+              저장
+            </Button>
+          </Stack>
+        </Stack>
+      </Popup>
+
       <Popup open={adjustOpen} onClose={() => setAdjustOpen(false)} title="재고 조정">
         <Stack direction="column" gap="md">
+          {/* 여행사가 없으면 대상은 보유량뿐이라 필드 자체를 숨긴다. */}
+          {allocations.length > 0 && (
+            <LabeledBox label="대상" required emphasis>
+              <div className="grid grid-cols-2 gap-2">
+                <Dropdown
+                  options={[
+                    { value: "stock", label: "보유량" },
+                    { value: "agency", label: "여행사 할당" },
+                  ]}
+                  value={adjustTarget}
+                  onChange={(v) => setAdjustTarget(v)}
+                />
+                <Dropdown
+                  options={agencyOptions}
+                  value={adjustTarget === "agency" ? adjustAgencyId : null}
+                  onChange={setAdjustAgencyId}
+                  placeholder="여행사"
+                  disabled={adjustTarget !== "agency"}
+                />
+              </div>
+            </LabeledBox>
+          )}
           <LabeledBox label="증감" required emphasis>
             <div className="grid grid-cols-2 gap-2">
               <Dropdown
@@ -600,10 +799,19 @@ export default function AdminInventoryPage() {
       <Popup open={overCapacityOpen} onClose={() => setOverCapacityOpen(false)} title="재고 초과 경고">
         <Stack direction="column" gap="md">
           <Text variant="sub">
-            {overCapacityDates.length}개 날짜에서 예약이 총 보유를 초과합니다:{" "}
-            {overCapacityDates.map((d) => `${d.date}(예약 ${d.reserved} / 총 보유 ${d.totalStockAfter})`).join(", ")}
+            {overCapacityDates.length}개 날짜에서 재고 초과가 생깁니다:{" "}
+            {overCapacityDates
+              .map((d) =>
+                d.allocated > d.totalStockAfter
+                  ? `${d.date}(할당 ${d.allocated} / 총 보유 ${d.totalStockAfter})`
+                  : `${d.date}(예약 ${d.reserved} / 고객 가용 ${Math.max(d.totalStockAfter - d.allocated, 0)})`,
+              )
+              .join(", ")}
           </Text>
-          <Text variant="sub">실제 파손·수리는 사실이므로 저장은 허용합니다.</Text>
+          <Text variant="sub">
+            실제 파손·수리는 사실이므로 저장은 허용합니다. 할당 초과 날은 고객 가용이 0으로 막히고, 어느 여행사
+            할당을 줄일지는 직접 정해 주세요.
+          </Text>
           <Stack gap="sm">
             <Button variant="outline" fullWidth onClick={() => setOverCapacityOpen(false)}>
               취소

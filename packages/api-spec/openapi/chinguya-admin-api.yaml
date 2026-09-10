@@ -3,7 +3,7 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
-# 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3),
+# 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
 #       여행사 관리(S2-A1/A2/A3). 나머지 관리자 운영 API(상품·예약·인보이스)는 아직 이
 #       문서에 없다 — 구현되는 대로 이어 붙인다.
 #
@@ -43,6 +43,10 @@ openapi: 3.1.0
 #      항상 0으로 내려간다 — 그래서 "초과 경고"(A3-M3)용 미리보기 엔드포인트도 항상
 #      빈 배열을 반환한다. 예약 시스템이 생기면 서버의 계산 한 곳만 채우면 되고
 #      응답 계약은 그대로다.
+#   8. **여행사 예약 수량도 아직 없다.** 여행사 예약(S2-G4~G6) 백엔드가 미착수라, 여행사
+#      예약 마감(이용일 D-3) 뒤 "안 팔린 할당은 고객 가용으로 반환" 규칙에서 여행사 예약
+#      수는 항상 0으로 계산된다 — 즉 마감이 지난 날짜의 할당은 전부 고객 가용으로 돌아간다.
+#      예약 시스템이 생기면 서버 계산 한 곳만 채우면 되고 응답 계약은 그대로다.
 # =============================================================================
 
 info:
@@ -50,7 +54,7 @@ info:
   version: 0.1.0
   description: |
     관리자(A) 앱이 쓰는 Core API 계약. 현재는 인증(S0-A2), 자산 관리(S1-A2), 날짜별
-    재고 세팅(S1-A3), 여행사 관리(S2-A1/A2/A3)를 정의한다.
+    재고 세팅(S1-A3 — 여행사 할당 포함, 구 S2-A4 흡수), 여행사 관리(S2-A1/A2/A3)를 정의한다.
 
     **권한 모델** — 서버가 강제한다(SecurityConfig):
     - `/admin/**` 는 전부 쿠키 인증 필수(로그인 엔드포인트만 예외). 미인증 시 401.
@@ -76,7 +80,7 @@ tags:
   - name: admin-asset
     description: 자산(명칭 마스터) 등록·수정·삭제·복원 (S1-A2)
   - name: admin-inventory
-    description: 자산별 날짜별 재고 세팅 — 기준 보유량·재고 조정·매장 휴무 (S1-A3)
+    description: 자산별 날짜별 재고 세팅 — 기준 보유량·여행사 할당·재고 조정·매장 휴무 (S1-A3)
   - name: admin-agency
     description: 여행사(거래처) 목록·등록(초대)·상세·사용 가능/불가 (S2-A1/A2/A3)
 
@@ -344,8 +348,10 @@ paths:
         그 달 전체 일자의 계산된 스냅샷을 한 번에 돌려준다 — 달력이 이 배열 하나로
         잔여/고객 가용 색상과 재고 조정 있는 날 점 표시를 그린다.
 
-        그날 총 보유 = 그 날짜의 기준 보유량 + 그 날짜에 걸리는 재고 조정 delta 합계
-        (0 미만 불가). Slice 1은 여행사 할당이 없어 `customerAvailable` = `totalStock`.
+        그날 총 보유 = 그 날짜의 기준 보유량 + 그 날짜에 걸리는 **보유** 조정 delta 합계
+        (0 미만 불가). 그날 여행사 할당 = 여행사마다 (기준 할당 + 그 여행사 할당 조정 합)을
+        더한 값이고, `customerAvailable` = max(`totalStock` − `allocated`, 0).
+        여행사가 없거나 할당이 없으면 `customerAvailable` = `totalStock`.
 
         ⚠ `reserved` 는 예약 백엔드가 생기기 전까지 항상 0이다(헤더 TODO 7).
       parameters:
@@ -383,7 +389,7 @@ paths:
     get:
       tags: [admin-inventory]
       summary: 선택일 상세 (S1-A3)
-      description: 달력에서 날짜를 탭했을 때 하단 상세 패널(기준 보유량 · 이 날 조정 N줄 · 총 보유 · 예약 · 잔여 · 매장 휴무)이 쓰는 값.
+      description: 달력에서 날짜를 탭했을 때 하단 상세 패널(기준 보유량 · 이 날 조정 N줄 · 총 보유 · 여행사 할당 · 고객 가용 · 예약 · 잔여 · 매장 휴무)이 쓰는 값.
       responses:
         '200':
           description: 선택일 상세
@@ -450,6 +456,81 @@ paths:
         '404':
           $ref: '#/components/responses/AssetNotFound'
 
+  /admin/inventory/assets/{assetId}/allocations/current:
+    parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [admin-inventory]
+      summary: 현재(오늘 기준) 여행사별 기준 할당
+      description: |
+        삭제되지 않은 여행사 전부를 등록 순으로 돌려준다(할당이 없으면 `value` 0).
+        기준 카드는 `value` > 0 인 여행사만 보여 주고, A3-M4 모달은 이 목록 전체를
+        여행사 선택지로 쓴다.
+      responses:
+        '200':
+          description: 여행사별 현재 기준 할당
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AgencyAllocation' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/AssetNotFound'
+
+  /admin/inventory/assets/{assetId}/allocations:
+    parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [admin-inventory]
+      summary: 여행사 기준 할당 변경 (A3-M4)
+      description: |
+        기준 보유량 변경(A3-M1)과 같은 방식 — 계약 변경 같은 **영구적인 변화**를 적용
+        시작일과 함께 이력으로 쌓는다(덮어쓰지 않음). 시작일 이전 날짜와 이미 걸린 할당
+        조정에는 영향을 주지 않는다. `value` 0 이면 그날부터 할당 해제.
+
+        **할당 합 > 총 보유가 되는 날이 생기면 저장하지 않고 409** 를 돌려준다. 검사
+        범위는 여행사가 예약할 수 있는 날짜(오늘 +3일 이후)부터 시작일 기준 3개월이다 —
+        마감(D-3)이 지난 날짜의 할당은 어차피 고객 가용으로 반환되므로 검사하지 않는다.
+        이미 할당 초과인 날(보유가 줄어 생긴 경우)에서 할당을 **줄이는** 변경은 막지 않는다 —
+        그래야 초과를 푸는 수정이 가능하다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllocationChangeRequest' }
+      responses:
+        '200':
+          description: 변경 후 여행사별 현재 기준 할당(목록 조회와 같은 모양)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AgencyAllocation' }
+        '400':
+          description: agencyId·value·startDate 누락 또는 값 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: 존재하지 않는 자산(`ASSET_NOT_FOUND`) 또는 존재하지 않거나 삭제된 여행사(`AGENCY_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          $ref: '#/components/responses/AllocationExceedsStock'
+
   /admin/inventory/assets/{assetId}/adjustments:
     parameters:
       - name: assetId
@@ -463,6 +544,10 @@ paths:
         수리·임시 임차 등 **일시적인 증감**(±N)을 기간(+요일 지정)과 함께 기록한다.
         같은 날짜에 여러 조정이 걸리면 전부 합산된다. 저장 전에 초과 여부를 먼저
         확인하려면 `/preview` 를 먼저 부른다(A3-M3).
+
+        **대상**은 `agencyId` 로 가른다 — null이면 **보유** 조정(총 보유 증감), 값이
+        있으면 그 여행사의 **할당** 조정(그 여행사 할당만 증감). 할당 조정으로
+        할당 합 > 총 보유가 되는 날이 생기면 저장하지 않고 409(검사 범위는 A3-M4와 같다).
       requestBody:
         required: true
         content:
@@ -484,7 +569,12 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
-          $ref: '#/components/responses/AssetNotFound'
+          description: 존재하지 않는 자산(`ASSET_NOT_FOUND`) 또는 존재하지 않거나 삭제된 여행사(`AGENCY_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          $ref: '#/components/responses/AllocationExceedsStock'
 
   /admin/inventory/assets/{assetId}/adjustments/preview:
     parameters:
@@ -497,10 +587,15 @@ paths:
       summary: 재고 조정 추가 시 초과 미리보기 (A3-M3)
       description: |
         아무것도 저장하지 않는 계산 전용 엔드포인트 — 그래서 SUPER_ADMIN이 아니어도
-        (조회 권한만 있어도) 부를 수 있다. 이 조정을 실제로 적용하면 예약이 총 보유를
-        넘게 되는 날짜를 돌려준다.
+        (조회 권한만 있어도) 부를 수 있다. 이 조정을 실제로 적용했을 때 다음 중 하나가
+        되는 날짜를 돌려준다:
+        - **예약 초과** — 고객 예약 > 고객 가용(총 보유 − 할당).
+        - **할당 초과** — 여행사 할당 합 > 총 보유(`allocated` > `totalStockAfter`).
 
-        ⚠ `reserved` 가 항상 0인 동안(헤더 TODO 7)은 이 목록도 항상 빈 배열이다.
+        보유 조정(`agencyId` null)은 두 경우 모두 경고 후 저장을 허용한다. 할당 조정은
+        할당 초과가 있으면 실제 저장이 409로 막히므로, 화면은 이 결과로 미리 막는다.
+
+        ⚠ `reserved` 가 항상 0인 동안(헤더 TODO 7)은 예약 초과는 나오지 않고 할당 초과만 나온다.
       requestBody:
         required: true
         content:
@@ -549,10 +644,18 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
-          $ref: '#/components/responses/AdjustmentNotFound'
+          description: 존재하지 않는 재고 조정(`ADJUSTMENT_NOT_FOUND`) 또는 존재하지 않거나 삭제된 여행사(`AGENCY_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          $ref: '#/components/responses/AllocationExceedsStock'
     delete:
       tags: [admin-inventory]
       summary: 재고 조정 해제 (A3-M2)
+      description: |
+        마이너스 **할당** 조정을 해제하면 그 여행사 할당이 다시 늘어난다 — 그 때문에 할당 합 >
+        총 보유가 되는 날이 생기면 해제하지 않고 409(추가·수정과 같은 검사).
       responses:
         '204':
           description: 해제 완료
@@ -562,6 +665,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/AdjustmentNotFound'
+        '409':
+          $ref: '#/components/responses/AllocationExceedsStock'
 
   /admin/inventory/adjustments/{adjustmentId}/preview:
     parameters:
@@ -923,6 +1028,14 @@ components:
           example:
             code: ADJUSTMENT_NOT_FOUND
             message: 재고 조정을 찾을 수 없습니다.
+    AllocationExceedsStock:
+      description: 여행사 할당 합이 총 보유를 넘는 날짜가 생겨 저장하지 않았다(A3-M4·할당 조정).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: ALLOCATION_EXCEEDS_STOCK
+            message: '여행사 할당 합이 총 보유를 넘는 날짜가 있습니다: 2027-07-20(할당 4 / 총 보유 3)'
     AgencyNotFound:
       description: 존재하지 않거나 삭제된 여행사
       content:
@@ -1030,7 +1143,7 @@ components:
 
     InventoryDaySnapshot:
       type: object
-      required: [date, baseline, totalStock, customerAvailable, closed, reserved, remaining, hasAdjustment]
+      required: [date, baseline, totalStock, allocated, customerAvailable, closed, reserved, remaining, hasAdjustment]
       description: 달력 한 칸(하루)의 계산된 스냅샷(S1-A3). 월간 조회가 이 배열을 한 번에 돌려준다.
       properties:
         date: { type: string, format: date }
@@ -1039,10 +1152,16 @@ components:
           description: 그 날짜에 적용되던 기준 보유량(오늘 기준 최신값이 아니라 "그날" 기준).
         totalStock:
           type: integer
-          description: 그날 총 보유 = 기준 보유량 + 그날 걸리는 재고 조정 delta 합계(0 미만 불가).
+          description: 그날 총 보유 = 기준 보유량 + 그날 걸리는 보유 조정 delta 합계(0 미만 불가).
+        allocated:
+          type: integer
+          description: |
+            그날 여행사 할당 합(고객 가용에서 빠지는 양). 여행사마다 기준 할당 + 그 여행사
+            할당 조정 합(0 미만 불가)을 더한다. 여행사 예약 마감(이용일 D-3)이 지난 날짜는
+            안 팔린 할당이 반환되므로 여행사 예약 수만 남는다(헤더 TODO 8 — 지금은 0).
         customerAvailable:
           type: integer
-          description: Slice 1은 여행사 할당이 없어 totalStock과 같다. Slice 2부터 총 보유 − 할당으로 자동 계산될 자리.
+          description: max(totalStock − allocated, 0). 할당 합이 총 보유를 넘는 날(할당 초과)은 0.
         closed:
           type: boolean
           description: 매장 휴무(전 자산 공통) 여부.
@@ -1055,31 +1174,83 @@ components:
           description: customerAvailable − reserved. 마이너스면 재고 초과.
         hasAdjustment:
           type: boolean
-          description: 이 날짜에 걸리는 재고 조정이 1건 이상 있는지(달력 점 표시용).
+          description: 이 날짜에 걸리는 재고 조정(보유·할당)이 1건 이상 있는지(달력 점 표시용).
 
     InventoryDayDetail:
       type: object
-      required: [date, baseline, totalStock, customerAvailable, closed, reserved, remaining, adjustments]
+      required: [date, baseline, totalStock, allocated, allocationReleased, customerAvailable, closed, reserved, remaining, allocations, adjustments]
       description: 선택일 상세(S1-A3) — 하단 패널이 이 값으로 그린다.
       properties:
         date: { type: string, format: date }
         baseline: { type: integer }
         totalStock: { type: integer }
+        allocated:
+          type: integer
+          description: 고객 가용에서 빠지는 여행사 할당 합(InventoryDaySnapshot.allocated 와 같은 값).
+        allocationReleased:
+          type: boolean
+          description: |
+            여행사 예약 마감(이용일 D-3)이 지나 안 팔린 할당이 고객 가용으로 반환된 날짜인지.
+            true면 `allocations[].allocated` 는 설정값 그대로이고 `allocated` 에는 여행사 예약 수만 남는다.
         customerAvailable: { type: integer }
         closed: { type: boolean }
         reserved: { type: integer }
         remaining: { type: integer }
+        allocations:
+          type: array
+          description: 그날 할당이 있거나 할당 조정이 걸린 여행사별 줄(여행사 등록 순).
+          items: { $ref: '#/components/schemas/AgencyAllocationLine' }
         adjustments:
           type: array
+          description: 그날 걸리는 조정 전부 — 보유 조정과 할당 조정이 섞여 있고 `agencyId` 로 구분한다.
           items: { $ref: '#/components/schemas/InventoryAdjustment' }
+
+    AgencyAllocationLine:
+      type: object
+      required: [agencyId, agencyName, baseline, allocated]
+      description: 선택일 상세의 여행사 한 줄.
+      properties:
+        agencyId: { type: string }
+        agencyName: { type: string }
+        baseline:
+          type: integer
+          description: 그 날짜에 적용되던 그 여행사의 기준 할당.
+        allocated:
+          type: integer
+          description: 기준 할당 + 그 여행사 할당 조정 합(0 미만 불가). 삭제된 여행사는 삭제일부터 0.
+
+    AgencyAllocation:
+      type: object
+      required: [agencyId, agencyName, value]
+      description: 여행사의 "지금"(오늘 기준) 기준 할당.
+      properties:
+        agencyId: { type: string }
+        agencyName: { type: string }
+        value: { type: integer }
+
+    AllocationChangeRequest:
+      type: object
+      required: [agencyId, value, startDate]
+      description: 여행사 기준 할당 변경 요청(A3-M4).
+      properties:
+        agencyId: { type: string }
+        value: { type: integer, minimum: 0 }
+        startDate: { type: string, format: date }
+        memo: { type: string, maxLength: 200 }
 
     InventoryAdjustment:
       type: object
-      required: [id, assetId, tag, delta, startDate, weekdays, memo, createdAt]
-      description: 자산의 일시적 재고 증감 1건(A3-M2, 수리·임차 등).
+      required: [id, assetId, agencyId, agencyName, tag, delta, startDate, weekdays, memo, createdAt]
+      description: 자산의 일시적 재고 증감 1건(A3-M2, 수리·임차 등). 대상이 여행사면 그 여행사 할당만 증감한다.
       properties:
         id: { type: string }
         assetId: { type: string }
+        agencyId:
+          type: [string, 'null']
+          description: null이면 보유 조정, 값이 있으면 그 여행사의 할당 조정.
+        agencyName:
+          type: [string, 'null']
+          description: 할당 조정의 대상 여행사명(삭제된 여행사도 이름은 남는다). 보유 조정이면 null.
         tag:
           type: string
           description: 화면·안내메일 표시용 자유 라벨(예 "임차"/"수리"). 코드값이 아니다.
@@ -1101,6 +1272,9 @@ components:
       required: [delta, startDate]
       description: 재고 조정 추가·수정(A3-M2)과 초과 미리보기가 공유하는 요청 본문.
       properties:
+        agencyId:
+          type: [string, 'null']
+          description: 대상. null(또는 생략)이면 보유 조정, 값이 있으면 그 여행사의 할당 조정.
         tag: { type: string, maxLength: 60 }
         delta: { type: integer, description: 0이 아닌 증감량. }
         startDate: { type: string, format: date }
@@ -1132,14 +1306,18 @@ components:
 
     OverCapacityDate:
       type: object
-      required: [date, reserved, totalStockAfter]
+      required: [date, reserved, totalStockAfter, allocated]
       description: |
-        재고 조정을 실제로 적용하면 예약이 총 보유를 넘게 되는 날짜(A3-M3 초과 경고).
-        ⚠ reserved가 항상 0인 동안(헤더 TODO 7)은 이 목록이 항상 비어 있다.
+        재고 조정을 실제로 적용하면 예약 초과(고객 예약 > 총 보유 − 할당) 또는 할당 초과
+        (할당 합 > 총 보유)가 되는 날짜(A3-M3 초과 경고).
+        ⚠ reserved가 항상 0인 동안(헤더 TODO 7)은 할당 초과만 나온다.
       properties:
         date: { type: string, format: date }
         reserved: { type: integer }
         totalStockAfter: { type: integer }
+        allocated:
+          type: integer
+          description: 적용 후 그날 여행사 할당 합. totalStockAfter보다 크면 할당 초과.
 
     ClosureRequest:
       type: object
@@ -1302,6 +1480,8 @@ components:
 
             재고 세팅(S1-A3):
             - `ADJUSTMENT_NOT_FOUND` — 존재하지 않는 재고 조정.
+            - `ALLOCATION_EXCEEDS_STOCK` — 여행사 할당 합이 총 보유를 넘는 날짜가 생겨 저장하지 않았다.
+            - `AGENCY_NOT_FOUND` — 할당 대상 여행사가 없거나 삭제됐다.
 
             여행사(S2-A1/A2/A3):
             - `AGENCY_NOT_FOUND` — 존재하지 않거나 삭제된 여행사.
