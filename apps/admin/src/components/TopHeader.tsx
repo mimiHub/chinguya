@@ -7,6 +7,16 @@ import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
+// BottomNav.tsx와 같은 4개 탭 — PC 고정폭 레이아웃이라 모바일 기기 실제 화면(좁은 뷰포트)에서
+// 보면 BottomNav 자체가 md:hidden 밖으로 밀려나 안 보이는 경우가 있다. 그럴 때도 내비게이션이
+// 막히지 않도록, 같은 목적지를 이 드로어 메뉴에도 넣어 햄버거 하나로 접근 가능하게 한다.
+const MENU_ITEMS: { href: string; label: string }[] = [
+  { href: "/", label: "홈" },
+  { href: "/reservations", label: "예약" },
+  { href: "/products", label: "상품" },
+  { href: "/more", label: "더보기" },
+];
+
 /**
  * 모든 관리자 화면 상단에 공통으로 뜨는 헤더. 왼쪽엔 고객 사이트와 같은 나뭇잎 로고(누르면
  * 대시보드로 이동), 오른쪽엔 햄버거 버튼 — 누르면 고객앱 TopNav.tsx와 같은 구조(오른쪽에서
@@ -64,6 +74,22 @@ export function TopHeader() {
           <span className="text-sm font-bold">메뉴</span>
           <IconX size="lg" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)} />
         </div>
+
+        {/* BottomNav를 대신하는 내비게이션 — 좁은 화면에서 하단 탭바가 안 보일 때 여기로 이동한다. */}
+        <nav className="flex flex-col border-b border-line py-2">
+          {MENU_ITEMS.map(({ href, label }) => {
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <NextLink
+                key={href}
+                href={href}
+                className={`px-6 py-3 text-sm ${active ? "font-bold text-primary-500" : "text-ink"}`}
+              >
+                {label}
+              </NextLink>
+            );
+          })}
+        </nav>
 
         {/* Core API의 세션 응답에는 표시 이름(name)이 없어서 아이디와 등급만 보여준다.
             이름 노출이 필요해지면 백엔드 응답에 필드를 추가해야 한다(api-spec TODO 1번). */}
