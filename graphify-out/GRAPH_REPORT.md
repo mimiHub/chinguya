@@ -1,16 +1,16 @@
-# Graph Report - chinguya-web  (2026-09-07)
+# Graph Report - chinguya-web  (2026-09-10)
 
 ## Corpus Check
-- 186 files · ~2,200,463 words
+- 199 files · ~2,552,020 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1458 nodes · 2522 edges · 123 communities (96 shown, 27 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.76)
+- 1529 nodes · 2778 edges · 126 communities (97 shown, 29 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 21 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `dabd4e59`
+- Built from commit: `fbf6f840`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -133,30 +133,33 @@
 - BottomNav.tsx
 - dropdown.tsx
 - typescript
+- dependsOn
+- start
+- tailwindcss
 
 ## God Nodes (most connected - your core abstractions)
-1. `Title()` - 37 edges
-2. `exports` - 36 edges
-3. `Text()` - 35 edges
-4. `Stack()` - 32 edges
-5. `Button()` - 30 edges
-6. `Card()` - 26 edges
+1. `Title()` - 40 edges
+2. `Stack()` - 38 edges
+3. `Text()` - 38 edges
+4. `exports` - 37 edges
+5. `Button()` - 32 edges
+6. `Card()` - 31 edges
 7. `친구야 — 관리자 페이지 와이어프레임 상세 설명` - 20 edges
-8. `packages/types (도메인 타입/비즈니스 규칙 단일 출처)` - 18 edges
-9. `Input()` - 17 edges
-10. `친구야 — 고객 페이지 와이어프레임 상세 설명` - 17 edges
+8. `Input()` - 19 edges
+9. `Toast()` - 18 edges
+10. `친구야 — 고객 페이지 와이어프레임 상세 설명` - 18 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `AdminAgencyDetailPage()` --indirect_call--> `err()`  [INFERRED]
+  apps/admin/src/app/agencies/[id]/page.tsx → packages/mocks/src/handlers.ts
+- `AdminAgenciesPage()` --indirect_call--> `err()`  [INFERRED]
+  apps/admin/src/app/agencies/page.tsx → packages/mocks/src/handlers.ts
 - `AdminAssetsPage()` --indirect_call--> `err()`  [INFERRED]
   apps/admin/src/app/assets/page.tsx → packages/mocks/src/handlers.ts
 - `AdminInventoryPage()` --indirect_call--> `err()`  [INFERRED]
   apps/admin/src/app/inventory/page.tsx → packages/mocks/src/handlers.ts
-- `InvoiceLineItem` --references--> `RentalOptionKey`  [EXTRACTED]
-  apps/admin/src/data/invoiceData.ts → packages/types/src/index.ts
-- `AdminProductVariant` --references--> `RentalCategoryKey`  [EXTRACTED]
-  apps/admin/src/data/productData.ts → packages/types/src/index.ts
-- `AdminProductVariant` --references--> `RentalOptionKey`  [EXTRACTED]
-  apps/admin/src/data/productData.ts → packages/types/src/index.ts
+- `AdminAgencyNewPage()` --indirect_call--> `err()`  [INFERRED]
+  apps/admin/src/app/agencies/new/page.tsx → packages/mocks/src/handlers.ts
 
 ## Import Cycles
 - None detected.
@@ -166,11 +169,11 @@
 - **고객 예약 상태 흐름에 참여하는 화면들 (접수→완료→취소요청→취소)** — concept_customer_reservation_states, chinguya_wireframes_page_definition_s1_c4, chinguya_wireframes_page_definition_s1_a8, chinguya_wireframes_page_definition_s1_c7, chinguya_wireframes_page_definition_s1_a9 [EXTRACTED 0.95]
 - **packages/types 단일 출처를 소비하는 앱·패키지** — concept_single_source_of_truth_types, package_types, package_ui, package_api_client, app_customer, app_admin, app_agency [EXTRACTED 1.00]
 
-## Communities (123 total, 27 thin omitted)
+## Communities (126 total, 29 thin omitted)
 
 ### Community 0 - "Admin Product Editing"
-Cohesion: 0.12
-Nodes (19): Banner(), BannerProps, heightClass, positionClass, Size, titleClass, ComingSoon(), ComingSoonProps (+11 more)
+Cohesion: 0.14
+Nodes (24): TODO: 실제 연동 시 POST /api/admin/invoices/{id}/confirm-deposit 호출로 교체, TODO: 실제 연동 시 여기서 POST(신규)/PATCH(수정) 호출 후 성공하면 목록으로 이동한다., RENTAL_OPTION_LABEL, RENTAL_OPTION_LABEL, Banner(), BannerProps, heightClass, positionClass (+16 more)
 
 ### Community 1 - "Admin Allocation & Invoicing Data"
 Cohesion: 0.08
@@ -182,39 +185,39 @@ Nodes (47): dependencies, @chinguya/api-client, @chinguya/catalog-data, @chinguy
 
 ### Community 3 - "Admin App Package Manifest"
 Cohesion: 0.04
-Nodes (46): dependencies, @chinguya/api-client, @chinguya/catalog-data, @chinguya/types, @chinguya/ui, next, react, react-dom (+38 more)
+Nodes (47): dependencies, @chinguya/api-client, @chinguya/catalog-data, @chinguya/types, @chinguya/ui, next, react, react-dom (+39 more)
 
 ### Community 4 - "Agency App Package Manifest"
 Cohesion: 0.12
-Nodes (17): devDependencies, @chinguya/eslint-config, @chinguya/typescript-config, eslint, tailwindcss, @tailwindcss/postcss, @types/node, @types/react (+9 more)
+Nodes (17): devDependencies, @chinguya/eslint-config, @chinguya/typescript-config, eslint, @tailwindcss/postcss, @types/node, @types/react, @types/react-dom (+9 more)
 
 ### Community 5 - "Admin Dashboard & Reservation Actions"
-Cohesion: 0.12
-Nodes (22): AdminDashboardPage(), AdminReservationDetailPage(), priceText(), TODO: 실제 연동 시 POST /api/admin/reservations/{id}/confirm-deposit 호출로 교체, TODO: 실제 연동 시 POST /api/admin/reservations/{id}/force-cancel 호출로 교체. 재고 즉시 복원., TODO: 실제 연동 시 환불 이체 확인 후 POST /api/admin/reservations/{id}/confirm-cancel. 재고 즉시, AdminReservationsPageInner(), ADMIN_TAB_LABEL (+14 more)
+Cohesion: 0.09
+Nodes (29): AdminDashboardPage(), TODO: 실제 연동 시 "오늘"은 일본 기준(JST)으로 판정하고, useDate === 오늘인 건만 필터링한다., AdminReservationDetailPage(), priceText(), TODO: 실제 연동 시 POST /api/admin/reservations/{id}/confirm-deposit 호출로 교체, TODO: 실제 연동 시 POST /api/admin/reservations/{id}/force-cancel 호출로 교체. 재고 즉시 복원., TODO: 실제 연동 시 환불 이체 확인 후 POST /api/admin/reservations/{id}/confirm-cancel. 재고 즉시, AdminReservationsPageInner() (+21 more)
 
 ### Community 6 - "App Root Layout & Bottom Nav"
-Cohesion: 0.05
-Nodes (37): metadata, AgencyLoginPage(), ITEMS, Sidebar(), AgencyAccount, agencyAccounts, CURRENT_AGENCY, findAgencyAccount() (+29 more)
+Cohesion: 0.18
+Nodes (12): ^build, dependsOn, cache, cache, persistent, persistent, tasks, build (+4 more)
 
 ### Community 7 - "UI Package Exports"
-Cohesion: 0.06
-Nodes (36): exports, ./alert, ./badge, ./banner, ./button, ./calendar, ./calendar-icon, ./card (+28 more)
+Cohesion: 0.05
+Nodes (37): exports, ./alert, ./badge, ./banner, ./button, ./calendar, ./calendar-icon, ./card (+29 more)
 
 ### Community 8 - "Admin Products & Calendar UI"
-Cohesion: 0.15
-Nodes (12): MENU_ITEMS, Align, alignClass, buildClassName(), Button(), ButtonProps, CommonProps, Padding (+4 more)
+Cohesion: 0.12
+Nodes (16): ContactTab, QnaEntry, QnaView, Align, alignClass, buildClassName(), Button(), ButtonProps (+8 more)
 
 ### Community 9 - "Admin Agency Management"
-Cohesion: 0.14
-Nodes (17): TODO: 실제 연동 시 POST /api/admin/invoices/{id}/confirm-deposit 호출로 교체, agencies, ContactTab, QnaEntry, QnaView, initialInquiries, Agency, Badge() (+9 more)
+Cohesion: 0.17
+Nodes (16): AdminAgencyDetailPage(), api, errorMessage(), formatDate(), invitationBadge(), AdminAgenciesPage(), api, errorMessage() (+8 more)
 
 ### Community 10 - "TypeScript Config Package Manifest"
 Cohesion: 0.08
 Nodes (23): eslint-config-prettier, @eslint/js, eslint-plugin-react, eslint-plugin-react-hooks, globals, @next/eslint-plugin-next, base.js, next.js (+15 more)
 
 ### Community 11 - "Admin Accounts & Agency Onboarding"
-Cohesion: 0.12
-Nodes (20): TODO: 실제 연동 시 여기서 POST /api/admin/agencies 호출로 교체한다., api, TODO: 실제 연동 시 여기서 PUT /api/admin/settings 호출로 교체한다., TODO: 실제 연동 시 초대 토큰과 함께 POST /api/agency/invite/complete 호출로 교체., TODO: 실제 연동 시 여기서 세션/토큰을 저장한다., Alert(), AlertProps, AlertStatus (+12 more)
+Cohesion: 0.10
+Nodes (23): AdminAssetsPage(), api, errorMessage(), FormMode, ImagePreview, TODO: 실제 연동 시 PUT /api/admin/content/banners 호출로 교체하고, 이미지도 함께, TODO: 실제 연동 시 PUT /api/admin/content/intro 호출로 교체한다., ConfirmPopup() (+15 more)
 
 ### Community 12 - "Root Workspace Manifest"
 Cohesion: 0.06
@@ -237,8 +240,8 @@ Cohesion: 0.33
 Nodes (13): apps/admin (관리자 모바일 웹), apps/agency (여행사 데스크톱 웹), apps/customer (고객 모바일 웹), 디자인 토큰 단일화 (tailwind-config theme.css), 모노레포 구조 (apps + packages), packages/types 단일 출처 원칙, 세 사용자군 (고객/관리자/여행사), packages/api-client (타입드 fetch 래퍼) (+5 more)
 
 ### Community 18 - "Admin More Menu & Stack Layout"
-Cohesion: 0.11
-Nodes (19): TODO: 실제 연동 시 "오늘"은 일본 기준(JST)으로 판정하고, useDate === 오늘인 건만 필터링한다., TABS, initialInquiries, adminReservations, InquiryEntry, BadgeProps, label, StatusBadge() (+11 more)
+Cohesion: 0.10
+Nodes (20): AboutTab, FEATURES, STORE_INFO, TABS, CATEGORY_BADGE_VARIANT, NEWS_ITEMS, NewsItem, NOTICE_TABS (+12 more)
 
 ### Community 19 - "Customer Next.js TS Config"
 Cohesion: 0.14
@@ -261,8 +264,8 @@ Cohesion: 0.14
 Nodes (13): ./base.json, DOM, DOM.Iterable, ES2022, compilerOptions, incremental, jsx, lib (+5 more)
 
 ### Community 24 - "Cancellation Fee & Reservation List Screens"
-Cohesion: 0.18
-Nodes (9): metadata, MswProvider(), Footer(), INFO_LINES, InfoLine, CartContext, CartContextValue, CartLine (+1 more)
+Cohesion: 0.28
+Nodes (5): metadata, MswProvider(), Footer(), INFO_LINES, InfoLine
 
 ### Community 25 - "Booking Calendar & Agency Onboarding Screens"
 Cohesion: 0.11
@@ -274,7 +277,7 @@ Nodes (3): config, config, config
 
 ### Community 27 - "Button Component"
 Cohesion: 0.07
-Nodes (37): register(), worker, buildAvailability(), daysRequired(), depositAccountBase, iso(), products, S (+29 more)
+Nodes (41): AdminAgencyNewPage(), errorMessage(), AgencyRegisterScreen(), errorMessage(), register(), worker, buildAvailability(), daysRequired() (+33 more)
 
 ### Community 28 - "Payment Policy & Admin Reservation Screens"
 Cohesion: 0.13
@@ -302,11 +305,11 @@ Nodes (9): @chinguya/typescript-config/base.json, DOM, ES2022, src, compilerOpti
 
 ### Community 34 - "Text Component"
 Cohesion: 0.09
-Nodes (21): AboutTab, FEATURES, STORE_INFO, TABS, CATEGORY_BADGE_VARIANT, NEWS_ITEMS, NewsItem, NOTICE_TABS (+13 more)
+Nodes (22): api, HeroMessage, InvitationInfo, Alert(), AlertProps, AlertStatus, statusClass, Calendar() (+14 more)
 
 ### Community 35 - "Admin Settings Data"
-Cohesion: 0.13
-Nodes (13): assets, AdminAccount, adminAccounts, initialFaqEntries, depositAccount, faqEntries, AdminRole, Asset (+5 more)
+Cohesion: 0.09
+Nodes (20): assets, AdminAccount, adminAccounts, initialFaqEntries, initialInquiries, depositAccount, faqEntries, initialInquiries (+12 more)
 
 ### Community 36 - "Next/React Peer Dependencies"
 Cohesion: 0.22
@@ -325,12 +328,12 @@ Cohesion: 0.25
 Nodes (7): base.json, nextjs.json, react-library.json, files, name, private, version
 
 ### Community 40 - "Input Component"
-Cohesion: 0.07
-Nodes (36): CartPage(), formatCountdown(), lineAmount(), rentalDaysOf(), DepositContent(), MyPage(), lineAmount(), ProfilePage() (+28 more)
+Cohesion: 0.09
+Nodes (30): CartPage(), formatCountdown(), lineAmount(), rentalDaysOf(), DepositContent(), MyPage(), buildMonthDays(), RentalDetailPage() (+22 more)
 
 ### Community 41 - "Title Component"
-Cohesion: 0.15
-Nodes (17): ROLE_LABEL, api, WEEKDAY_LABELS, TODO: 실제 연동 시 여기서 POST(신규)/PATCH(수정) 호출 후 성공하면 목록으로 이동한다., RENTAL_OPTION_LABEL, createApiClient(), Calendar(), CalendarDay (+9 more)
+Cohesion: 0.13
+Nodes (14): ROLE_LABEL, Badge(), BadgeProps, label, statusClass, Variant, variantClass, Chip() (+6 more)
 
 ### Community 42 - "Invoice Policy Screens"
 Cohesion: 0.33
@@ -369,16 +372,16 @@ Cohesion: 0.40
 Nodes (5): S1-A4 상품 관리 목록 (와이어프레임), S1-A5 상품 등록/수정 (와이어프레임), S1-A4 상품 관리 목록 (페이지정의서), S1-A5 상품 등록/수정 (페이지정의서), 가격 이원화 (고객가/여행사가)
 
 ### Community 52 - "Table Component"
-Cohesion: 0.09
-Nodes (38): AgencyBookPage(), defaultUseDate(), maxSelectableDate(), minSelectableDate(), toDateInputValue(), AgencyInvoicePage(), previousPeriod(), AgencyDashboardPage() (+30 more)
+Cohesion: 0.08
+Nodes (35): AgencyBookPage(), defaultUseDate(), maxSelectableDate(), minSelectableDate(), toDateInputValue(), AgencyInvoicePage(), previousPeriod(), AgencyDashboardPage() (+27 more)
 
 ### Community 76 - "2. 관리자 페이지 (모바일)"
-Cohesion: 0.20
-Nodes (9): Size, sizeClass, TextProps, Tone, toneClass, Variant, variantConfig, Weight (+1 more)
+Cohesion: 0.18
+Nodes (8): TODO: 실제 연동 시 여기서 PUT /api/admin/settings 호출로 교체한다., Size, sizeClass, TitleProps, Tone, toneClass, Weight, weightClass
 
 ### Community 77 - "invoiceData.ts"
-Cohesion: 0.23
-Nodes (14): AdminInvoiceDetailPage(), AdminInvoicesPage(), findInvoiceById(), getCurrentPeriod(), getInvoiceLineItems(), getPendingUsage(), InvoiceLineItem, invoices (+6 more)
+Cohesion: 0.18
+Nodes (15): AdminInvoiceDetailPage(), AdminInvoicesPage(), agencies, findInvoiceById(), getCurrentPeriod(), getInvoiceLineItems(), getPendingUsage(), InvoiceLineItem (+7 more)
 
 ### Community 78 - "package.json"
 Cohesion: 0.09
@@ -394,38 +397,38 @@ Nodes (20): dependencies, @chinguya/types, devDependencies, @chinguya/eslint-con
 
 ### Community 81 - "친구야 — 관리자 페이지 와이어프레임 상세 설명"
 Cohesion: 0.10
-Nodes (20): `a-admins` · S0-A5/A6 — 관리자 관리, `a-agency` · S2-A1/A3 — 여행사 관리, `a-agencyadd` · S2-A2 — 여행사 등록(초대), `a-alloc` · S2-A4 — 날짜별 할당 세팅, `a-asset` · S1-A2 — 자산 관리, `a-cancel` · S1-A9 — 취소요청 처리, `a-cms` · S4-A1/A3 — FAQ · 콘텐츠 관리 (CMS-lite), `a-dash` · S1-A1 — 대시보드 (+12 more)
+Nodes (20): `a-admins` · S0-A5/A6 — 관리자 관리, `a-agency` · S2-A1/A3 — 여행사 관리, `a-agencyadd` · S2-A2 — 여행사 등록(초대), `a-alloc` · S2-A4 — 날짜별 할당 세팅 (삭제), `a-asset` · S1-A2 — 자산 관리, `a-cancel` · S1-A9 — 취소요청 처리, `a-cms` · S4-A1/A3 — FAQ · 콘텐츠 관리 (CMS-lite), `a-dash` · S1-A1 — 대시보드 (+12 more)
 
 ### Community 82 - "dependencies"
 Cohesion: 0.12
 Nodes (17): dependencies, @chinguya/api-client, @chinguya/catalog-data, @chinguya/mocks, @chinguya/types, @chinguya/ui, next, react (+9 more)
 
 ### Community 83 - "친구야 — 고객 페이지 와이어프레임 상세 설명"
-Cohesion: 0.12
-Nodes (17): `cancel` · S1-C7 — 취소 요청, `cart` · S1-C3 — 장바구니 · 예약 확인, `deposit` · S1-C4 — 입금 안내 · 확인 요청, `detail` · S3-C1 · S1-C2 — 상품 상세 · 예약 캘린더 (통합) **[2026-09-02 병합]**, `faq` · S4-C3 — FAQ, `landing` · 안 A — 랜딩(상품 우선형) **[확정]**, `list` · S1-C1 — 상품 조회, `myres` · S1-C5 — 예약 목록 (+9 more)
+Cohesion: 0.11
+Nodes (18): `cancel` · S1-C7 — 취소 요청, `cart` · S1-C3 — 장바구니 · 예약 확인, `deposit` · S1-C4 — 입금 안내 · 확인 요청, `detail` · S3-C1 · S1-C2 — 상품 상세 · 예약 캘린더 (통합) **[2026-09-02 병합]**, `faq` · S4-C3 — FAQ, `footer` · 공통 — Footer(전 화면 공통 하단 정보), `landing` · 안 A — 랜딩(상품 우선형) **[확정]**, `list` · S1-C1 — 상품 조회 (+10 more)
 
 ### Community 84 - "1. 고객 페이지 (모바일)"
-Cohesion: 0.24
-Nodes (10): CARD_BG, oneDayPrice(), RentalListContent(), rentalNotice, getAgencyExposedQty(), getCustomerExposedQty(), getProductStock(), ProductStock (+2 more)
+Cohesion: 0.16
+Nodes (14): IntroContent, AUTH_SLIDES, AuthBackgroundSlides(), CARD_BG, oneDayPrice(), RentalListContent(), getAgencyExposedQty(), getCustomerExposedQty() (+6 more)
 
 ### Community 86 - "page.tsx"
 Cohesion: 0.19
-Nodes (10): fromPriceOf(), Page(), RENTAL_CATEGORIES, STARS, HomeCarousel(), SLIDES, CATEGORY_LABEL, RENTAL_OPTION_ORDER (+2 more)
+Nodes (10): fromPriceOf(), Page(), RENTAL_CATEGORIES, STARS, HomeCarousel(), CATEGORY_LABEL, RENTAL_OPTION_ORDER, rentalNotice (+2 more)
 
 ### Community 87 - "page.tsx"
-Cohesion: 0.21
-Nodes (7): FormMode, ImagePreview, TODO: 실제 연동 시 PUT /api/admin/content/banners 호출로 교체하고, 이미지도 함께, TODO: 실제 연동 시 PUT /api/admin/content/intro 호출로 교체한다., BannerSlide, bannerSlides, IntroContent
+Cohesion: 0.22
+Nodes (8): ADMIN_MOCK_AUTH, AGENCY_MOCK_AUTH, APP_ENV, CORE_API_BASE_URL, NEXT_PUBLIC_API_MOCKING, globalEnv, $schema, ui
 
 ### Community 88 - "productData.ts"
-Cohesion: 0.36
-Nodes (5): getScrollThreshold(), NAV_ITEMS, TopNav(), IconHamburger(), IconHamburgerProps
+Cohesion: 0.07
+Nodes (36): metadata, BottomNav(), ICON_PROPS, ICONS, ITEMS, TopHeader(), AdminAuthProvider(), LoginContent() (+28 more)
 
 ### Community 89 - "CLAUDE.md — 친구야 프론트엔드 모노레포 협업 가이드"
-Cohesion: 0.29
-Nodes (5): metadata, BottomNav(), ICON_PROPS, ICONS, ITEMS
+Cohesion: 0.13
+Nodes (18): coreBaseUrl(), DELETE(), GET(), mockSession(), POST(), readTokenFromSetCookie(), metadata, AgencyLoginScreen() (+10 more)
 
 ### Community 90 - "README.md"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (5): 공통 비즈니스 규칙 (문서 간 일관성 기준), 문서 구성, 문서 유지 규칙, 서비스 개요, 친구야 — 와이어프레임 상세 설명 (문서 인덱스)
 
 ### Community 91 - "친구야 — API 명세(spec) 변경 → MSW 목 동기화 가이드"
@@ -445,8 +448,8 @@ Cohesion: 0.42
 Nodes (8): activeClientIds, getResponse(), handleRequest(), IS_MOCKED_RESPONSE, resolveMainClient(), respondWithMock(), sendToClient(), serializeRequest()
 
 ### Community 95 - "RentalCategoryKey"
-Cohesion: 0.25
-Nodes (8): AdminAssetsPage(), errorMessage(), AdminInventoryPage(), errorMessage(), AdminLoginPage(), AdminMorePage(), TopHeader(), useAdminAuth()
+Cohesion: 0.40
+Nodes (4): CartContext, CartContextValue, CartLine, CartProvider()
 
 ### Community 96 - "allocationData.ts"
 Cohesion: 0.25
@@ -465,16 +468,16 @@ Cohesion: 0.25
 Nodes (7): 1.1 화면 ID 및 변경된 부분, 1.2 예약 상태 흐름 변경 (중요), 1. 와이어프레임 변경사항, 구조·추적 변경, 상태 흐름 변경 (아래 1.2 — UI 영향 큼), 참고 — 아직 미확정(협의 중)이라 값이 바뀔 수 있는 부분, 친구야 — 퍼블리셔 전달: 와이어프레임 변경사항
 
 ### Community 100 - "index.ts"
-Cohesion: 0.17
-Nodes (10): AdjustmentRequest, ApiClient, ApiClientOptions, ApiError, InventoryAdjustment, InventoryDayDetail, InventoryDaySnapshot, OverCapacityDate (+2 more)
+Cohesion: 0.13
+Nodes (19): api, AdminInventoryPage(), api, errorMessage(), WEEKDAY_LABELS, AdjustmentRequest, AgencyAllocation, AgencyAllocationLine (+11 more)
 
 ### Community 101 - "친구야 — 여행사 페이지 와이어프레임 상세 설명"
 Cohesion: 0.29
 Nodes (7): `g-book` · S2-G4/G5 — 상품 조회 · 예약, `g-dash` · S2-G3 — 여행사 대시보드, `g-invite` · S2-G1/G2 — 계정 등록(초대 링크) · 로그인, `g-invoice` · S2-G7 — 여행사 인보이스, `g-list` · S2-G6 — 여행사 예약 목록, 친구야 — 여행사 페이지 와이어프레임 상세 설명, 화면 ID 매핑표
 
 ### Community 102 - "친구야 — 페이지 정의서 (Page Definition)"
-Cohesion: 0.33
-Nodes (5): AdminAuthContext, AdminAuthError, AdminAuthProvider(), AdminAuthValue, AdminSession
+Cohesion: 0.50
+Nodes (4): dist/**, .next/**, !.next/cache/**, outputs
 
 ### Community 103 - "클로드 코드용 프롬프트 — 친구야 프론트엔드"
 Cohesion: 0.29
@@ -485,7 +488,7 @@ Cohesion: 0.33
 Nodes (6): scripts, build, dev, lint, start, typecheck
 
 ### Community 105 - "CLAUDE.md — 친구야 와이어프레임 협업 가이드"
-Cohesion: 0.33
+Cohesion: 0.29
 Nodes (6): CLAUDE.md — 친구야 와이어프레임 협업 가이드, 문서 서술 스타일, 와이어프레임 작성 규약, 저장소 구조, ★ 핵심 규칙: 와이어프레임 ↔ 상세 설명 문서 동기화, 화면 코드 체계 (참고)
 
 ### Community 106 - "친구야 — MSW 적용 가이드 (퍼블리셔 / Claude Code용)"
@@ -501,12 +504,8 @@ Cohesion: 0.50
 Nodes (3): name, private, version
 
 ### Community 109 - "stat.tsx"
-Cohesion: 0.50
-Nodes (3): Stat(), StatItem, StatProps
-
-### Community 113 - "tailwindcss"
-Cohesion: 0.57
-Nodes (6): coreBaseUrl(), DELETE(), GET(), mockSession(), POST(), readTokenFromSetCookie()
+Cohesion: 0.39
+Nodes (8): coreBaseUrl(), DELETE(), GET(), mockSession(), POST(), readTokenFromSetCookie(), AdminAuthValue, AdminSession
 
 ### Community 114 - "faqData.ts"
 Cohesion: 0.20
@@ -532,25 +531,33 @@ Nodes (4): BottomNav(), ICON_PROPS, ICONS, ITEMS
 Cohesion: 0.50
 Nodes (3): Dropdown(), DropdownOption, DropdownProps
 
+### Community 123 - "dependsOn"
+Cohesion: 0.67
+Nodes (3): ^lint, dependsOn, lint
+
+### Community 124 - "start"
+Cohesion: 0.67
+Nodes (3): cache, persistent, start
+
 ## Knowledge Gaps
-- **687 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `type` (+682 more)
+- **701 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `type` (+696 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `err()` connect `Button Component` to `RentalCategoryKey`?**
+- **Why does `err()` connect `Button Component` to `Admin Agency Management`, `Admin Accounts & Agency Onboarding`, `index.ts`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `.next/**` connect `App Root Layout & Bottom Nav` to `Cancellation Fee & Reservation List Screens`, `CLAUDE.md — 친구야 프론트엔드 모노레포 협업 가이드`?**
+- **Why does `.next/**` connect `친구야 — 페이지 정의서 (Page Definition)` to `productData.ts`, `CLAUDE.md — 친구야 프론트엔드 모노레포 협업 가이드`, `Cancellation Fee & Reservation List Screens`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `outputs` connect `친구야 — 페이지 정의서 (Page Definition)` to `App Root Layout & Bottom Nav`?**
+  _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **What connects `nextConfig`, `name`, `version` to the rest of the system?**
-  _687 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _701 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admin Product Editing` be split into smaller, more focused modules?**
-  _Cohesion score 0.11724137931034483 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1422475106685633 - nodes in this community are weakly interconnected._
 - **Should `Admin Allocation & Invoicing Data` be split into smaller, more focused modules?**
   _Cohesion score 0.08292682926829269 - nodes in this community are weakly interconnected._
 - **Should `Customer App Package Manifest` be split into smaller, more focused modules?**
   _Cohesion score 0.041666666666666664 - nodes in this community are weakly interconnected._
-- **Should `Admin App Package Manifest` be split into smaller, more focused modules?**
-  _Cohesion score 0.0425531914893617 - nodes in this community are weakly interconnected._
