@@ -5,6 +5,9 @@ import type {
   Invoice,
   Asset,
   AssetDeletionMode,
+  Agency,
+  AgencyCreateResult,
+  AgencyInvitationResult,
 } from "@chinguya/types";
 
 /**
@@ -18,6 +21,19 @@ export interface ApiClientOptions {
   baseUrl?: string;
   /** 역할별 토큰 등 요청 헤더 */
   getHeaders?: () => Record<string, string>;
+}
+
+/**
+ * 여행사 등록·수정 요청 본문(S2-A2/A3). 계약: api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * 응답 타입(Agency)과 달리 여기엔 active가 없다 — 사용 가능/불가는 전용 엔드포인트로
+ * 다룬다(목록의 토글이 다른 필드를 모르는 채로 불러야 하기 때문).
+ */
+export interface AgencyInput {
+  name: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail: string;
 }
 
 /**
@@ -157,6 +173,37 @@ export function createApiClient(opts: ApiClientOptions = {}) {
           method: "POST",
           body: JSON.stringify({ name }),
         }),
+    },
+    /**
+     * 관리자 여행사 관리(S2-A1 목록·토글 / S2-A2 등록·초대 / S2-A3 상세·수정).
+     * 자산과 같이 관리자 앱 프록시가 `/admin` 프리픽스를 붙이므로 그 뒤 경로만 적는다.
+     *
+     * 여행사 계정을 만드는 API는 여기 없다 — 아이디·비밀번호는 담당자가 초대 링크로
+     * 직접 정한다(S2-G1, 여행사 앱 소관). 관리자가 하는 일은 초대 발송까지다.
+     */
+    agencies: {
+      /** includeDeleted=true면 소프트 삭제된 여행사까지 포함한다. */
+      list: (includeDeleted = false) =>
+        request<Agency[]>(`/agencies?includeDeleted=${includeDeleted}`),
+      detail: (agencyId: string) => request<Agency>(`/agencies/${agencyId}`),
+      /**
+       * 등록 + 초대 메일 발송. 메일 실패는 에러가 아니라 `invitation.sent === false`로
+       * 온다 — 여행사 행은 커밋됐으므로 화면은 재발송을 안내하면 된다.
+       */
+      create: (body: AgencyInput) =>
+        request<AgencyCreateResult>("/agencies", { method: "POST", body: JSON.stringify(body) }),
+      update: (agencyId: string, body: AgencyInput) =>
+        request<Agency>(`/agencies/${agencyId}`, { method: "PUT", body: JSON.stringify(body) }),
+      setActive: (agencyId: string, active: boolean) =>
+        request<Agency>(`/agencies/${agencyId}/active`, {
+          method: "PATCH",
+          body: JSON.stringify({ active }),
+        }),
+      /** 항상 소프트 삭제다(복원 API 없음) — 인보이스가 여행사 이름을 잃으면 안 되기 때문. */
+      remove: (agencyId: string) => request<void>(`/agencies/${agencyId}`, { method: "DELETE" }),
+      /** 새 토큰을 끊어 다시 보낸다. 이전 링크는 이 순간 무효가 된다. */
+      resendInvitation: (agencyId: string) =>
+        request<AgencyInvitationResult>(`/agencies/${agencyId}/invitations`, { method: "POST" }),
     },
     /**
      * 날짜별 재고 세팅(S1-A3). 계약: api-spec/openapi/chinguya-admin-api.yaml.

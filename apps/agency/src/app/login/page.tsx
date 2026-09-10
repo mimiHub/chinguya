@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useState, type ReactNode } from "react";
-import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
@@ -10,8 +9,27 @@ import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
 import { Alert } from "@chinguya/ui/alert";
-import { findAgencyAccount } from "@/data/authData";
+import { createApiClient, ApiError } from "@chinguya/api-client";
+import { useAgencyAuth } from "@/context/AgencyAuthContext";
 import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";
+
+/**
+ * 초대 검증·계정 등록은 세션이 없는 상태에서 부르므로 공용 프록시(/api/core/*)를 그대로
+ * 쓴다 — 여행사 앱 프록시가 `/v1` 프리픽스를 붙이므로 여기서는 그 뒤 경로만 적는다.
+ * 로그인만은 응답의 Set-Cookie를 옮겨 심어야 해서 전용 BFF(/api/agency/session)를 쓴다.
+ */
+const api = createApiClient();
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message;
+  return fallback;
+}
+
+interface InvitationInfo {
+  agencyName: string;
+  contactEmail: string;
+  expiresAt: string;
+}
 
 /**
  * S2-G1/G2 계정 등록(초대 링크) · 로그인.
@@ -31,8 +49,10 @@ import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/co
  * 로그인 카드는 화면 우측에 붙지만, 초광폭 모니터에서 화면 끝까지 밀리지 않도록 콘텐츠
  * 영역 자체를 1240px 폭 가이드 안에서만 배치한다(배경은 계속 뷰포트 전체를 채운다).
  *
- * 아직 백엔드/세션이 없어서 로그인에 성공해도 상태가 남지 않는다(다른 앱들과 같은 한계).
- * 테스트 계정: agency01 / agency1234.
+ * Core API에 실연동돼 있다 — 계약은 packages/api-spec/openapi/chinguya-agency-api.yaml.
+ * 초대 검증(POST /v1/agency/invitations/verify)과 계정 등록(.../complete)은 세션 없이
+ * 부르고(초대 토큰 자체가 인증 수단), 로그인은 전용 BFF(/api/agency/session)를 거쳐
+ * Core가 준 JWT를 이 오리진 쿠키로 옮겨 심는다.
  */
 export default function AgencyLoginPage() {
   return (
@@ -47,7 +67,7 @@ function AgencyLoginPageContent() {
   const inviteToken = searchParams.get("token");
 
   if (inviteToken) {
-    return <AgencyRegisterScreen />;
+    return <AgencyRegisterScreen token={inviteToken} />;
   }
 
   return (
@@ -142,15 +162,40 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
   );
 }
 
-function AgencyRegisterScreen() {
+function AgencyRegisterScreen({ token }: { token: string }) {
   const router = useRouter();
+
+  /** null = 검증 중, 값 = 사용 가능한 초대, false = 쓸 수 없는 초대(사유는 invitationError). */
+  const [invitation, setInvitation] = useState<InvitationInfo | null>(null);
+  const [invitationError, setInvitationError] = useState<string | null>(null);
 
   const [newId, setNewId] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  // 화면에 들어오자마자 토큰을 검증한다 — 만료·사용됨·무효화된 링크에 폼을 보여주고
+  // 다 입력하게 한 뒤에 실패시키는 것보다, 들어오는 순간 사유를 알려주는 편이 낫다.
+  useEffect(() => {
+    let alive = true;
+    api
+      .request<InvitationInfo>("/agency/invitations/verify", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      })
+      .then((info) => {
+        if (alive) setInvitation(info);
+      })
+      .catch((err: unknown) => {
+        if (alive) setInvitationError(errorMessage(err, "초대 링크를 확인하지 못했습니다."));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newId.trim() || !newPassword) {
       setRegisterError("아이디와 비밀번호를 입력해 주세요.");
@@ -160,22 +205,76 @@ function AgencyRegisterScreen() {
       setRegisterError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    // TODO: 실제 연동 시 초대 토큰과 함께 POST /api/agency/invite/complete 호출로 교체.
     setRegisterError(null);
-    router.push(`/login?registered=1&id=${encodeURIComponent(newId)}`);
+    setSubmitting(true);
+    try {
+      await api.request("/agency/invitations/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+          loginId: newId.trim(),
+          password: newPassword,
+          passwordConfirm: newPasswordConfirm,
+        }),
+      });
+      // 자동 로그인하지 않는다(페이지정의서: 등록 완료 → 로그인). 방금 만든 아이디를
+      // 로그인 화면에 미리 채워 준다.
+      router.push(`/login?registered=1&id=${encodeURIComponent(newId.trim())}`);
+    } catch (err) {
+      setRegisterError(errorMessage(err, "계정을 등록하지 못했습니다."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  return (
-    <AuthScreenLayout heroMessage={{ title: "환영합니다!", subtitle: "관리자 초대 이메일 링크로 진입했습니다." }}>
-      <Title size="xl" center className="!text-xl">계정 등록</Title>
+  if (invitationError) {
+    return (
+      <AuthScreenLayout>
+        <Title size="xl" center className="!text-xl">계정 등록</Title>
+        <Alert status="error" icon={false} className="mt-6">
+          {invitationError}
+        </Alert>
+        <Text variant="sub" className="mt-4 text-center">
+          관리자에게 초대 메일 재발송을 요청해 주세요.
+        </Text>
+      </AuthScreenLayout>
+    );
+  }
 
-      <form onSubmit={handleRegister} className="mt-6">
+  if (!invitation) {
+    return (
+      <AuthScreenLayout>
+        <Title size="xl" center className="!text-xl">계정 등록</Title>
+        <Text variant="sub" className="mt-6 text-center">초대 링크를 확인하는 중…</Text>
+      </AuthScreenLayout>
+    );
+  }
+
+  return (
+    <AuthScreenLayout
+      heroMessage={{ title: "환영합니다!", subtitle: `${invitation.agencyName} 계정을 등록합니다.` }}
+    >
+      <Title size="xl" center className="!text-xl">계정 등록</Title>
+      <Text variant="sub" className="mt-2 text-center">{invitation.contactEmail}</Text>
+
+      <form onSubmit={(e) => void handleRegister(e)} className="mt-6">
         <Stack direction="column" gap="md">
           <LabeledBox label="아이디">
-            <Input value={newId} onChange={(e) => setNewId(e.target.value)} placeholder="사용할 아이디" />
+            <Input
+              value={newId}
+              onChange={(e) => setNewId(e.target.value)}
+              placeholder="사용할 아이디"
+              autoComplete="username"
+            />
           </LabeledBox>
           <LabeledBox label="비밀번호">
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
           </LabeledBox>
           <LabeledBox label="비밀번호 확인">
             <Input
@@ -183,6 +282,7 @@ function AgencyRegisterScreen() {
               value={newPasswordConfirm}
               onChange={(e) => setNewPasswordConfirm(e.target.value)}
               placeholder="••••••••"
+              autoComplete="new-password"
             />
           </LabeledBox>
           {registerError && (
@@ -190,10 +290,13 @@ function AgencyRegisterScreen() {
               {registerError}
             </Alert>
           )}
-          <Button type="submit" fullWidth>
-            계정 등록 완료
+          <Button type="submit" fullWidth disabled={submitting}>
+            {submitting ? "등록 중…" : "계정 등록 완료"}
           </Button>
-          <Text variant="sub">링크 유효기간은 1주일입니다.</Text>
+          <Text variant="sub">
+            아이디는 영소문자·숫자·-·_ 조합 4~30자, 비밀번호는 8자 이상입니다. 이 링크는 1회만
+            사용할 수 있습니다.
+          </Text>
         </Stack>
       </form>
     </AuthScreenLayout>
@@ -202,21 +305,27 @@ function AgencyRegisterScreen() {
 
 function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: string | null; justRegistered: boolean }) {
   const router = useRouter();
+  const { login } = useAgencyAuth();
 
   const [loginId, setLoginId] = useState(registeredId ?? "");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const account = findAgencyAccount(loginId, loginPassword);
-    if (!account) {
-      setLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
-      return;
-    }
     setLoginError(null);
-    // TODO: 실제 연동 시 여기서 세션/토큰을 저장한다.
-    router.push("/");
+    setSubmitting(true);
+    try {
+      await login(loginId, loginPassword);
+      router.push("/");
+    } catch (err) {
+      // 서버 문구를 그대로 쓴다 — 사용 불가 여행사(AGENCY_INACTIVE)의 "관리자에게
+      // 문의해 주세요"처럼, 자격증명 오류와 다른 안내가 그대로 전달돼야 한다.
+      setLoginError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -227,7 +336,7 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
     >
       <Title size="xl" center className="!text-xl">로그인</Title>
 
-      <form onSubmit={handleLogin} className="mt-6">
+      <form onSubmit={(e) => void handleLogin(e)} className="mt-6">
         <Stack direction="column" gap="md">
           <LabeledBox label="아이디">
             <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="agency01" autoComplete="username" />
@@ -246,21 +355,21 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
               {loginError}
             </Alert>
           )}
-          <Button type="submit" fullWidth>
-            로그인
+          <Button type="submit" fullWidth disabled={submitting}>
+            {submitting ? "로그인 중…" : "로그인"}
           </Button>
-          <Text variant="sub">테스트 계정: agency01 / agency1234</Text>
+          {/* 시드 계정 안내는 개발 빌드에만 남긴다(관리자 로그인 화면과 같은 처리) —
+              프로덕션 번들에서는 이 블록이 통째로 사라진다. */}
+          {process.env.NODE_ENV === "development" && (
+            <Text variant="sub">개발용 시드 계정: agency01 / agency1234</Text>
+          )}
         </Stack>
       </form>
 
-      {/* 실제로는 관리자가 보낸 초대 이메일의 토큰 링크로만 등록 화면에 들어간다(자유
-          가입 아님). 지금은 그 이메일 발송이 없어서 데모용 토큰으로 바로 이동시킨다 —
-          고객 앱의 "회원가입" 링크와 같은 자리·같은 스타일로 맞췄다. */}
-      <Text className="mt-4 text-center text-sm">
-        아직 계정이 없으신가요?{" "}
-        <NextLink href="/login?token=demo" className="text-secondary-700 underline">
-          계정 등록
-        </NextLink>
+      {/* 자유 가입이 없는 화면이라 '계정 등록' 링크를 두지 않는다 — 등록 화면에는 관리자가
+          보낸 초대 메일의 토큰 링크로만 들어올 수 있고, 토큰 없이 열면 서버가 404를 준다. */}
+      <Text variant="sub" className="mt-4 text-center">
+        계정은 관리자가 보낸 초대 메일의 링크에서 등록합니다.
       </Text>
     </AuthScreenLayout>
   );

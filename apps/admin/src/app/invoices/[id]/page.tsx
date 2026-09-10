@@ -37,7 +37,7 @@ export default function AdminInvoiceDetailPage() {
     return <ComingSoon label="존재하지 않는 인보이스입니다" />;
   }
 
-  const agencyName = agencies.find((a) => a.id === invoice.agencyId)?.name ?? invoice.agencyId;
+  const agencyName = agencies.find((a) => a.agencyId === invoice.agencyId)?.name ?? invoice.agencyId;
   const lineItems = getInvoiceLineItems(invoice);
 
   const handleConfirmDeposit = () => {

@@ -29,7 +29,7 @@ export default function AdminInvoicesPage() {
 
   const [agencyFilter, setAgencyFilter] = useState<string | null>(null);
 
-  const findAgencyName = (id: string) => agencies.find((a) => a.id === id)?.name ?? id;
+  const findAgencyName = (id: string) => agencies.find((a) => a.agencyId === id)?.name ?? id;
 
   const filteredInvoices = agencyFilter ? invoices.filter((inv) => inv.agencyId === agencyFilter) : invoices;
 
@@ -50,7 +50,7 @@ export default function AdminInvoicesPage() {
         <Card padding="sm">
           {activeAgencies.map((agency) => (
             <div
-              key={agency.id}
+              key={agency.agencyId}
               className="flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-sm last:border-b-0"
             >
               <Stack direction="column" gap="xs">
@@ -58,7 +58,7 @@ export default function AdminInvoicesPage() {
                 <Text variant="sub">{currentPeriod} · 사용 중</Text>
               </Stack>
               <Stack gap="sm" align="center">
-                <Text weight="bold">{getPendingUsage(agency.id).toLocaleString()}원</Text>
+                <Text weight="bold">{getPendingUsage(agency.agencyId).toLocaleString()}원</Text>
                 <Badge variant="gray">발행예정</Badge>
               </Stack>
             </div>
@@ -76,7 +76,7 @@ export default function AdminInvoicesPage() {
             전체
           </Chip>
           {agencies.map((agency) => (
-            <Chip key={agency.id} on={agencyFilter === agency.id} onClick={() => setAgencyFilter(agency.id)}>
+            <Chip key={agency.agencyId} on={agencyFilter === agency.agencyId} onClick={() => setAgencyFilter(agency.agencyId)}>
               {agency.name}
             </Chip>
           ))}

@@ -44,12 +44,12 @@ export function issueDueInvoices(now: Date = new Date()): void {
 
   for (const period of closedPeriods) {
     for (const agency of agencies) {
-      if (invoices.some((inv) => inv.agencyId === agency.id && inv.period === period)) continue;
+      if (invoices.some((inv) => inv.agencyId === agency.agencyId && inv.period === period)) continue;
 
-      const amountKrw = sumUsage(agency.id, period);
+      const amountKrw = sumUsage(agency.agencyId, period);
       if (amountKrw <= 0) continue;
 
-      invoices.push({ id: `INV-${period}-${agency.id}`, agencyId: agency.id, period, amountKrw, settled: false });
+      invoices.push({ id: `INV-${period}-${agency.agencyId}`, agencyId: agency.agencyId, period, amountKrw, settled: false });
     }
   }
 }

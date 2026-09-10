@@ -186,18 +186,85 @@ export interface CustomerReservation {
 }
 
 /**
- * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, Invoice.agencyId가 이 id를 참조한다.
- * 지금까지는 예약/인보이스 쪽에 agencyId 문자열만 있고 여행사 자체를 나타내는 타입이 없었는데,
- * 관리자가 여행사를 등록/관리하려면 이름·담당자 연락처 같은 정보가 필요해서 추가했다.
+ * 여행사의 최신 초대 상태(S2-A1/A3 배지). 계약: api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * - `NONE` — 초대를 보낸 적이 없다(등록 직후 메일 발송에 실패한 경우도 여기).
+ * - `PENDING` — 살아 있는 초대가 있다(미사용·미만료).
+ * - `EXPIRED` — 마지막 초대가 만료됐다. 재발송이 필요하다.
+ * - `ACCEPTED` — 담당자가 링크로 계정 등록을 마쳤다.
+ */
+export type AgencyInvitationStatus = "NONE" | "PENDING" | "EXPIRED" | "ACCEPTED";
+
+/**
+ * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, Invoice.agencyId가 이 agencyId를 참조한다.
+ *
+ * 여행사와 로그인 계정은 생애주기가 다르다 — 관리자가 여행사를 등록하면(S2-A2) 초대 메일만
+ * 나가고, 담당자가 링크로 아이디·비밀번호를 직접 정할 때(S2-G1) 비로소 계정이 생긴다.
+ * 그래서 여기에 비밀번호 필드가 없고, 계정 존재 여부는 `accountRegistered`·`loginId`로만 비친다.
  */
 export interface Agency {
-  id: string;
+  /** 여행사 PK. Core는 숫자 PK를 문자열로 직렬화해 내려준다(Asset.assetId와 같은 방식). */
+  agencyId: string;
   name: string;
+  /** 담당자명. 미입력이면 빈 문자열. */
   contactName: string;
+  /** 담당자 연락처. 미입력이면 빈 문자열. */
   contactPhone: string;
+  /** 담당자 이메일. 초대 메일 수신 주소. 서버가 소문자로 정규화해 저장한다. */
   contactEmail: string;
   /** false면 이 여행사 계정으로 여행사앱 로그인/예약이 막힌다(계약 종료 등) */
   active: boolean;
+  /** 담당자가 초대 링크로 아이디·비밀번호를 설정했는지(S2-G1 완료 여부). */
+  accountRegistered: boolean;
+  /** 등록된 계정의 아이디. accountRegistered가 false면 null. */
+  loginId: string | null;
+  invitationStatus: AgencyInvitationStatus;
+  /** 최신 초대의 만료 시각(ISO). PENDING·EXPIRED일 때만 값이 있다. */
+  invitationExpiresAt: string | null;
+  /** 소프트 삭제 여부. 여행사는 항상 소프트 삭제되고 복원 API는 없다. */
+  deleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** 소프트 삭제 시각(ISO). deleted가 false면 null. */
+  deletedAt: string | null;
+}
+
+/**
+ * 초대 발송 시도의 결과(S2-A2).
+ *
+ * 메일 실패를 에러 응답으로 만들지 않기 위한 타입이다 — 여행사 등록 자체는 성공했는데
+ * SMTP만 죽은 상황을 화면이 구분해 "재발송해 주세요"로 안내할 수 있어야 한다.
+ */
+export interface AgencyInvitationResult {
+  sent: boolean;
+  /**
+   * - `MAIL_SEND_FAILED` — SMTP 오류. 재발송으로 다시 시도할 수 있다.
+   * - `MAIL_DISABLED` — 서버 설정으로 발송을 끈 환경(로컬 개발). 토큰 자체는 정상 발급됐다.
+   */
+  skippedReason: "MAIL_SEND_FAILED" | "MAIL_DISABLED" | null;
+  /** 발급된 초대의 만료 시각(ISO, 발급 +7일). 발급 자체가 없었으면 null. */
+  expiresAt: string | null;
+}
+
+/** 여행사 등록(S2-A2) 응답 — 등록과 초대 발송이 한 요청이라 결과도 함께 온다. */
+export interface AgencyCreateResult {
+  agency: Agency;
+  invitation: AgencyInvitationResult;
+}
+
+/**
+ * 여행사 로그인 세션(S2-G2). AdminSession과 대칭.
+ *
+ * agencyName이 여기 있는 이유: 관리자가 명칭을 바꾸면(S2-A3) 4시간짜리 토큰 안에 낡은
+ * 이름이 남으므로, 서버가 토큰이 아니라 DB에서 읽어 매번 내려준다.
+ */
+export interface AgencySession {
+  agencyId: string;
+  agencyName: string;
+  accountId: string;
+  loginId: string;
+  /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
+  expiresAt: string;
 }
 
 /** 여행사 예약. 예약=즉시 완료 / 취소=즉시(입금 흐름 없음)라 고객 예약보다 상태가 단순하다. */

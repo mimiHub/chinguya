@@ -1,6 +1,7 @@
 "use client";
 
 import { IconHamburger } from "@chinguya/ui/icon-hamburger";
+import { useAgencyAuth } from "@/context/AgencyAuthContext";
 
 /**
  * 상단 헤더. 사이드바가 기본적으로 접혀 있는 토글형 패널로 바뀌면서, 어느 화면에서든 열고
@@ -9,12 +10,21 @@ import { IconHamburger } from "@chinguya/ui/icon-hamburger";
  * 열기/닫기 버튼을 겸한다. 여행사명 텍스트 대신 로고(logo-pc.png, 로그인 화면과 같은 자산)를
  * 둔다 — 배경이 흰색 헤더라 로그인 화면에서 쓴 필터(brightness-0 invert) 없이 원본 색 그대로
  * 잘 보인다(로그인 화면에는 이 헤더 자체가 없다 — AgencyShell 참고).
+ *
+ * 로고 옆의 여행사명은 세션(GET /api/agency/session)에서 온다 — 토큰 클레임이 아니라
+ * 서버가 DB에서 읽어 내려주는 값이라, 관리자가 명칭을 바꾸면(S2-A3) 다음 화면 이동에
+ * 바로 반영된다. 세션 조회 전에는 비워 둔다(빈칸이 잘못된 이름보다 낫다).
  */
 export function Header({ open, onMenuClick }: { open: boolean; onMenuClick: () => void }) {
+  const { session } = useAgencyAuth();
+
   return (
     <header className="flex items-center justify-between border-b border-line bg-white px-6 py-4">
-      {/* eslint-disable-next-line @next/next/no-img-element -- 고정 로고 이미지, next/image 최적화가 필요 없는 크기 */}
-      <img src="/logo-pc.png" alt="Cafe Chinguya" className="h-7 w-auto" />
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 고정 로고 이미지, next/image 최적화가 필요 없는 크기 */}
+        <img src="/logo-pc.png" alt="Cafe Chinguya" className="h-7 w-auto" />
+        {session && <span className="text-sm font-bold">{session.agencyName}</span>}
+      </div>
       {/* 공용 컴포넌트(IconHamburger)는 고객 앱도 같이 쓰므로 크기를 직접 고치지 않고,
           여기서만 scale로 줄인다 — 열렸을 때(X) 막대가 회전하며 커지는 애니메이션이라
           버튼 자체를 축소해야 열림/닫힘 두 모양이 같은 비율로 함께 작아진다. */}

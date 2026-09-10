@@ -55,6 +55,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           setSession(await res.json());
         } else {
+          // 실패 응답은 BFF가 이미 쿠키를 지우고 내려준다(route.ts 주석 참고) —
+          // 그래야 미들웨어가 /login 을 다시 이곳으로 돌려보내지 않는다.
           setSession(null);
           router.replace("/login");
         }

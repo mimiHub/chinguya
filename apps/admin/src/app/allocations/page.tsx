@@ -31,7 +31,7 @@ import { getAllocatedQty, getTotalAllocatedQty, saveAllocatedQty } from "@/data/
  */
 export default function AdminAllocationsPage() {
   const activeAgencies = agencies.filter((a) => a.active);
-  const agencyIds = activeAgencies.map((a) => a.id);
+  const agencyIds = activeAgencies.map((a) => a.agencyId);
 
   const [assetId, setAssetId] = useState(assets[0]?.assetId ?? "");
   const now = new Date();
@@ -47,16 +47,16 @@ export default function AdminAllocationsPage() {
     agencies
       .filter((a) => a.active)
       .forEach((agency) => {
-        initial[agency.id] = getAllocatedQty(assets[0]?.assetId ?? "", agency.id, key);
+        initial[agency.agencyId] = getAllocatedQty(assets[0]?.assetId ?? "", agency.agencyId, key);
       });
     return initial;
   });
   const [savedOpen, setSavedOpen] = useState(false);
-  const [pickerAgencyId, setPickerAgencyId] = useState(activeAgencies[0]?.id ?? "");
+  const [pickerAgencyId, setPickerAgencyId] = useState(activeAgencies[0]?.agencyId ?? "");
   const [pickerQty, setPickerQty] = useState(0);
   const [agencyMenuOpen, setAgencyMenuOpen] = useState(false);
 
-  const pickerAgency = activeAgencies.find((a) => a.id === pickerAgencyId);
+  const pickerAgency = activeAgencies.find((a) => a.agencyId === pickerAgencyId);
 
   const days: CalendarDay[] = useMemo(() => {
     const firstWeekday = new Date(viewYear, viewMonth - 1, 1).getDay();
@@ -86,7 +86,7 @@ export default function AdminAllocationsPage() {
     const key = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const next: Record<string, number> = {};
     activeAgencies.forEach((agency) => {
-      next[agency.id] = getAllocatedQty(assetId, agency.id, key);
+      next[agency.agencyId] = getAllocatedQty(assetId, agency.agencyId, key);
     });
     setQtyByAgency(next);
   };
@@ -100,7 +100,7 @@ export default function AdminAllocationsPage() {
     const key = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const next: Record<string, number> = {};
     activeAgencies.forEach((agency) => {
-      next[agency.id] = getAllocatedQty(id, agency.id, key);
+      next[agency.agencyId] = getAllocatedQty(id, agency.agencyId, key);
     });
     setQtyByAgency(next);
   };
@@ -122,7 +122,7 @@ export default function AdminAllocationsPage() {
   const handleSave = () => {
     if (!dateKey) return;
     activeAgencies.forEach((agency) => {
-      saveAllocatedQty(assetId, agency.id, dateKey, qtyByAgency[agency.id] ?? 0);
+      saveAllocatedQty(assetId, agency.agencyId, dateKey, qtyByAgency[agency.agencyId] ?? 0);
     });
     setSavedOpen(true);
   };
@@ -196,14 +196,14 @@ export default function AdminAllocationsPage() {
                   <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-line bg-surface shadow-lg">
                     {activeAgencies.map((agency) => (
                       <button
-                        key={agency.id}
+                        key={agency.agencyId}
                         type="button"
                         onClick={() => {
-                          setPickerAgencyId(agency.id);
+                          setPickerAgencyId(agency.agencyId);
                           setAgencyMenuOpen(false);
                         }}
                         className={`block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
-                          agency.id === pickerAgencyId ? "bg-primary-100 text-primary-700" : ""
+                          agency.agencyId === pickerAgencyId ? "bg-primary-100 text-primary-700" : ""
                         }`}
                       >
                         {agency.name}
@@ -239,7 +239,7 @@ export default function AdminAllocationsPage() {
               이 영역만 고정 높이로 자체 스크롤한다(저장 버튼 등 나머지 화면은 항상 같은 자리에 보임) */}
           <div className="max-h-72 overflow-y-auto">
             {Object.entries(qtyByAgency).map(([agencyId, qty]) => {
-              const agency = activeAgencies.find((a) => a.id === agencyId);
+              const agency = activeAgencies.find((a) => a.agencyId === agencyId);
               if (!agency) return null;
               return (
                 <div

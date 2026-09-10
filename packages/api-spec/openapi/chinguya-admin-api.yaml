@@ -3,8 +3,12 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
-# 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3). 나머지
-#       관리자 운영 API(상품·예약·인보이스)는 아직 이 문서에 없다 — 구현되는 대로 이어 붙인다.
+# 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3),
+#       여행사 관리(S2-A1/A2/A3). 나머지 관리자 운영 API(상품·예약·인보이스)는 아직 이
+#       문서에 없다 — 구현되는 대로 이어 붙인다.
+#
+#       여행사 **대상** 계약(여행사 담당자가 쓰는 초대 수락·로그인, S2-G1/G2)은
+#       chinguya-agency-api.yaml 에 따로 있다. 이 문서는 관리자가 부르는 것만 담는다.
 #
 # 고객 대상 계약은 chinguya-slice1-openapi.yaml 에 따로 있다. 그 문서는 헤더에서
 # 스스로를 '고객 대상 Core API'로 한정하므로 관리자 계약은 이 파일로 분리한다.
@@ -46,7 +50,7 @@ info:
   version: 0.1.0
   description: |
     관리자(A) 앱이 쓰는 Core API 계약. 현재는 인증(S0-A2), 자산 관리(S1-A2), 날짜별
-    재고 세팅(S1-A3)을 정의한다.
+    재고 세팅(S1-A3), 여행사 관리(S2-A1/A2/A3)를 정의한다.
 
     **권한 모델** — 서버가 강제한다(SecurityConfig):
     - `/admin/**` 는 전부 쿠키 인증 필수(로그인 엔드포인트만 예외). 미인증 시 401.
@@ -73,6 +77,8 @@ tags:
     description: 자산(명칭 마스터) 등록·수정·삭제·복원 (S1-A2)
   - name: admin-inventory
     description: 자산별 날짜별 재고 세팅 — 기준 보유량·재고 조정·매장 휴무 (S1-A3)
+  - name: admin-agency
+    description: 여행사(거래처) 목록·등록(초대)·상세·사용 가능/불가 (S2-A1/A2/A3)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -613,6 +619,252 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  # ---------------------------------------------------------------------------
+  # 여행사 관리 (S2-A1/A2/A3)
+  #
+  # 여행사와 그 로그인 계정은 별개의 생애주기를 가진다: 관리자가 여행사를 등록하면
+  # 초대 메일만 나가고, 담당자가 링크로 아이디·비밀번호를 직접 정할 때 비로소 계정이
+  # 생긴다(S2-G1). 그래서 이 문서에는 계정 생성 API가 없다 — 그건 여행사 대상 계약
+  # (chinguya-agency-api.yaml)에 있다. 여기서 관리자가 하는 일은 여행사 마스터 관리와
+  # **초대 발송**뿐이다.
+  # ---------------------------------------------------------------------------
+
+  /admin/agencies:
+    get:
+      tags: [admin-agency]
+      summary: 여행사 목록 조회 (S2-A1)
+      description: |
+        여행사(거래처) 목록. 자산과 마찬가지로 소수라 페이지네이션 없이 전량 반환한다.
+
+        정렬은 **활성 여행사 먼저, 그 안에서 등록 순(id 오름차순)** 이다.
+      parameters:
+        - name: includeDeleted
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: true 면 소프트 삭제된 여행사까지 포함한다.
+      responses:
+        '200':
+          description: 여행사 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Agency' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [admin-agency]
+      summary: 여행사 등록 + 초대 메일 발송 (S2-A2)
+      description: |
+        여행사를 만들고 담당자 이메일로 **계정 등록 초대 링크**를 보낸다. 두 일이 한
+        요청인 이유는 화면(S2-A2)의 CTA가 '가입 링크 이메일 발송' 하나이기 때문이다.
+
+        초대 링크는 여행사 웹앱의 `/login?token=…` 을 가리키며 **유효기간 7일·1회용**이다.
+        토큰 원문은 서버에 저장되지 않는다(SHA-256 해시만) — 그래서 발송에 실패하면
+        같은 링크를 다시 얻을 수 없고, 재발송(`POST /admin/agencies/{agencyId}/invitations`)
+        으로 새 토큰을 끊어야 한다.
+
+        **메일 발송 실패는 5xx가 아니다.** 여행사 행과 초대 행은 커밋되고 응답의
+        `invitation.sent` 가 false로 내려온다 — SMTP가 죽었다고 등록 자체를 되돌리면
+        관리자가 '등록이 된 건가'를 추론해야 하기 때문이다. 화면은 이 필드로 토스트를
+        가르고 재발송을 안내한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyCreateRequest' }
+      responses:
+        '201':
+          description: 등록 완료(메일 발송 성공 여부는 `invitation.sent` 로 판단)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyCreateResponse' }
+        '400':
+          description: 필수값 누락 또는 이메일 형식 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/DuplicateAgencyName'
+
+  /admin/agencies/{agencyId}:
+    parameters:
+      - name: agencyId
+        in: path
+        required: true
+        schema: { type: string }
+        description: 여행사 PK(숫자지만 문자열로 직렬화된다).
+
+    get:
+      tags: [admin-agency]
+      summary: 여행사 상세 조회 (S2-A3)
+      responses:
+        '200':
+          description: 여행사 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agency' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/AgencyNotFound'
+
+    put:
+      tags: [admin-agency]
+      summary: 여행사 정보 수정 (S2-A3)
+      description: |
+        명칭·담당자·연락처·이메일을 바꾼다. 사용 가능/불가는 여기가 아니라 전용
+        엔드포인트(`PATCH .../active`)로 다룬다 — 목록 화면의 토글이 다른 필드를
+        모르는 채로 부를 수 있어야 하기 때문이다.
+
+        **담당자 이메일을 바꿔도 초대 메일이 자동으로 나가지 않는다.** 재발송은
+        명시적 행위여야 하므로 별도 엔드포인트를 쓴다.
+
+        삭제된 여행사는 수정할 수 없다(409 `AGENCY_DELETED`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyUpdateRequest' }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agency' }
+        '400':
+          description: 필수값 누락 또는 이메일 형식 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AgencyNotFound'
+        '409':
+          $ref: '#/components/responses/DuplicateAgencyName'
+
+    delete:
+      tags: [admin-agency]
+      summary: 여행사 삭제 (S2-A1)
+      description: |
+        **항상 소프트 삭제**다. 자산(S1-A2)처럼 하드/소프트를 가르지 않는 이유는,
+        여행사가 곧 할당(S2-A4)·예약(S2-G4~G6)·인보이스(S2-A5)에서 참조되기 때문이다 —
+        지난달 인보이스가 여행사 이름을 잃으면 안 된다.
+
+        복원 엔드포인트는 없다. 삭제된 여행사는 목록·상세·로그인에서 모두 빠지며,
+        그 계정으로는 로그인할 수 없다(계정이 없는 것과 같은 401로 응답한다).
+      responses:
+        '204':
+          description: 삭제 완료
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AgencyNotFound'
+        '409':
+          description: 이미 삭제된 여행사
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: AGENCY_ALREADY_DELETED
+                message: 이미 삭제된 여행사입니다.
+
+  /admin/agencies/{agencyId}/active:
+    parameters:
+      - name: agencyId
+        in: path
+        required: true
+        schema: { type: string }
+
+    patch:
+      tags: [admin-agency]
+      summary: 사용 가능/불가 토글 (S2-A1)
+      description: |
+        `active=false` 로 바꾸면 그 여행사 계정의 **로그인·예약이 차단**된다.
+
+        ⚠ 액세스 토큰은 stateless(JWT)라 이미 발급된 토큰이 이 시점에 무효화되지는
+        않는다. 대신 여행사 앱이 화면 이동마다 부르는 `GET /v1/agency/auth/me` 가
+        매번 `active` 를 다시 읽어 403(`AGENCY_INACTIVE`)을 낸다 — 실질적으로는
+        한 번의 화면 이동 안에 튕긴다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyActiveRequest' }
+      responses:
+        '200':
+          description: 반영 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agency' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AgencyNotFound'
+        '409':
+          description: 삭제된 여행사는 상태를 바꿀 수 없다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: AGENCY_DELETED
+                message: 삭제된 여행사는 수정할 수 없습니다.
+
+  /admin/agencies/{agencyId}/invitations:
+    parameters:
+      - name: agencyId
+        in: path
+        required: true
+        schema: { type: string }
+
+    post:
+      tags: [admin-agency]
+      summary: 초대 메일 재발송 (S2-A3)
+      description: |
+        새 토큰을 끊어 담당자 이메일로 다시 보낸다. **이전에 보낸 초대 링크는 이 순간
+        무효가 된다** — 여행사당 살아 있는 초대는 최대 1건이다.
+
+        이미 계정 등록을 마친 여행사에는 보낼 수 없다(409
+        `AGENCY_ACCOUNT_ALREADY_EXISTS`). 페이지정의서의 '이미 계정 있으면 발송 생략'은
+        이 1:1 모델에서 **그 여행사의 계정이 이미 있을 때**를 뜻하며, 신규 등록 시점에는
+        참이 될 수 없으므로 실질적으로 이 엔드포인트에서만 발동한다. 관리자가 명시적으로
+        요청한 행위이므로 조용히 생략하지 않고 409로 알린다.
+
+        메일 발송 실패는 등록과 같이 `sent: false` 로 보고한다(5xx 아님).
+      responses:
+        '200':
+          description: 재발송 처리 완료(성공 여부는 `sent` 로 판단)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyInvitationResult' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AgencyNotFound'
+        '409':
+          description: 이미 계정이 등록됐거나 삭제된 여행사
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: AGENCY_ACCOUNT_ALREADY_EXISTS
+                message: 이미 계정이 등록된 여행사입니다.
+
 # -----------------------------------------------------------------------------
 components:
 
@@ -671,6 +923,22 @@ components:
           example:
             code: ADJUSTMENT_NOT_FOUND
             message: 재고 조정을 찾을 수 없습니다.
+    AgencyNotFound:
+      description: 존재하지 않거나 삭제된 여행사
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: AGENCY_NOT_FOUND
+            message: 여행사를 찾을 수 없습니다.
+    DuplicateAgencyName:
+      description: 같은 명칭의 **활성** 여행사가 이미 있음
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: DUPLICATE_AGENCY_NAME
+            message: 이미 사용 중인 여행사 명칭입니다.
 
   schemas:
 
@@ -887,6 +1155,132 @@ components:
         date: { type: string, format: date }
         closed: { type: boolean }
 
+    AgencyInvitationStatus:
+      type: string
+      enum: [NONE, PENDING, EXPIRED, ACCEPTED]
+      description: |
+        여행사의 **최신** 초대 상태. 목록·상세 화면의 배지 문구가 이 값에서 나온다.
+        - `NONE` — 초대를 보낸 적이 없다(등록 직후 메일 발송에 실패한 경우도 여기).
+        - `PENDING` — 살아 있는 초대가 있다(미사용·미만료).
+        - `EXPIRED` — 마지막 초대가 만료됐다. 재발송이 필요하다.
+        - `ACCEPTED` — 담당자가 링크로 계정 등록을 마쳤다. `accountRegistered` 도 true.
+
+    Agency:
+      type: object
+      required: [agencyId, name, contactName, contactPhone, contactEmail, active, accountRegistered, invitationStatus, deleted, createdAt, updatedAt]
+      description: |
+        여행사(거래처) 마스터(S2-A1~A3). 로그인 계정은 별도 테이블이라 이 스키마에
+        비밀번호 필드가 없고, 계정 존재 여부는 `accountRegistered`·`loginId` 로만 비친다.
+      properties:
+        agencyId:
+          type: string
+          description: 여행사 PK(숫자지만 문자열로 직렬화된다).
+        name: { type: string }
+        contactName:
+          type: string
+          description: 담당자명. 미입력이면 빈 문자열.
+        contactPhone:
+          type: string
+          description: 담당자 연락처. 미입력이면 빈 문자열.
+        contactEmail:
+          type: string
+          format: email
+          description: 담당자 이메일. 초대 메일 수신 주소. 서버가 소문자로 정규화해 저장한다.
+        active:
+          type: boolean
+          description: |
+            사용 가능/불가(S2-A1 토글). false면 이 여행사 계정으로 여행사앱 로그인·예약이
+            차단된다.
+        accountRegistered:
+          type: boolean
+          description: 담당자가 초대 링크로 아이디·비밀번호를 설정했는지(S2-G1 완료 여부).
+        loginId:
+          type: [string, 'null']
+          description: 등록된 계정의 아이디. `accountRegistered` 가 false면 null.
+        invitationStatus: { $ref: '#/components/schemas/AgencyInvitationStatus' }
+        invitationExpiresAt:
+          type: [string, 'null']
+          format: date-time
+          description: 최신 초대의 만료 시각(UTC). `PENDING`·`EXPIRED` 일 때만 값이 있다.
+        deleted:
+          type: boolean
+          description: 소프트 삭제 여부. 복원 API는 없다.
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt:
+          type: [string, 'null']
+          format: date-time
+          description: 소프트 삭제 시각. `deleted` 가 false면 null.
+
+    AgencyCreateRequest:
+      type: object
+      required: [name, contactEmail]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 여행사 명칭. 서버가 앞뒤 공백을 제거한 뒤 저장·중복검사한다.
+        contactName: { type: string, maxLength: 50 }
+        contactPhone: { type: string, maxLength: 30 }
+        contactEmail:
+          type: string
+          format: email
+          maxLength: 255
+          description: |
+            담당자 이메일. 초대 메일이 이 주소로 나간다.
+
+            **중복을 허용한다** — 한 담당자가 여러 여행사를 맡을 수 있고, 초대 토큰은
+            이메일이 아니라 여행사 PK에 묶이므로 링크가 서로 섞이지 않는다.
+
+    AgencyUpdateRequest:
+      type: object
+      required: [name, contactEmail]
+      description: |
+        생성 요청과 필드가 같다. `active` 는 여기 없다 — 전용 엔드포인트
+        (`PATCH .../active`)로 다룬다.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        contactName: { type: string, maxLength: 50 }
+        contactPhone: { type: string, maxLength: 30 }
+        contactEmail: { type: string, format: email, maxLength: 255 }
+
+    AgencyActiveRequest:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+
+    AgencyInvitationResult:
+      type: object
+      required: [sent]
+      description: |
+        초대 발송 시도의 결과. **메일 실패를 에러 응답으로 만들지 않기 위한 스키마다** —
+        여행사 등록 자체는 성공했는데 SMTP만 죽은 상황을 화면이 구분할 수 있어야 한다.
+      properties:
+        sent:
+          type: boolean
+          description: 메일을 실제로 보냈는지. false면 `skippedReason` 을 본다.
+        skippedReason:
+          type: [string, 'null']
+          enum: [MAIL_SEND_FAILED, MAIL_DISABLED, 'null']
+          description: |
+            - `MAIL_SEND_FAILED` — SMTP 오류. 재발송으로 다시 시도할 수 있다.
+            - `MAIL_DISABLED` — 서버 설정(`chinguya.mail.enabled=false`)으로 발송을 끈
+              환경(로컬 개발). 초대 토큰 자체는 정상 발급됐고 링크는 서버 로그에 찍힌다.
+            `sent` 가 true면 null.
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+          description: 발급된 초대의 만료 시각(UTC, 발급 +7일). 발급 자체가 없었으면 null.
+
+    AgencyCreateResponse:
+      type: object
+      required: [agency, invitation]
+      properties:
+        agency: { $ref: '#/components/schemas/Agency' }
+        invitation: { $ref: '#/components/schemas/AgencyInvitationResult' }
+
     Error:
       type: object
       required: [code, message]
@@ -908,6 +1302,13 @@ components:
 
             재고 세팅(S1-A3):
             - `ADJUSTMENT_NOT_FOUND` — 존재하지 않는 재고 조정.
+
+            여행사(S2-A1/A2/A3):
+            - `AGENCY_NOT_FOUND` — 존재하지 않거나 삭제된 여행사.
+            - `DUPLICATE_AGENCY_NAME` — 같은 명칭의 활성 여행사가 이미 있다.
+            - `AGENCY_DELETED` — 삭제된 여행사는 수정·상태변경·재발송할 수 없다.
+            - `AGENCY_ALREADY_DELETED` — 이미 삭제된 여행사를 또 삭제하려 했다.
+            - `AGENCY_ACCOUNT_ALREADY_EXISTS` — 이미 계정이 등록돼 재발송할 수 없다.
         message: { type: string }
         fieldErrors:
           type: array

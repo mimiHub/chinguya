@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
+import { useAgencyAuth } from "@/context/AgencyAuthContext";
 
 const ITEMS = [
   { href: "/", label: "대시보드" },
@@ -29,6 +30,7 @@ const ITEMS = [
  */
 export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname();
+  const { logout } = useAgencyAuth();
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -71,13 +73,16 @@ export function Sidebar({ open }: { open: boolean }) {
           보이게 한다. 구분선은 로그아웃 링크 자체(rounded-md + w-[202px])에 border-t로 주면
           둥근 모서리 때문에 선 양 끝이 짧게 끊겨 보이는 문제가 있어서, 링크를 감싸는
           별도 래퍼 div에 선을 긋고 링크는 그 안에서 여백만 준다. */}
+      {/* 링크가 아니라 버튼이다 — 세션 쿠키를 지워야 하므로 /login 으로 이동만 하면
+          로그인 상태가 그대로 남아 미들웨어가 다시 대시보드로 돌려보낸다. */}
       <div className="mt-auto w-[202px] border-t border-secondary-800 pt-4">
-        <NextLink
-          href="/login"
-          className="block whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-secondary-200 hover:bg-secondary-800/60 hover:text-white"
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="block w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium text-secondary-200 hover:bg-secondary-800/60 hover:text-white"
         >
           로그아웃
-        </NextLink>
+        </button>
       </div>
     </aside>
   );

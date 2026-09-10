@@ -1,35 +1,40 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import type { AdminSession } from "@chinguya/types";
+import type { AgencySession } from "@chinguya/types";
 
 /**
- * 관리자 세션 BFF (S0-A2 로그인 / 로그아웃 / 세션 조회).
+ * 여행사 세션 BFF (S2-G2 로그인 / 로그아웃 / 세션 조회).
  *
  * 브라우저에서 Core API(:8080)를 직접 부르지 않고 이 Route Handler를 거친다 —
  * Core에는 CORS 설정이 없고 액세스 토큰 쿠키가 SameSite=Lax라 cross-origin 요청에는
  * 실려 가지 않기 때문이다. 여기서는 서버사이드 fetch라 CORS와 무관하고, Core가 내려준
- * JWT를 관리자 앱 자기 오리진 쿠키로 다시 심으므로 이후 요청은 same-origin이 된다.
+ * JWT를 여행사 앱 자기 오리진 쿠키로 다시 심으므로 이후 요청은 same-origin이 된다.
  *
- * 계약: packages/api-spec/openapi/chinguya-admin-api.yaml
+ * ⚠ 공용 프록시(/api/core/*)로는 이걸 대신할 수 없다 — 그 프록시는 응답의 Set-Cookie를
+ *   흘려보내지 않아서, 로그인이 성공한 것처럼 보이고 이후 모든 요청이 401이 된다.
+ *   그래서 로그인만 전용 라우트를 둔다(관리자 앱의 /api/admin/session과 같은 구조).
+ *
+ * 계약: packages/api-spec/openapi/chinguya-agency-api.yaml
  */
 
-const COOKIE_NAME = "admin_access_token";
+const COOKIE_NAME = "agency_access_token";
 
 /**
  * [퍼블 작업용 임시 우회] Core API(:8080)가 아직 안 떠 있어도 화면 작업을 계속할 수 있게
- * 하는 로컬 전용 스위치다. 기본값은 꺼짐(false)이라 아무 데도 영향을 주지 않는다.
- * 켜려면 apps/admin/.env.local 에 ADMIN_MOCK_AUTH=true 를 넣는다 — .env.local은
- * .gitignore 대상이라 커밋되지 않고, 각자 컴퓨터에만 적용된다. Core API 로그인이 실제로
- * 연동되면(또는 그 전이라도 실 서버로 테스트하고 싶으면) 이 스위치는 꺼두면 된다.
+ * 하는 로컬 전용 스위치다(관리자 앱의 ADMIN_MOCK_AUTH와 같은 역할). 기본값은 꺼짐이라
+ * 아무 데도 영향을 주지 않는다. `pnpm --filter @chinguya/agency dev:mock` 으로 켠다.
+ *
+ * 인증만 목으로 통과시킬 뿐 /api/core/* 는 여전히 실제 Core로 나간다.
  */
-const MOCK_AUTH = process.env.ADMIN_MOCK_AUTH === "true";
-const MOCK_TOKEN = "mock-admin-token";
+const MOCK_AUTH = process.env.AGENCY_MOCK_AUTH === "true";
+const MOCK_TOKEN = "mock-agency-token";
 
-function mockSession(): AdminSession {
+function mockSession(): AgencySession {
   return {
-    adminId: "mock-admin",
-    loginId: "admin",
-    role: "SUPER_ADMIN",
+    agencyId: "mock-agency",
+    agencyName: "제주바다여행사",
+    accountId: "mock-account",
+    loginId: "agency01",
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };
 }
@@ -56,7 +61,6 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   if (MOCK_AUTH) {
-    // 퍼블 작업용 우회: 아이디/비밀번호를 검증하지 않고 바로 통과시킨다.
     const session = mockSession();
     const maxAge = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
     (await cookies()).set(COOKIE_NAME, MOCK_TOKEN, {
@@ -69,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json(session);
   }
 
-  const res = await fetch(`${coreBaseUrl()}/admin/auth/login`, {
+  const res = await fetch(`${coreBaseUrl()}/v1/agency/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ loginId: body.loginId, password: body.password }),
@@ -77,6 +81,7 @@ export async function POST(request: Request) {
 
   if (!res.ok) {
     // Core의 에러 본문({code, message})을 그대로 흘려보낸다 — 화면이 서버 문구를 쓴다.
+    // 사용 불가 여행사의 403(AGENCY_INACTIVE)도 이 경로로 그대로 전달된다.
     return NextResponse.json(await res.json(), { status: res.status });
   }
 
@@ -88,7 +93,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const session: AdminSession = await res.json();
+  const session: AgencySession = await res.json();
   const maxAge = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
 
   (await cookies()).set(COOKIE_NAME, token, {
@@ -102,7 +107,13 @@ export async function POST(request: Request) {
   return NextResponse.json(session);
 }
 
-/** GET — 현재 세션. 쿠키를 Core로 포워딩해 토큰 유효성까지 확인한다. */
+/**
+ * GET — 현재 세션. 쿠키를 Core로 포워딩해 토큰 유효성까지 확인한다.
+ *
+ * 관리자가 이 여행사를 '사용 불가'로 바꾸면(S2-A1) Core가 403(AGENCY_INACTIVE)을 내고,
+ * 그 응답이 여기를 그대로 통과해 AgencyAuthContext가 로그인 화면으로 돌려보낸다 —
+ * 토글의 '즉시 차단'이 실제로 작동하는 경로다.
+ */
 export async function GET() {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) {
@@ -113,16 +124,15 @@ export async function GET() {
     return NextResponse.json(mockSession());
   }
 
-  const res = await fetch(`${coreBaseUrl()}/admin/auth/me`, {
+  const res = await fetch(`${coreBaseUrl()}/v1/agency/auth/me`, {
     headers: { cookie: `${COOKIE_NAME}=${token}` },
     cache: "no-store",
   });
 
   if (!res.ok) {
-    // Core가 토큰을 거부했으면 **여기서 쿠키를 지운다**. 지우지 않으면 무한
-    // 리다이렉트에 빠진다 — 미들웨어는 쿠키 유무만 보므로 화면이 /login 으로
-    // 가도 "쿠키 있음"으로 판단해 다시 돌려보낸다. 만료된 토큰이나, 다른 환경의
-    // Core가 발급해 서명이 맞지 않는 쿠키(dev↔local 전환)가 정확히 이 상태다.
+    // Core가 토큰을 거부했거나(401) 여행사가 사용 불가로 바뀌었으면(403) **쿠키를
+    // 지운다**. 지우지 않으면 무한 리다이렉트에 빠진다 — 미들웨어는 쿠키 유무만
+    // 보므로 화면이 /login 으로 가도 "쿠키 있음"으로 판단해 다시 돌려보낸다.
     //
     // Core가 아예 죽어 있으면 fetch가 예외를 던져 여기까지 오지 않으므로,
     // 일시적 장애로 세션이 날아가지는 않는다.
@@ -139,12 +149,13 @@ export async function DELETE() {
 
   if (token && !MOCK_AUTH) {
     try {
-      await fetch(`${coreBaseUrl()}/admin/auth/logout`, {
+      await fetch(`${coreBaseUrl()}/v1/agency/auth/logout`, {
         method: "POST",
         headers: { cookie: `${COOKIE_NAME}=${token}` },
       });
     } catch {
       // Core가 죽어 있어도 로그아웃은 성공해야 한다 — 쿠키만 지우고 넘어간다.
+      // 만료된 세션이면 Core가 401을 주는데, 그것도 로그아웃 성공으로 취급한다.
     }
   }
 
