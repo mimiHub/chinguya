@@ -20,6 +20,7 @@ import { Banner } from "@chinguya/ui/banner";
 import { useCart, type CartLine } from "@/context/CartContext";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { createReservation } from "@/data/reservationData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 function rentalDaysOf(line: CartLine): number {
   const start = new Date(line.useDateStart);
@@ -199,7 +200,8 @@ export default function CartPage() {
               const product = findRentalProductById(line.productId);
               if (!product) return null;
               return (
-                <Card key={line.cartLineId} padding="sm">
+                <ScrollReveal key={line.cartLineId}>
+                <Card padding="sm">
                   <Stack gap="sm" align="start">
                     
                       <Checkbox
@@ -241,24 +243,30 @@ export default function CartPage() {
                     </Stack>
                   </Stack>
                 </Card>
+                </ScrollReveal>
               );
             })}            
           </Stack>
           </div>
 
           {holdExpiresAt && !holdExpired && (
+            <ScrollReveal>
             <Alert status="warning" className="mt-4" icon={false}>
               ⏱ [임시 홀드 중] 남은 시간 {formatCountdown(remainingMs)} — 중복 예약 방지를 위해
               시간 내에 예약을 완료해 주세요.
             </Alert>
+            </ScrollReveal>
           )}
 
           {holdExpired && (
+            <ScrollReveal>
             <Alert status="error" className="mt-4" icon={false}>
               임시 홀드 시간이 지나 장바구니가 비워졌습니다. 다시 담아 주세요.
             </Alert>
+            </ScrollReveal>
           )}
 
+          <ScrollReveal>
           <Stack direction="column" gap="sm" className="mt-6">
             <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary">
               여권 영문명
@@ -271,6 +279,7 @@ export default function CartPage() {
             />
             <FormMessage type="helper">예약 확정 전 필수 입력입니다.</FormMessage>
           </Stack>
+          </ScrollReveal>
 
           {/*
             모바일에서는 하단 탭바(BottomNav, h-16) 바로 위에 합계·버튼을 고정해서 스크롤 없이도

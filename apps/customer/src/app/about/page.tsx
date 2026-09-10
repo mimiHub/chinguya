@@ -8,6 +8,7 @@ import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Stack } from "@chinguya/ui/stack";
 import { Tab } from "@chinguya/ui/tab";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 type AboutTab = "store" | "brand";
 
@@ -53,11 +54,14 @@ export default function AboutPage() {
 
         <div className="mt-4">
           {tab === "store" ? (
-            <Card>
-              <Kv leaf items={STORE_INFO.map((row) => ({ key: row.key, value: row.value, align: "left" as const }))} />
-            </Card>
+            <ScrollReveal>
+              <Card>
+                <Kv leaf items={STORE_INFO.map((row) => ({ key: row.key, value: row.value, align: "left" as const }))} />
+              </Card>
+            </ScrollReveal>
           ) : (
             <Stack direction="column" gap="lg">
+              <ScrollReveal>
               <Card>
                 <Stack direction="column" gap="xs">
                   <Title size="lg">Chinguya &amp; KiYo</Title>
@@ -84,7 +88,9 @@ export default function AboutPage() {
                   </Text>
                 </Stack>
               </Card>
+              </ScrollReveal>
 
+              <ScrollReveal delay={100}>
               <Card padding="sm" polaroid sticker="/sticker02.png">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -96,7 +102,9 @@ export default function AboutPage() {
                   친구야의 아늑한 실내 공간
                 </Text>
               </Card>
+              </ScrollReveal>
 
+              <ScrollReveal delay={150}>
               <Stack direction="column" gap="sm">
                 <Title leaf size="md">
                   이런 걸 함께 즐길 수 있어요
@@ -119,6 +127,7 @@ export default function AboutPage() {
                   ))}
                 </div>
               </Stack>
+              </ScrollReveal>
             </Stack>
           )}
         </div>

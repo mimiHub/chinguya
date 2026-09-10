@@ -12,6 +12,7 @@ import { Chip } from "@chinguya/ui/chip";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { Banner } from "@chinguya/ui/banner";
 import { rentalProducts, rentalNotice, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 // 목록 카드에 쓸 배경톤 3종을 순서대로 번갈아 적용한다(theme.css의 card-primary/secondary/tertiary).
 const CARD_BG = ["bg-card-primary", "bg-card-secondary", "bg-card-tertiary"];
@@ -72,7 +73,8 @@ function RentalListContent() {
       <div className="mt-4 max-h-[300px] overflow-y-auto pr-1 md:max-h-[600px]">
         <div className="flex flex-col gap-3">
           {listings.map(({ product, listingKey }, i) => (
-            <NextLink key={listingKey} href={`/rental/${product.id}`} className="block">
+            <ScrollReveal key={listingKey} delay={i * 60}>
+            <NextLink href={`/rental/${product.id}`} className="block">
               <div className={`flex items-center gap-4 rounded-lg border border-gray-0 p-3 ${CARD_BG[i % CARD_BG.length]}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -90,6 +92,7 @@ function RentalListContent() {
                 </div>
               </div>
             </NextLink>
+            </ScrollReveal>
           ))}
         </div>
       </div>

@@ -17,6 +17,7 @@ import {
   type MyReservationTab,
 } from "@/data/reservationData";
 import { Card } from "@chinguya/ui/card";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * S1-C5 예약 목록(내 예약). 로그인 기능이 아직 없어서 "이 브라우저 세션에서 만든 예약 전부"를
@@ -44,11 +45,14 @@ export default function MyPage() {
       />
 
       <Stack direction="column" gap="sm" className="mt-4">
-        {filtered.map((reservation) => {
+        {filtered.map((reservation, i) => {
           const product = findRentalProductById(reservation.productId);
+          // 카드 자체가 이미 그림자·둥근 모서리로 구분되는 목록이라 divider(점선 구분선)는
+          // 켜지 않는다 — 켜면 그림자 카드 사이에 어색하게 선이 겹쳐 보인다.
           return (
-            <NextLink key={reservation.id} href={`/reservations/${reservation.id}`} className="block">
-              <Card className="flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-sm last:border-b-0">
+            <ScrollReveal key={reservation.id} delay={i * 60}>
+            <NextLink href={`/reservations/${reservation.id}`} className="block">
+              <Card className="flex items-center justify-between gap-2 py-3 text-sm">
                 <Stack direction="column" gap="xs">
                   <Text weight="medium">{product?.title ?? reservation.productId}</Text>
                   <Text variant="sub">
@@ -59,6 +63,7 @@ export default function MyPage() {
                 <StatusBadge status={reservation.status} />
               </Card>
             </NextLink>
+            </ScrollReveal>
           );
         })}
       </Stack>

@@ -12,6 +12,7 @@ import { Alert } from "@chinguya/ui/alert";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * 초대 검증·계정 등록은 세션이 없는 상태에서 부르므로 공용 프록시(/api/core/*)를 그대로
@@ -138,7 +139,9 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
         )}
 
         <div className="w-full max-w-sm rounded-lg bg-white/95 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm">
-          {children}
+          {/* 고객 앱 로그인/회원가입 카드와 같은 진입 애니메이션 — 화면에 뜨자마자
+              위에서 살짝 내려오며 나타난다. */}
+          <ScrollReveal>{children}</ScrollReveal>
         </div>
       </div>
 

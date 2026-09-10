@@ -11,6 +11,7 @@
   },
   "scripts": {
     "gen:types": "openapi-typescript ../api-spec/openapi/chinguya-slice1-openapi.yaml -o src/types.gen.ts",
+    "build": "pnpm run gen:types",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

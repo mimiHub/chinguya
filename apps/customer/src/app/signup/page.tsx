@@ -14,6 +14,7 @@ import { Alert } from "@chinguya/ui/alert";
 import { completeLogin, getPendingProvider, startSocialLogin, type SocialProvider } from "@/data/authData";
 import { completeMemberSignup } from "@/data/memberData";
 import { SOCIAL_PROVIDER_ORDER, SocialLoginButton } from "@/components/SocialLoginButtons";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * 회원가입 — 와이어프레임 S0-C1(소셜 로그인) → S0-C2(아이디 입력) 2단계 흐름. 화면 두 개를
@@ -53,6 +54,7 @@ function SignupContent() {
       <Banner size="sm" title="회원가입" image="/banner-notice.png" />
 
       <div className="mx-auto max-w-md p-6">
+        <ScrollReveal>
         <Stack direction="column" gap="lg">
           <Title size="lg" center>
             회원가입
@@ -100,6 +102,7 @@ function SignupContent() {
             </NextLink>
           </Text>
         </Stack>
+        </ScrollReveal>
       </div>
     </main>
   );

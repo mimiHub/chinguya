@@ -9,6 +9,7 @@ import { Text } from "@chinguya/ui/text";
 import { Stack } from "@chinguya/ui/stack";
 import { completeLogin } from "@/data/authData";
 import { SOCIAL_PROVIDER_ORDER, SocialLoginButton } from "@/components/SocialLoginButtons";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * 로그인 화면 — 와이어프레임 S0-C1(소셜 로그인)을 재사용한다. 이 앱은 소셜 로그인만 있고
@@ -38,6 +39,7 @@ function LoginContent() {
       <Banner size="sm" title="로그인" image="/banner-notice.png" />
 
       <div className="mx-auto max-w-md p-6">
+        <ScrollReveal>
         <Stack direction="column" gap="lg">
           <Title size="lg" center>
             로그인
@@ -56,6 +58,7 @@ function LoginContent() {
             </NextLink>
           </Text>
         </Stack>
+        </ScrollReveal>
       </div>
     </main>
   );

@@ -52,7 +52,9 @@ export default function AdminMorePage() {
         ))}
       </Stack>
 
-      <Button onClick={() => void logout()} fullWidth className="mt-6">
+      {/* PC 모드(md 이상)에서는 헤더 햄버거 드로어에 이미 로그아웃이 있어서 중복이다 —
+          모바일 폭에서만 보여준다. */}
+      <Button onClick={() => void logout()} fullWidth className="mt-6 md:hidden">
         로그아웃
       </Button>
     </main>

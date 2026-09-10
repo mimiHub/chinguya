@@ -5,6 +5,7 @@ import { Text } from "@chinguya/ui/text";
 import { Card } from "@chinguya/ui/card";
 import { Button } from "@chinguya/ui/button";
 import { HomeCarousel } from "@/components/HomeCarousel";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { CATEGORY_LABEL, rentalProducts } from "@/data/rentalData";
 
 // 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지·스티커. 이미지는 캐러셀에 이미 쓰던
@@ -48,29 +49,32 @@ export default function Page() {
       <HomeCarousel />
 
       <div className="mx-auto max-w-2xl px-6 py-10 md:max-w-5xl">
-        <Title leaf size="xl">
-          Rental
-        </Title>
-        <Text variant="sub" className="mt-2">
-          자전거와 낚싯대를 대여하고,
-          <br />
-          여행이 주는 행복을 마음껏 느껴보세요.
-        </Text>
+        <ScrollReveal>
+          <Title leaf size="xl">
+            Rental
+          </Title>
+          <Text variant="sub" className="mt-2">
+            자전거와 낚싯대를 대여하고,
+            <br />
+            여행이 주는 행복을 마음껏 느껴보세요.
+          </Text>
 
-        {/*
-          와이어프레임 랜딩(안 A, 확정)의 최상단 CTA. "신규·재방문 고객 모두 서비스 이해를
-          먼저 유도"하는 목적이라 카테고리 섹션보다 위, 인트로 문구 바로 아래에 둔다.
-          진입: 서비스 소개(S4-C2, apps/customer/src/app/about) 단일 페이지.
-        */}
-        <Button href="/about" fullWidth size="lg" className="mt-5">
-          서비스 소개
-        </Button>
+          {/*
+            와이어프레임 랜딩(안 A, 확정)의 최상단 CTA. "신규·재방문 고객 모두 서비스 이해를
+            먼저 유도"하는 목적이라 카테고리 섹션보다 위, 인트로 문구 바로 아래에 둔다.
+            진입: 서비스 소개(S4-C2, apps/customer/src/app/about) 단일 페이지.
+          */}
+          <Button href="/about" fullWidth size="lg" className="mt-5">
+            서비스 소개
+          </Button>
 
-        <hr className="mt-5 border-line" />
+          <hr className="mt-5 border-line" />
+        </ScrollReveal>
 
         <div className="mt-6 grid grid-cols-1 gap-6 px-4 md:grid-cols-2">
-          {RENTAL_CATEGORIES.map((category) => (
-            <NextLink key={category.key} href={`/rental?category=${category.key}`}>
+          {RENTAL_CATEGORIES.map((category, i) => (
+            <ScrollReveal key={category.key} delay={i * 120}>
+            <NextLink href={`/rental?category=${category.key}`}>
               <Card polaroid sticker={category.sticker} padding="md">
                 <div className="relative overflow-hidden rounded-lg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -108,6 +112,7 @@ export default function Page() {
                 </div>
               </Card>
             </NextLink>
+            </ScrollReveal>
           ))}
         </div>
       </div>

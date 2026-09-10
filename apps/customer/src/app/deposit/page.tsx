@@ -14,6 +14,7 @@ import { Toast } from "@chinguya/ui/toast";
 import { Banner } from "@chinguya/ui/banner";
 import { findReservationsByIds } from "@/data/reservationData";
 import { depositAccount } from "@/data/depositAccountData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * S1-C4 입금 안내 · 확인 요청. 장바구니(S1-C3)에서 만들어진 예약 id들(콤마 구분)을 쿼리로
@@ -53,6 +54,7 @@ function DepositContent() {
         <Title size="lg">입금 안내</Title>
       </Stack>
 
+      <ScrollReveal>
       <Card className="mt-4">
         <Kv
           items={[
@@ -63,11 +65,14 @@ function DepositContent() {
           ]}
         />
       </Card>
+      </ScrollReveal>
 
+      <ScrollReveal delay={100}>
       <Alert status="info" className="mt-4" icon={false}>
         PG 미사용. 안내 계좌(관리자 설정 1개)로 입금 후 아래 버튼으로 확인 요청 → 상태 접수.
         24시간 내 미입금 시 관리자가 강제취소할 수 있습니다.
       </Alert>
+      </ScrollReveal>
 
       <Button
         fullWidth

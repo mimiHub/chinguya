@@ -17,6 +17,7 @@ import { Toast } from "@chinguya/ui/toast";
 import { Banner } from "@chinguya/ui/banner";
 import { findReservationById, updateReservationStatus } from "@/data/reservationData";
 import { getCancellationFeeRate, getDaysBeforeUse } from "@/data/cancellationData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * S1-C7 취소 요청. 수수료는 이용일 기준 차등 요율(관리자 설정, CancellationFeeRule)로 계산해서
@@ -59,6 +60,7 @@ export default function ReservationCancelPage() {
         <Title size="lg">예약 취소 요청</Title>
       </Stack>
 
+      <ScrollReveal>
       <Card className="mt-4">
         <Kv
           items={[
@@ -73,7 +75,9 @@ export default function ReservationCancelPage() {
         수수료는 이용일 기준 차등 요율(관리자 설정)로 계산됩니다. 취소 요청 시 위 수수료·환불액을
         확인 후 진행해 주세요.
       </NoticeBox>
+      </ScrollReveal>
 
+      <ScrollReveal delay={100}>
       <Stack direction="column" gap="sm" className="mt-6">
         <LabeledBox label="환불받을 계좌 (은행/번호/예금주)" required>
           <Input
@@ -84,6 +88,7 @@ export default function ReservationCancelPage() {
         </LabeledBox>
         <FormMessage type="helper">환불 계좌는 취소 요청 시점에 입력합니다. 실제 이체는 관리자가 수동 처리합니다.</FormMessage>
       </Stack>
+      </ScrollReveal>
 
       <Button fullWidth className="mt-6" disabled={!bankInfo.trim()} onClick={handleSubmit}>
         취소 요청 보내기

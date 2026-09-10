@@ -6,30 +6,3 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-bg);
 }
-
-/* 스크롤바 디자인 — 표 내부 스크롤(예: 상품 예약/예약 목록/인보이스/대시보드 표) 등
-   여행사 앱 전체 스크롤 영역에 공통 적용. 트랙(배경 홈)은 안 보이게 투명 처리하고,
-   막대(thumb)만 얇게 보이도록 해서 카드 배경 위에 막대만 떠 있는 느낌으로 만든다.
-   색은 하드코딩 대신 기존 디자인 토큰(line/muted)을 그대로 쓴다. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-line) transparent;
-}
-
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background-color: var(--color-line);
-  border-radius: 9999px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-muted);
-}
