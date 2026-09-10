@@ -10,6 +10,7 @@ import { Text } from "@chinguya/ui/text";
 import { EmptyState } from "@chinguya/ui/empty-state";
 import { Stack } from "@chinguya/ui/stack";
 import { Button } from "@chinguya/ui/button";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 type NoticeCategory = "notice" | "event";
 
@@ -81,6 +82,7 @@ export default function NoticePage() {
 
         <div className="mt-4">
           {selected ? (
+            <ScrollReveal>
             <Stack direction="column" gap="md">
               <Card>
                 <Badge variant={CATEGORY_BADGE_VARIANT[selected.category]} className="w-fit">
@@ -100,9 +102,11 @@ export default function NoticePage() {
                 목록으로
               </Button>
             </Stack>
+            </ScrollReveal>
           ) : items.length === 0 ? (
             <EmptyState>등록된 글이 없습니다.</EmptyState>
           ) : (
+            <ScrollReveal>
             <Card padding="sm">
               <Stack direction="column">
                 {items.map((item, i) => (
@@ -125,6 +129,7 @@ export default function NoticePage() {
                 ))}
               </Stack>
             </Card>
+            </ScrollReveal>
           )}
         </div>
       </div>

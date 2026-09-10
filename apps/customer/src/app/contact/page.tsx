@@ -19,6 +19,7 @@ import { FormMessage } from "@chinguya/ui/form-message";
 import type { InquiryEntry } from "@chinguya/types";
 import { faqEntries } from "@/data/faqData";
 import { initialInquiries } from "@/data/inquiryData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 type ContactTab = "faq" | "qna";
 type QnaView = "list" | "write" | "detail";
@@ -162,10 +163,11 @@ export default function ContactPage() {
               </Title>
 
               <Stack direction="column" gap="sm">
-                {sortedFaqEntries.map((faq) => {
+                {sortedFaqEntries.map((faq, i) => {
                   const open = openFaqId === faq.id;
                   return (
-                    <Card key={faq.id} padding="sm" tint="primary">
+                    <ScrollReveal key={faq.id} delay={i * 60}>
+                    <Card padding="sm" tint="primary">
                       <button
                         type="button"
                         onClick={() => setOpenFaqId(open ? null : faq.id)}
@@ -194,6 +196,7 @@ export default function ContactPage() {
                         </div>
                       )}
                     </Card>
+                    </ScrollReveal>
                   );
                 })}
               </Stack>
@@ -211,8 +214,9 @@ export default function ContactPage() {
               </Title>
 
               <Stack direction="column" gap="sm">
-                {qnaItems.map((item) => (
-                  <Card key={item.id} padding="sm" onClick={() => openQna(item)}>
+                {qnaItems.map((item, i) => (
+                  <ScrollReveal key={item.id} delay={i * 60}>
+                  <Card padding="sm" onClick={() => openQna(item)}>
                     <Stack justify="between" align="center">
                       <Text as="span" weight="medium">
                         {item.title}
@@ -228,6 +232,7 @@ export default function ContactPage() {
                       )}
                     </Stack>
                   </Card>
+                  </ScrollReveal>
                 ))}
               </Stack>             
 
@@ -243,6 +248,7 @@ export default function ContactPage() {
               </Stack>
             </Stack>
           ) : qnaView === "write" ? (
+            <ScrollReveal>
             <Stack direction="column" gap="md">
               <button
                 type="button"
@@ -285,6 +291,7 @@ export default function ContactPage() {
                 등록
               </Button>
             </Stack>
+            </ScrollReveal>
           ) : selected ? (
             <Stack direction="column" gap="md">
               <button
@@ -296,6 +303,7 @@ export default function ContactPage() {
               </button>
               <Title size="lg">내 질문</Title>
 
+              <ScrollReveal>
               <Card tint="secondary">
                 <Stack direction="column" gap="sm">
                   <Stack justify="between" align="start">
@@ -317,13 +325,16 @@ export default function ContactPage() {
                   </Card>
                 </Stack>
               </Card>
+              </ScrollReveal>
 
               {(selected.followUps ?? []).map((msg, i) => (
-                <Card key={i} padding="sm" tint="secondary">          
+                <ScrollReveal key={i}>
+                <Card padding="sm" tint="secondary">          
                   <Stack justify="end">
                     <IconX aria-label="질문 삭제" onClick={() => setDeleteTargetId(selected.id)} />   </Stack>     
                   <Text className="mt-1">{msg}</Text>
                 </Card>
+                </ScrollReveal>
               ))}
 
               {/* 답변을 보고도 궁금한 게 남았으면 목록으로 돌아가지 않고 이 스레드에 바로

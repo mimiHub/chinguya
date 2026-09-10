@@ -13,6 +13,7 @@ import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { listReservations, updateReservationStatus } from "@/data/reservationData";
 import type { AgencyReservation } from "@chinguya/types";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 // 취소 마감 기준: 이용일 며칠 전까지 취소 가능한지. 기본 3일(D-3)이며 관리자가 유연 조정할 수
 // 있다는 게 문서 규칙이지만, 그 조정값을 admin이 아직 노출하지 않아서 여기선 고정값으로 둔다.
@@ -39,18 +40,21 @@ export default function AgencyReservationsPage() {
   return (
     <main className="flex h-full min-h-0 flex-col">
       <Stack direction="column" className="min-h-0 flex-1">
-        <Title size="md">예약 목록</Title>
+        <ScrollReveal className="shrink-0">
+          <Title size="md">예약 목록</Title>
+        </ScrollReveal>
 
+      <ScrollReveal delay={80} className="flex min-h-0 flex-1 flex-col">
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Table
         className="min-h-0 flex-1 overflow-y-auto"
         columns={[
-          { key: "id", label: "예약번호" },
-          { key: "useDate", label: "이용일" },
+          { key: "id", label: "예약번호", width: "14%" },
+          { key: "useDate", label: "이용일", width: "12%" },
           { key: "product", label: "상품·수량" },
-          { key: "amount", label: "금액" },
-          { key: "status", label: "상태" },
-          { key: "action", label: "" },
+          { key: "amount", label: "금액", width: "12%", align: "right" },
+          { key: "status", label: "상태", width: "10%", align: "center" },
+          { key: "action", label: "", width: "10%", align: "center" },
         ]}
         rows={reservations.map((r) => {
           const product = findRentalProductById(r.productId);
@@ -80,6 +84,7 @@ export default function AgencyReservationsPage() {
         emptyMessage={<EmptyState>아직 예약 내역이 없습니다.</EmptyState>}
       />
       </Card>
+      </ScrollReveal>
       </Stack>
 
       <ConfirmPopup

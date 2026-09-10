@@ -1,7 +1,8 @@
 "use client";
 
 import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { logout } from "@/data/authData";
 
 const ITEMS = [
   { href: "/", label: "대시보드" },
@@ -18,7 +19,9 @@ const ITEMS = [
  * (flex-1)이 그만큼 좁아지면서 같이 자리를 잡는다("한 화면에 같이 보인다"는 요구사항).
  * 닫힘/열림은 헤더의 햄버거(IconHamburger) 버튼 하나로만 토글한다 — 별도의 배경 딤이나
  * 항목 클릭 시 자동 닫힘은 없다(오버레이가 아니라 항상 콘텐츠 옆에 나란히 있는 패널이라
- * 클릭할 때마다 닫히면 오히려 불편하다).
+ * 클릭할 때마다 닫히면 오히려 불편하다). width뿐 아니라 padding도 함께 transition을 걸어야
+ * 한다 — width만 애니메이션하면 padding(p-6→p-0)은 즉시 바뀌어서, 닫힐 때 폭이 줄어들기도
+ * 전에 여백부터 훅 사라지는 어색한 순간이 보인다.
  *
  * 배경색은 secondary-900(#4a3b20, packages/tailwind-config/theme.css의 웜톤 크림 스케일
  * 가장 어두운 단)을 쓴다 — 하드코딩 hex 대신 이미 있는 디자인 토큰을 그대로 쓴 것. 나머지
@@ -29,12 +32,13 @@ const ITEMS = [
  */
 export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
     <aside
-      className={`flex shrink-0 flex-col overflow-hidden border-r border-secondary-800 bg-secondary-900 transition-[width] duration-200 ${
+      className={`flex shrink-0 flex-col overflow-hidden border-r border-secondary-800 bg-secondary-900 transition-[width,padding] duration-200 ${
         open ? "w-[250px] p-6" : "w-0 p-0"
       }`}
     >
@@ -72,12 +76,16 @@ export function Sidebar({ open }: { open: boolean }) {
           둥근 모서리 때문에 선 양 끝이 짧게 끊겨 보이는 문제가 있어서, 링크를 감싸는
           별도 래퍼 div에 선을 긋고 링크는 그 안에서 여백만 준다. */}
       <div className="mt-auto w-[202px] border-t border-secondary-800 pt-4">
-        <NextLink
-          href="/login"
-          className="block whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-secondary-200 hover:bg-secondary-800/60 hover:text-white"
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            router.push("/login");
+          }}
+          className="block w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium text-secondary-200 hover:bg-secondary-800/60 hover:text-white"
         >
           로그아웃
-        </NextLink>
+        </button>
       </div>
     </aside>
   );

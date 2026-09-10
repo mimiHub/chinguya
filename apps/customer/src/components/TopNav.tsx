@@ -7,9 +7,12 @@ import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
 import { getIsLoggedIn, logout } from "@/data/authData";
 
-// PC 상단 네비게이션 전용 메뉴. "메뉴" 탭은 불필요해서 뺐다. "회사소개"·"공지사항"은 한때
-// /news 한 페이지로 합쳐서 칩으로 전환했었는데, 파일이 너무 커져서 다시 각자 대메뉴로 뺐다
-// (각 페이지 안에서는 여전히 하위 탭 — 매장안내/브랜드 스토리, 공지사항/이벤트 — 로 나뉜다).
+// 대메뉴 목록 — PC·모바일 구분 없이 항상 햄버거 버튼을 눌러 여는 드로어 메뉴에 쓰인다
+// (예전엔 PC에서 가로로 나열했지만, 항목이 늘면서 항상 햄버거로 통일했다). "메뉴" 탭은
+// 불필요해서 뺐다. "회사소개"·"공지사항"은 한때 /news 한 페이지로 합쳐서 칩으로
+// 전환했었는데, 파일이 너무 커져서 다시 각자 대메뉴로 뺐다(각 페이지 안에서는 여전히
+// 하위 탭 — 매장안내/브랜드 스토리, 공지사항/이벤트 — 로 나뉜다). "홈"은 목록이 아니라
+// 드로어 상단 헤더에 로고 아이콘으로 따로 배치한다(닫기 버튼과 나란히).
 const NAV_ITEMS = [
   { href: "/rental", label: "상품" },
   { href: "/mypage", label: "예약" },
@@ -18,10 +21,6 @@ const NAV_ITEMS = [
   { href: "/notice", label: "공지사항" },
   { href: "/contact", label: "고객지원" },
 ];
-
-// 모바일 햄버거 메뉴 목록 — "홈"은 목록이 아니라 드로어 상단 헤더에 나뭇잎 로고 아이콘으로
-// 따로 배치하기 때문에(닫기 버튼과 나란히), 나머지는 PC 대메뉴(NAV_ITEMS)와 동일하다.
-const MOBILE_NAV_ITEMS = NAV_ITEMS;
 
 // 배너(히어로 이미지) 위에 얹힌 투명 상태에서, 이 값(px)만큼 스크롤하면 불투명 배경으로
 // 바뀐다. 홈 히어로처럼 배너가 화면 높이만큼 꽉 차는 페이지라도, 배너를 다 지나갈 때까지
@@ -36,10 +35,11 @@ function getScrollThreshold(): number {
 
 /**
  * 참고 사이트(cafe-rose-one.vercel.app) 상단 네비게이션을 기준으로 만든 고객앱 공통 헤더.
- * PC: 로고 + 가로 메뉴(NAV_ITEMS), 처음엔 배너 위에 투명하게 얹혀 있다가 스크롤하면 불투명
- * 배경으로 바뀐다(문서 위에서 흰 글씨가 안 보이는 문제를 막기 위함). 모바일: 로고 + 햄버거
- * 버튼만 보이고, 누르면 전체화면 어두운 오버레이 메뉴(MOBILE_NAV_ITEMS)가 뜬다 — "홈"
- * 항목만 추가됐을 뿐 나머지는 PC 대메뉴(NAV_ITEMS)와 동일하다.
+ * 화면 크기와 무관하게 로고 + 햄버거 버튼만 보이고, 누르면 오른쪽에서 80% 너비로 슬라이드
+ * 들어오는 어두운 드로어 메뉴(NAV_ITEMS)가 뜬다. 드로어 상단에는 "홈" 역할의 로고 아이콘과
+ * 닫기(X) 버튼이 나란히 있고, 선택된 메뉴는 배경 박스(bg-secondary-800) + 로고 아이콘으로
+ * 표시한다. 헤더는 처음엔 배너 위에 투명하게 얹혀 있다가 스크롤하거나 메뉴를 열면 불투명
+ * 배경으로 바뀐다(문서 위에서 흰 글씨가 안 보이는 문제를 막기 위함).
  */
 export function TopNav() {
   const pathname = usePathname();
@@ -114,62 +114,39 @@ export function TopNav() {
             />
           </NextLink>
 
-          <nav className="hidden items-center gap-10 text-[18px] font-medium md:flex">
-            {NAV_ITEMS.map((item) => {
-              const isActive = item.href !== "/" && pathname.startsWith(item.href);
-              return (
-                <NextLink
-                  key={item.href}
-                  href={item.href}
-                  className="relative flex items-center transition-opacity hover:opacity-70"
-                >
-                  {/* 참고 사이트처럼, 지금 보고 있는 메뉴 위에 로고와 같은 잎사귀 아이콘을 띄워
-                      선택 상태를 표시한다(굵게 처리 대신) — 텍스트 오른쪽이 아니라 메뉴 상단
-                      가운데에 오도록 절대 위치로 뺐다. */}
-                  {isActive && (
-                    <span
-                      aria-hidden="true"
-                      className={`absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 bg-contain bg-center bg-no-repeat transition-[filter] duration-200 ${
-                        solid ? "" : "brightness-0 invert"
-                      }`}
-                      style={{ backgroundImage: "url(/logo-mb.png)" }}
-                    />
-                  )}
-                  {item.label}
-                </NextLink>
-              );
-            })}
-          </nav>
-
-          <div className="md:hidden">
-            <IconHamburger open={menuOpen} onClick={() => setMenuOpen((v) => !v)} />
-          </div>
+          <IconHamburger open={menuOpen} onClick={() => setMenuOpen((v) => !v)} />
         </div>
       </header>
 
       {/* 뒷배경 딤 처리 — 화면 전체를 반투명하게 덮어서 뒤 콘텐츠가 눌리지 않게 막는다.
           패널 바깥(이 딤 영역)을 누르면 메뉴가 닫힌다. */}
       <div
-        className={`fixed inset-0 z-[115] bg-black/50 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-[115] bg-black/50 transition-opacity duration-200 ${
           menuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setMenuOpen(false)}
         aria-hidden="true"
       />
 
-      {/* 모바일 메뉴 패널 — 화면 전체가 아니라 오른쪽에서 80%만 슬라이드로 들어오는 일반적인
+      {/* 메뉴 패널 — 화면 전체가 아니라 오른쪽에서 80%만 슬라이드로 들어오는 일반적인
           드로어(drawer) 형태. translate-x로 화면 밖에 대기하다가 열리면 안으로 들어온다. */}
       <div
-        className={`fixed inset-y-0 right-0 z-[120] flex w-[80%] max-w-xs flex-col bg-secondary-900 text-white transition-transform duration-200 md:hidden ${
+        className={`fixed inset-y-0 right-0 z-[120] flex w-[80%] max-w-xs flex-col bg-secondary-900 text-white transition-transform duration-200 ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex h-16 shrink-0 items-center justify-between px-4">
-          {/* "홈"은 목록 항목 대신, 로고와 같은 나뭇잎 아이콘으로 여기 배치한다 — 닫기(X)
-              버튼과 나란히 양 끝(justify-between)에 놓인다. */}
+          {/* "홈"은 목록 항목 대신, PC 가로형 로고 이미지로 여기 배치한다 — 닫기(X) 버튼과
+              나란히 양 끝(justify-between)에 놓인다. 로고 원본은 어두운 갈색 글자라 드로어의
+              어두운 배경(secondary-900) 위에서는 안 보여서, invert 필터로 흰색으로 바꿔서
+              쓴다. */}
           <NextLink href="/" aria-label="홈" onClick={() => setMenuOpen(false)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-mb.png" alt="친구야" className="h-8 w-8 object-contain" />
+            <img
+              src="/logo-pc.png"
+              alt="친구야 카페"
+              className="h-8 w-auto object-contain brightness-0 invert"
+            />
           </NextLink>
           <IconX
             size="lg"
@@ -178,15 +155,15 @@ export function TopNav() {
             onClick={() => setMenuOpen(false)}
           />
         </div>
-        <nav className="flex flex-col gap-1 px-4">
-          {MOBILE_NAV_ITEMS.map((item) => {
+        <nav className="flex flex-col gap-1 px-4 pt-5">
+          {NAV_ITEMS.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <NextLink
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-2 rounded-xl px-4 py-3 text-md transition-colors ${
-                  isActive ? "bg-secondary-800 font-medium text-white" : "text-white/90 hover:bg-white/5"
+                  isActive ? "bg-secondary-800/30 font-medium text-white" : "text-white/90 hover:bg-white/5"
                 }`}
               >
                 {/* 선택된 메뉴에만 로고와 같은 나뭇잎 아이콘을 라벨 앞에 붙여서 표시한다 —

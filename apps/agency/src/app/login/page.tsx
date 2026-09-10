@@ -10,8 +10,9 @@ import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
 import { Button } from "@chinguya/ui/button";
 import { Alert } from "@chinguya/ui/alert";
-import { findAgencyAccount } from "@/data/authData";
+import { findAgencyAccount, login } from "@/data/authData";
 import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
  * S2-G1/G2 계정 등록(초대 링크) · 로그인.
@@ -118,7 +119,9 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
         )}
 
         <div className="w-full max-w-sm rounded-lg bg-white/95 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm">
-          {children}
+          {/* 고객 앱 로그인/회원가입 카드와 같은 진입 애니메이션 — 화면에 뜨자마자
+              위에서 살짝 내려오며 나타난다. */}
+          <ScrollReveal>{children}</ScrollReveal>
         </div>
       </div>
 
@@ -215,7 +218,8 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
       return;
     }
     setLoginError(null);
-    // TODO: 실제 연동 시 여기서 세션/토큰을 저장한다.
+    // TODO: 실제 연동 시 여기서 서버가 내려준 세션/토큰을 저장한다 — 지금은 목업 플래그만 켠다.
+    login(account.id);
     router.push("/");
   };
 

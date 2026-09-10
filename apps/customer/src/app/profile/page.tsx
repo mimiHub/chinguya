@@ -22,6 +22,7 @@ import { listReservations } from "@/data/reservationData";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { getMember, updatePassportName } from "@/data/memberData";
 import { getIsLoggedIn, logout } from "@/data/authData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 // 미리보기는 최근 1건만 보여준다(2건 이상 나열하지 않음) — 더 보고 싶으면 아래
 // "전체보기" 버튼으로 실제 목록/장바구니 화면으로 유도한다.
@@ -100,8 +101,8 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-2xl p-6">
           <Card>
             <Stack direction="column" align="center" gap="sm" className="py-10 text-center">
-              <Title size="md">로그인이 필요합니다</Title>
-              <Text tone="secondary">내정보·예약 내역·장바구니를 보려면 먼저 로그인해 주세요.</Text>
+              <Title size="lg" tone="secondary">로그인이 필요합니다</Title>
+              <Text >내정보·예약 내역·장바구니를 보려면 <br /> 로그인해 주세요.</Text>
               <Button href="/login?redirect=/profile" className="mt-2">
                 로그인하러 가기
               </Button>
@@ -118,6 +119,7 @@ export default function ProfilePage() {
 
       <div className="mx-auto max-w-2xl p-6">
         <Stack direction="column" gap="lg">
+          <ScrollReveal>
           <Card>
             <Title leaf size="md">내정보</Title>
             <Kv items={[
@@ -159,7 +161,9 @@ export default function ProfilePage() {
               </Button>
             </div>
           </Card>
+          </ScrollReveal>
 
+          <ScrollReveal delay={100}>
           <Card>
             <Title leaf size="md">내 예약 상황</Title>
 
@@ -191,7 +195,9 @@ export default function ProfilePage() {
               내 예약 전체보기
             </Button>
           </Card>
+          </ScrollReveal>
 
+          <ScrollReveal delay={150}>
           <Card>
             <Title leaf size="md">내 장바구니</Title>
 
@@ -226,6 +232,7 @@ export default function ProfilePage() {
               내 장바구니 전체보기
             </Button>
           </Card>
+          </ScrollReveal>
         </Stack>
       </div>
 

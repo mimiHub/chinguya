@@ -13,6 +13,7 @@ import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Banner } from "@chinguya/ui/banner";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { findReservationById } from "@/data/reservationData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 /** S1-C6 예약 상세 · 바우처. 현장 이용 시 예약번호가 증빙 역할을 한다. */
 export default function ReservationDetailPage() {
@@ -39,6 +40,7 @@ export default function ReservationDetailPage() {
         <Title size="lg">예약 상세</Title>
       </Stack>
 
+      <ScrollReveal>
       <Card className="mt-4 text-center">
         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-lg bg-gray-50 p-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -51,7 +53,9 @@ export default function ReservationDetailPage() {
           <StatusBadge status={reservation.status} />
         </div>
       </Card>
+      </ScrollReveal>
 
+      <ScrollReveal delay={100}>
       <Kv
         className="mt-4"
         items={[
@@ -68,6 +72,7 @@ export default function ReservationDetailPage() {
           { key: "결제 금액", value: `₩ ${reservation.amountKrw.toLocaleString()}` },
         ]}
       />
+      </ScrollReveal>
 
       {canCancel && (
         <NextLink href={`/reservations/${reservation.id}/cancel`} className="mt-6 block">

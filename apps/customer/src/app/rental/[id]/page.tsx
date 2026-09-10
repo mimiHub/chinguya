@@ -22,6 +22,7 @@ import { Toast } from "@chinguya/ui/toast";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Banner } from "@chinguya/ui/banner";
 import { findRentalProductById, RENTAL_OPTION_LABEL, RENTAL_OPTION_ORDER } from "@/data/rentalData";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 
 /**
@@ -222,6 +223,7 @@ export default function RentalDetailPage() {
       <Banner size="sm" title="대여서비스" image="/banner-rental.png" />
 
       <Stack direction="column" className="mx-auto max-w-2xl p-6">
+        <ScrollReveal>
         <Stack direction="column" gap="md">
           <NextLink href="/rental" className="text-sm text-muted hover:underline">
             ← 목록으로
@@ -238,7 +240,9 @@ export default function RentalDetailPage() {
           </Stack>
           <div className="border-t border-line" />
         </Stack>        
+        </ScrollReveal>
 
+        <ScrollReveal delay={100}>
         <Stack direction="column" gap="md" className="">
           <Title size="sm" leaf tone="secondary">
             시간 옵션
@@ -266,7 +270,9 @@ export default function RentalDetailPage() {
           )}
           <div className="border-t border-line" />
         </Stack>
+        </ScrollReveal>
 
+        <ScrollReveal delay={150}>
         <Stack direction="column" gap="sm" className="">
           <Title size="sm" leaf tone="secondary">
             날짜 선택
@@ -310,7 +316,9 @@ export default function RentalDetailPage() {
               </Text>
             ))}
         </Stack>
+        </ScrollReveal>
 
+        <ScrollReveal delay={200}>
         <Stack direction="column" gap="md" className="mt-6">
           <Stack justify="between" align="center">
             <Text variant="sub" as="span">
@@ -354,6 +362,7 @@ export default function RentalDetailPage() {
             </FormMessage>
           )}
         </Stack>
+        </ScrollReveal>
       </Stack>
 
       <Popup open={conflictOpen} onClose={() => setConflictOpen(false)} title="앗, 방금 마감되었습니다">
