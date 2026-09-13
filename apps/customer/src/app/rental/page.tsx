@@ -11,7 +11,8 @@ import { EmptyState } from "@chinguya/ui/empty-state";
 import { Chip } from "@chinguya/ui/chip";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { Banner } from "@chinguya/ui/banner";
-import { rentalProducts, rentalNotice, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { rentalProducts, rentalNotice } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 // 목록 카드에 쓸 배경톤 3종을 순서대로 번갈아 적용한다(theme.css의 card-primary/secondary/tertiary).
@@ -19,7 +20,7 @@ const CARD_BG = ["bg-card-primary", "bg-card-secondary", "bg-card-tertiary"];
 
 /** "1일 15,000원부터"처럼 목록에서 대표로 보여줄 기준 가격(1일 옵션 고정) */
 function oneDayPrice(product: (typeof rentalProducts)[number]) {
-  return product.priceByOption["1d"].customerPrice;
+  return product.priceByOption["DAY_1"].customerPrice;
 }
 
 // 와이어프레임(S1/S3-C1)에는 "전체" 탭이 없다 — 자전거/낚싯대 두 탭만 있고, 각 탭에는
@@ -87,7 +88,7 @@ function RentalListContent() {
                     {product.name}
                   </Text>
                   <Text variant="sub" className="mt-1">
-                    {RENTAL_OPTION_LABEL["1d"]} {oneDayPrice(product).toLocaleString()}원부터
+                    {RENTAL_OPTION_LABEL["DAY_1"]} {oneDayPrice(product).toLocaleString()}원부터
                   </Text>
                 </div>
               </div>

@@ -44,12 +44,28 @@ export interface PriceBook {
 
 /**
  * 대여 옵션 종류. 자전거/낚싯대 공통으로 쓰는 고정 옵션이며, 가격은 상품마다 옵션별로 다르게 매겨진다.
- * 화면에 보여줄 한글/일본어 라벨("2시간", "1일" 등)은 여기 두지 않는다 — 사용자 노출 문구는
- * 하드코딩 금지 규칙에 따라 src/locales/{ko,ja} 의 i18n 키로 관리한다.
+ * 값 표기는 Core API 계약(RentalOptionType)·DB CHECK 제약과 동일하게 맞춘다.
  */
-export type RentalOptionKey = "2h" | "1d" | "2d" | "night";
+export type RentalOptionKey = "HOURS_2" | "DAY_1" | "DAY_2" | "NIGHT";
 
-export const RENTAL_OPTION_KEYS: readonly RentalOptionKey[] = ["2h", "1d", "2d", "night"];
+export const RENTAL_OPTION_KEYS: readonly RentalOptionKey[] = ["HOURS_2", "DAY_1", "DAY_2", "NIGHT"];
+
+/**
+ * 옵션의 화면 노출 라벨. 카테고리 라벨과 같은 이유로 여기 둔다 — 세 앱이 같은 문구를 쓰고,
+ * 상품명 `자산명 · 옵션` 의 뒷부분을 서버도 이 표기로 만든다(i18n 도입 전까지의 단일 출처).
+ */
+export const RENTAL_OPTION_LABEL: Record<RentalOptionKey, string> = {
+  HOURS_2: "2시간",
+  DAY_1: "1일",
+  DAY_2: "2일",
+  NIGHT: "야간",
+};
+
+/** 선택 가능한 옵션은 연결 자산의 카테고리가 정한다(S1-A5). */
+export const OPTIONS_BY_CATEGORY: Record<AssetCategory, readonly RentalOptionKey[]> = {
+  BICYCLE: ["HOURS_2", "DAY_1", "DAY_2", "NIGHT"],
+  FISHING_ROD: ["DAY_1", "DAY_2"],
+};
 
 /**
  * 자산의 상위 분류. 관리자가 새 카테고리를 자유롭게 만드는 구조가 아니라 기획서에 고정된 두 가지.
@@ -132,6 +148,56 @@ export interface Asset {
   /** 소프트삭제 시각(ISO). deleted가 false면 null. */
   deletedAt: string | null;
 }
+
+/**
+ * 관리자 상품(S1-A4/A5) — **연결 자산 1개 + 대여 옵션 1개**.
+ *
+ * 자산 1개에 상품이 여러 개 달린다(예: 전기자전거 → 1일·2일·야간). 수량 필드가 없는 것이
+ * 의도다 — 예약은 연결 자산의 재고(S1-A3)를 쓰고, 같은 자산의 상품끼리 재고를 함께 쓴다.
+ */
+export interface AdminProduct {
+  productId: string;
+  /** 연결 자산. **등록 때만 정해지고 이후 바뀌지 않는다.** */
+  assetId: string;
+  /** 연결 자산의 명칭. 목록(S1-A4)이 자산별로 묶을 때 소제목으로 쓴다. */
+  assetName: string;
+  /** 연결 자산의 카테고리. 상품이 따로 갖는 값이 아니라 자산에서 따라온다. */
+  category: AssetCategory;
+  /** 대여 옵션. assetId와 마찬가지로 등록 때만 정해진다. */
+  optionType: RentalOptionKey;
+  /** `자산명 · 옵션` 형태로 서버가 만들어 주는 상품명(입력 항목 아님). */
+  displayName: string;
+  customerPrice: number;
+  /** 여행사 정산가. **고객앱에 절대 노출하지 않는다.** */
+  agencyPrice: number;
+  customerVisible: boolean;
+  agencyVisible: boolean;
+  /** 타지역 반납 추가요금. 2일(DAY_2) 상품에만 값이 있고 그 외에는 null. */
+  crossRegionReturnExtraFee: number | null;
+  description: string | null;
+  /** 배열 순서가 표시 순서이고 0번이 대표 이미지. */
+  imageUrls: string[];
+  deleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+/** 상품 등록(S1-A5). assetId·optionType은 등록 때만 보낸다. */
+export interface AdminProductCreate {
+  assetId: string;
+  optionType: RentalOptionKey;
+  customerPrice: number;
+  agencyPrice: number;
+  customerVisible: boolean;
+  agencyVisible: boolean;
+  crossRegionReturnExtraFee?: number | null;
+  description?: string | null;
+  imageUrls?: string[];
+}
+
+/** 상품 수정(S1-A5). 연결 자산·옵션이 없다 — 등록 때 정한 값이 그대로 간다. */
+export type AdminProductUpdate = Omit<AdminProductCreate, "assetId" | "optionType">;
 
 /** 자산 삭제(A2-M3)가 실제로 어떻게 처리됐는지. 화면은 이 값으로 토스트 문구를 고른다. */
 export type AssetDeletionMode = "HARD" | "SOFT";

@@ -11,7 +11,8 @@ import { StatusBadge } from "@chinguya/ui/badge";
 import { Button } from "@chinguya/ui/button";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Banner } from "@chinguya/ui/banner";
-import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { findRentalProductById } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { findReservationById } from "@/data/reservationData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 

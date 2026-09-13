@@ -16,7 +16,7 @@ import { CalendarIcon } from "@chinguya/ui/calendar-icon";
 import { Popup } from "@chinguya/ui/popup";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { getBookingRows } from "@/data/bookingData";
-import { RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { createReservation } from "@/data/reservationData";
 import { Alert } from "@chinguya/ui/alert";
 

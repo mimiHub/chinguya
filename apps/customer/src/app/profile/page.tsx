@@ -19,7 +19,8 @@ import { Toast } from "@chinguya/ui/toast";
 import { StatusBadge } from "@chinguya/ui/badge";
 import { useCart, type CartLine } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
-import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { findRentalProductById } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 

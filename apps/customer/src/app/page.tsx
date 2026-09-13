@@ -34,7 +34,7 @@ const STARS = [
 function fromPriceOf(category: AssetCategory): number {
   const prices = rentalProducts
     .filter((p) => p.customerVisible && p.category === category)
-    .map((p) => p.priceByOption["1d"].customerPrice);
+    .map((p) => p.priceByOption["DAY_1"].customerPrice);
   return prices.length > 0 ? Math.min(...prices) : 0;
 }
 

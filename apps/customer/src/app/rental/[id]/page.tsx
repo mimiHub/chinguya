@@ -21,7 +21,8 @@ import { Popup } from "@chinguya/ui/popup";
 import { Toast } from "@chinguya/ui/toast";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Banner } from "@chinguya/ui/banner";
-import { findRentalProductById, RENTAL_OPTION_LABEL, RENTAL_OPTION_ORDER } from "@/data/rentalData";
+import { findRentalProductById, RENTAL_OPTION_ORDER } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 
@@ -83,7 +84,7 @@ export default function RentalDetailPage() {
 
   // 아래에서 "이른 return"보다 먼저 훅을 다 불러야 해서(React 훅 규칙: 조건부 호출 금지),
   // 상품이 없을 수도 있는 상태 그대로 훅들을 선언해둔다.
-  const [option, setOption] = useState<RentalOptionKey>("1d");
+  const [option, setOption] = useState<RentalOptionKey>("DAY_1");
   const [offSiteReturn, setOffSiteReturn] = useState(false);
 
   const now = new Date();
@@ -106,12 +107,12 @@ export default function RentalDetailPage() {
     return <ComingSoon label="존재하지 않는 상품입니다" />;
   }
 
-  const isMultiDay = option === "2d";
+  const isMultiDay = option === "DAY_2";
 
   const handleOptionChange = (key: RentalOptionKey) => {
     setOption(key);
     // 타지역 반납은 2일 대여에서만 선택 가능한 옵션 — 다른 옵션으로 바꾸면 선택 해제
-    if (key !== "2d") setOffSiteReturn(false);
+    if (key !== "DAY_2") setOffSiteReturn(false);
     // 옵션이 바뀌면 캘린더 선택 모드(단일 ↔ range)도 바뀌므로, 이미 고른 날짜는 초기화한다.
     setRange({ start: null, end: null });
     setMultiDayNotice(null);

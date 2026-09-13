@@ -1,8 +1,10 @@
 import type {
-  Product,
   CustomerReservation,
   AgencyReservation,
   Invoice,
+  AdminProduct,
+  AdminProductCreate,
+  AdminProductUpdate,
   Asset,
   AssetCategory,
   AssetDeletionMode,
@@ -239,9 +241,6 @@ export function createApiClient(opts: ApiClientOptions = {}) {
 
   return {
     request,
-    products: {
-      list: () => request<Product[]>("/products"),
-    },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
       create: (body: Partial<CustomerReservation>) =>
@@ -281,6 +280,39 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<Asset>(`/assets/${assetId}/restore`, {
           method: "POST",
           body: JSON.stringify({ name }),
+        }),
+    },
+    /**
+     * 관리자 상품 관리(S1-A4 목록·표출 토글 / S1-A5 등록·수정·삭제).
+     *
+     * 상품 = 연결 자산 1개 + 대여 옵션 1개. 목록은 자산·여행사와 같이 페이지네이션 없이
+     * 전량 반환하고, 화면(S1-A4)이 카테고리 탭 → 자산별 묶음으로 그린다.
+     */
+    products: {
+      /** category·assetId 로 거른다. includeDeleted=true 면 소프트 삭제된 상품까지. */
+      list: (params: { category?: AssetCategory; assetId?: string; includeDeleted?: boolean } = {}) => {
+        const query = new URLSearchParams();
+        if (params.category) query.set("category", params.category);
+        if (params.assetId) query.set("assetId", params.assetId);
+        if (params.includeDeleted) query.set("includeDeleted", "true");
+        const qs = query.toString();
+        return request<AdminProduct[]>(`/products${qs ? `?${qs}` : ""}`);
+      },
+      get: (productId: string) => request<AdminProduct>(`/products/${productId}`),
+      /** 연결 자산·옵션은 여기서만 정한다. 활성 자산만, 카테고리가 허용하는 옵션만. */
+      create: (body: AdminProductCreate) =>
+        request<AdminProduct>("/products", { method: "POST", body: JSON.stringify(body) }),
+      /** 연결 자산·옵션은 못 바꾼다. 이미지는 보낸 배열로 통째 교체된다. */
+      update: (productId: string, body: AdminProductUpdate) =>
+        request<AdminProduct>(`/products/${productId}`, { method: "PUT", body: JSON.stringify(body) }),
+      /** 소프트 삭제만 한다(예약 이력 보존). 복원 API는 없다. */
+      remove: (productId: string) =>
+        request<void>(`/products/${productId}`, { method: "DELETE" }),
+      /** S1-A4 표출 토글. 고객앱·여행사앱이 독립이라 한쪽만 보내도 된다. */
+      setVisibility: (productId: string, body: { customerVisible?: boolean; agencyVisible?: boolean }) =>
+        request<AdminProduct>(`/products/${productId}/visibility`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
         }),
     },
     /**
