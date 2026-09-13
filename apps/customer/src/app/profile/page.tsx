@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CUSTOMER_SOCIAL_PROVIDER_LABEL, OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 import { Banner } from "@chinguya/ui/banner";
@@ -20,7 +20,6 @@ import { StatusBadge } from "@chinguya/ui/badge";
 import { useCart, type CartLine } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
-import { getMember, updatePassportName } from "@/data/memberData";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -50,7 +49,8 @@ function lineAmount(line: CartLine): number {
  * - 로그인 여부·아이디·연결 소셜은 실제 세션(useCustomerAuth, GET /v1/auth/me)에서 읽는다.
  *   로그아웃도 실제 세션을 지운다 — 확인 팝업 → 토스트 → 홈으로 이동은 기획(S0-C3 화면 이동:
  *   로그아웃/탈퇴 → 로그아웃 상태 홈)대로 동작한다.
- * - 여권 영문명은 아직 getMember()/updatePassportName()(memberData.ts, 목업 저장소)로 다룬다.
+ * - 여권 영문명도 실제 세션에서 읽고 PUT /v1/auth/me/passport-name 으로 저장한다. 저장된 값은
+ *   **다음 예약의 기본값**이고, 이미 만들어진 예약은 확정 시점 스냅샷이라 바뀌지 않는다.
  * - TODO: 회원 탈퇴 API가 아직 없어서 지금은 로그아웃만 한다(계정은 남는다).
  */
 export default function ProfilePage() {
@@ -59,24 +59,39 @@ export default function ProfilePage() {
   const reservations = listReservations().slice(0, PREVIEW_COUNT);
   const cartPreview = items.slice(0, PREVIEW_COUNT);
 
-  const member = getMember();
-  const [passportName, setPassportName] = useState(member.passportName);
+  const [passportName, setPassportName] = useState("");
   const [passportError, setPassportError] = useState<string | null>(null);
+  const [savingPassport, setSavingPassport] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const { session, loading, logout } = useCustomerAuth();
+  const { session, loading, savePassportName, logout } = useCustomerAuth();
 
-  const handleSavePassportName = () => {
+  // 세션은 앱이 뜰 때 비동기로 오므로, 도착한 뒤 입력칸을 저장값으로 채운다.
+  // 사용자가 이미 입력 중이면 덮어쓰지 않는다.
+  useEffect(() => {
+    if (session?.passportName) {
+      setPassportName((current) => (current === "" ? session.passportName ?? "" : current));
+    }
+  }, [session?.passportName]);
+
+  const handleSavePassportName = async () => {
     const trimmed = passportName.trim();
     if (!trimmed) {
       setPassportError("여권 영문명을 입력해 주세요.");
       return;
     }
     setPassportError(null);
-    updatePassportName(trimmed);
-    setPassportName(trimmed);
-    setToastMessage("저장되었습니다");
+    setSavingPassport(true);
+    try {
+      await savePassportName(trimmed);
+      setPassportName(trimmed);
+      setToastMessage("저장되었습니다");
+    } catch (err) {
+      setPassportError(err instanceof Error ? err.message : "저장에 실패했습니다.");
+    } finally {
+      setSavingPassport(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -148,7 +163,7 @@ export default function ProfilePage() {
                   예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.
                 </Alert>
               )}
-              <Button onClick={handleSavePassportName} className="mt-4" fullWidth>
+              <Button onClick={handleSavePassportName} disabled={savingPassport} className="mt-4" fullWidth>
                 저장
               </Button>
             </Stack>

@@ -308,6 +308,12 @@ export interface CustomerSession {
   customerId: string;
   loginId: string;
   socialProvider: CustomerSocialProvider;
+  /**
+   * 저장된 여권 영문명(S0-C3에서 편집). 한 번도 저장하지 않았으면 null이다.
+   * 예약 확정 시 이 값이 예약의 여권명으로 스냅샷 복사되므로, 여기서 바꿔도
+   * 이미 만들어진 예약은 바뀌지 않는다 — 다음 예약의 기본값이다.
+   */
+  passportName: string | null;
   /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
   expiresAt: string;
 }

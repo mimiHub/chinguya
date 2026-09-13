@@ -649,6 +649,35 @@ paths:
               schema: { $ref: '#/components/schemas/CustomerSession' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /auth/me/passport-name:
+    put:
+      tags: [auth]
+      x-screens: [S0-C3]
+      summary: 여권 영문명 수정 (S0-C3)
+      description: |
+        회원정보 수정 화면에서 저장된 여권 영문명을 바꾼다. 앞뒤 공백은 서버가 제거한다.
+
+        **이미 만들어진 예약은 바뀌지 않는다** — 예약은 확정 시점의 여권명을
+        스냅샷으로 들고 있다(booking.passport_name). 여기서 바꾼 값은 **다음 예약부터**
+        기본값으로 쓰인다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PassportNameRequest' }
+      responses:
+        '200':
+          description: 수정 후 세션 정보(바뀐 passportName 포함)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerSession' }
+        '400':
+          description: '`VALIDATION_ERROR` — 여권 영문명 누락·공백만 입력·형식 오류'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /auth/logout:
     post:
       tags: [auth]
@@ -1230,6 +1259,18 @@ components:
       enum: [KAKAO, NAVER, GOOGLE]
       description: 연결 소셜. 현재 연동은 KAKAO만 있다(NAVER·GOOGLE은 추후).
 
+    PassportNameRequest:
+      type: object
+      required: [passportName]
+      properties:
+        passportName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: |
+            여권 영문명. 여권 표기 그대로의 영문 대문자·공백이며, 서버가 앞뒤 공백을
+            제거한 뒤 저장한다.
+
     CustomerSession:
       type: object
       required: [customerId, loginId, socialProvider, expiresAt]
@@ -1237,6 +1278,11 @@ components:
         customerId: { type: string }
         loginId: { type: string }
         socialProvider: { $ref: '#/components/schemas/SocialProvider' }
+        passportName:
+          type: [string, 'null']
+          description: |
+            저장된 여권 영문명(S0-C3에서 편집). 아직 한 번도 넣지 않았으면 null 이다.
+            예약 확정 시 이 값이 booking.passportName 으로 스냅샷 복사된다.
         expiresAt:
           type: string
           format: date-time

@@ -19,6 +19,8 @@ interface CustomerAuthValue {
   loading: boolean;
   /** S0-C2 가입 완료. 실패하면 CustomerAuthError를 던진다. */
   signup: (loginId: string) => Promise<void>;
+  /** S0-C3 여권 영문명 저장. 저장 후 세션의 passportName이 갱신된다. 실패하면 CustomerAuthError. */
+  savePassportName: (passportName: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -68,12 +70,29 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     setSession(await res.json());
   }, []);
 
+  const savePassportName = useCallback(async (passportName: string) => {
+    const res = await fetch("/api/customer/session/passport-name", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ passportName }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new CustomerAuthError(body?.code ?? "UNKNOWN", body?.message ?? "저장에 실패했습니다.");
+    }
+    // Core가 바뀐 세션을 돌려주므로 다시 조회할 필요가 없다.
+    setSession(await res.json());
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch("/api/customer/session", { method: "DELETE" });
     setSession(null);
   }, []);
 
-  const value = useMemo(() => ({ session, loading, signup, logout }), [session, loading, signup, logout]);
+  const value = useMemo(
+    () => ({ session, loading, signup, savePassportName, logout }),
+    [session, loading, signup, savePassportName, logout],
+  );
 
   return <CustomerAuthContext.Provider value={value}>{children}</CustomerAuthContext.Provider>;
 }

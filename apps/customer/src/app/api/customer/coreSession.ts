@@ -29,6 +29,7 @@ export function mockSession(loginId?: string): CustomerSession {
     customerId: "mock-customer",
     loginId: loginId || "gildong",
     socialProvider: "KAKAO",
+    passportName: null,
     expiresAt: new Date(Date.now() + MOCK_MAX_AGE * 1000).toISOString(),
   };
 }
