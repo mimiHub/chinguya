@@ -1,15 +1,11 @@
-import type { CancellationFeeRule, DepositAccount } from "@chinguya/types";
+import type { CancellationFeeRule } from "@chinguya/types";
 import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 
 /**
- * S1-A10 계좌 · 정책 설정 목업 데이터.
- * 실제로는 GET/PUT /api/admin/settings 로 대체될 자리다.
+ * 예약 상세(S1-A7/A8) 목업이 쓰는 취소 수수료 목업 데이터.
+ * 설정 화면(S1-A10)은 이미 Core API(GET/PUT /admin/settings)에 연동됐다 — 예약 API가
+ * 생기면 이 파일의 요율표·계산은 서버 취소 견적으로 대체된다.
  */
-export const depositAccount: DepositAccount = {
-  bankName: "신한은행",
-  accountNumber: "110-123-456789",
-  accountHolder: "(주)친구야",
-};
 
 /**
  * 취소 수수료율. daysBeforeUse가 클수록(이용일까지 여유가 많을수록) 요율이 낮다 —

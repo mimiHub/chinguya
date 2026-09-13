@@ -1111,9 +1111,8 @@ components:
             이 항목에 적용된 요율(0~1). 초기값(확정, 결정 로그 2026-08-19):
             D-7 이상 10% / D-6~D-3 20% / D-2~D-1 30% / 당일 50%.
             **이 구간·요율은 코드에 하드코딩하지 않고 DB 정책 테이블에서
-            조회한다** — 관리자 화면 a-set(S1-A10 계좌·정책 설정)이 이미 이
-            값을 편집하는 UI로 와이어프레임에 존재하므로, 그 화면을 지원할
-            관리자 CRUD API가 별도 필요하다(하단 TODO 참고 — 아직 작성 전).
+            조회한다** — 관리자 화면 a-set(S1-A10 계좌·정책 설정)에서 편집한다
+            (관리자 API: chinguya-admin-api.yaml `PUT /admin/settings`).
             **v0.4**: 항목마다 이용일이 다르면 요율도 달라지므로, 요율은
             예약이 아니라 **항목** 단위 값이다.
         lineAmount:
@@ -1183,6 +1182,7 @@ components:
         reason:
           type: string
           description: 취소 사유(선택).
+
     KakaoAuthorizeUrl:
       type: object
       required: [url]
@@ -1242,7 +1242,6 @@ components:
           format: date-time
           description: 액세스 토큰 만료 시각(UTC).
 
-
     Error:
       type: object
       required: [code, message]
@@ -1257,13 +1256,13 @@ components:
               (전체 취소만 가능).
             - `ITEM_NOT_CANCELLABLE` — 이미 취소됐거나 취소요청 중인 항목을
               지정.
+            - `INVALID_BOOKING_ITEM` — 이 예약에 속하지 않는 bookingItemId.
             v0.5 고객 인증 관련:
             - `KAKAO_AUTH_FAILED` — 카카오 인가 코드 교환·사용자 조회 실패.
             - `SIGNUP_TOKEN_INVALID` — 가입 쿠키 없음·만료.
             - `INVALID_LOGIN_ID` — 아이디 형식 오류.
             - `DUPLICATE_LOGIN_ID` — 이미 쓰는 아이디.
             - `ALREADY_REGISTERED` — 이미 가입된 소셜 계정.
-            - `INVALID_BOOKING_ITEM` — 이 예약에 속하지 않는 bookingItemId.
         message: { type: string }
         fieldErrors:
           type: array
@@ -1296,12 +1295,9 @@ security:
 # =============================================================================
 # 협의 미확정(TODO) 목록 — 개발자·PM 확정 필요
 #
-# 1. 취소 수수료 정책 관리자 CRUD API (신규 필요)
-#    - a-set(S1-A10 계좌·정책 설정) 화면은 이미 와이어프레임에 존재하고
-#      구간·요율을 관리자가 편집하는 것으로 설계돼 있다. 이 화면을 지원할
-#      관리자 API(예: chinguya-admin-settings-api.yaml, 입금 계좌 +
-#      취소 수수료 구간 CRUD)는 아직 작성 전 — chinguya-admin-product-
-#      api.yaml과 같은 패턴으로 이어서 작성 필요.
+# 1. (해결됨) 취소 수수료 정책 관리자 API
+#    - a-set(S1-A10 계좌·정책 설정)을 지원하는 입금 계좌 + 취소 수수료 구간
+#      편집 API를 chinguya-admin-api.yaml `GET/PUT /admin/settings` 로 작성했다.
 #
 # 2. 관리자 강제취소·완료 처리 API + **부분취소 승인(v0.4 추가)**
 #    - '완료(입금확인)'·'미입금 강제취소' 전이는 관리자 전용(a-resdetail,
@@ -1316,13 +1312,13 @@ security:
 #      미확정 — 확정되면 CancelRequest.refundAccount를 선택값으로 바꾸고
 #      저장 계좌 조회 필드를 추가할 수 있다.
 #
+# 4. 수수료 원 단위 반올림 규칙 (v0.4 신규)
+#    - `lineAmount × feeRate`의 소수점 처리(반올림/버림/올림)가 미확정.
+#      항목별로 계산해 합산하므로 항목 수만큼 오차가 누적될 수 있어
+#      규칙을 못박아야 한다(권장: 항목별 반올림 후 합산).
 #
 # 5. 고객 세션 연장 (v0.5 신규)
 #    - `access_token` 은 30분이고 리프레시 토큰이 없다. 30분이 지나면 카카오
 #      로그인을 다시 해야 한다(카카오 세션이 살아 있으면 버튼 한 번). 예약 도중
 #      만료되는 경험을 막으려면 리프레시 토큰 또는 만료 연장 방식을 정해야 한다.
-# 4. 수수료 원 단위 반올림 규칙 (v0.4 신규)
-#    - `lineAmount × feeRate`의 소수점 처리(반올림/버림/올림)가 미확정.
-#      항목별로 계산해 합산하므로 항목 수만큼 오차가 누적될 수 있어
-#      규칙을 못박아야 한다(권장: 항목별 반올림 후 합산).
 # =============================================================================
