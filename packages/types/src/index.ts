@@ -122,6 +122,11 @@ export interface Asset {
    * 삭제는 늘 완전 삭제다(api-spec 헤더 TODO 6).
    */
   hasInventoryRecords: boolean;
+  /**
+   * 이 자산에 연결된 삭제되지 않은 상품 수. 자산 카드의 '연결 상품 N개'이고,
+   * 1 이상이면 삭제 모달이 **CASE 0**(삭제 불가 — 상품 먼저 삭제)로 간다(S1-A2).
+   */
+  productCount: number;
   createdAt: string;
   updatedAt: string;
   /** 소프트삭제 시각(ISO). deleted가 false면 null. */

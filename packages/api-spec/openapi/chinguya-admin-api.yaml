@@ -95,6 +95,8 @@ tags:
     description: 자산(명칭 마스터) 등록·수정·삭제·복원 (S1-A2)
   - name: admin-inventory
     description: 자산별 날짜별 재고 세팅 — 기준 보유량·여행사 할당·재고 조정·매장 휴무 (S1-A3)
+  - name: admin-product
+    description: 상품(연결 자산 × 대여 옵션) 목록·등록·수정·삭제·표출 토글 (S1-A4/A5)
   - name: admin-agency
     description: 여행사(거래처) 목록·등록(초대)·상세·사용 가능/불가 (S2-A1/A2/A3)
   - name: admin-faq
@@ -293,12 +295,15 @@ paths:
       x-screens: [S1-A2]
       summary: 자산 삭제 (A2-M3)
       description: |
-        **재고 레코드 유무로 처리가 갈린다** — 0건이면 완전 삭제(hard), 1건 이상이면
-        소프트 삭제. 어느 쪽이 일어났는지 응답의 `deletion` 으로 알려준다(화면은 이
-        값으로 토스트 문구를 고른다).
+        **연결 상품이 1개라도 있으면 삭제할 수 없다**(409 `ASSET_HAS_PRODUCTS`, CASE 0) —
+        상품을 먼저 지워야 한다. 상품이 연결 자산의 재고를 쓰기 때문이다.
 
-        삭제 확인 모달의 문구 분기(CASE 1 / CASE 2)는 목록 응답의
-        `hasInventoryRecords` 를 보고 **삭제를 부르기 전에** 정한다.
+        연결 상품이 없으면 **재고 레코드 유무로 처리가 갈린다** — 0건이면 완전 삭제(hard),
+        1건 이상이면 소프트 삭제. 어느 쪽이 일어났는지 응답의 `deletion` 으로 알려준다
+        (화면은 이 값으로 토스트 문구를 고른다).
+
+        삭제 확인 모달의 문구 분기(CASE 0 / CASE 1 / CASE 2)는 목록 응답의
+        `productCount` 와 `hasInventoryRecords` 를 보고 **삭제를 부르기 전에** 정한다.
 
       responses:
         '200':
@@ -313,7 +318,9 @@ paths:
         '404':
           $ref: '#/components/responses/AssetNotFound'
         '409':
-          description: '`ASSET_ALREADY_DELETED` — 이미 소프트 삭제된 자산'
+          description: |
+            `ASSET_HAS_PRODUCTS` — 연결 상품이 있어 삭제 불가(CASE 0, 상품 먼저 삭제)
+            / `ASSET_ALREADY_DELETED` — 이미 소프트 삭제된 자산
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -776,6 +783,231 @@ paths:
   # (chinguya-agency-api.yaml)에 있다. 여기서 관리자가 하는 일은 여행사 마스터 관리와
   # **초대 발송**뿐이다.
   # ---------------------------------------------------------------------------
+
+  /admin/products:
+    get:
+      tags: [admin-product]
+      x-screens: [S1-A4]
+      summary: 상품 목록 조회 (S1-A4)
+      description: |
+        상품 목록. 상품 수가 `활성 자산 × 옵션` 정도라 페이지네이션 없이 전량 반환한다
+        (자산·여행사 목록과 같은 컨벤션).
+
+        화면(S1-A4)은 **카테고리 탭 → 연결 자산별 묶음** 으로 그린다. 정렬은 그 구조에
+        맞춰 **카테고리 · 자산 등록순 · 옵션순** 이고, 각 항목이 `assetId`·`assetName`·
+        `category` 를 함께 들고 있어 클라이언트가 따로 자산을 조회하지 않아도 묶을 수 있다.
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/AssetCategory' }
+          description: 카테고리 탭(자전거/낚싯대) 필터. 연결 자산의 카테고리 기준이다.
+        - name: assetId
+          in: query
+          required: false
+          schema: { type: string }
+          description: 특정 자산의 상품만. 자산 삭제 전 연결 상품을 확인할 때 쓴다.
+        - name: includeDeleted
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: |
+            true 면 소프트 삭제된 상품까지 포함한다. 화면은 삭제된 상품을 보여주지
+            않으므로 기본값(false)을 쓴다.
+      responses:
+        '200':
+          description: 상품 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [admin-product]
+      x-screens: [S1-A5]
+      summary: 상품 등록 (S1-A5)
+      description: |
+        상품 = **연결 자산 1개 + 대여 옵션 1개**. 자산 1개에 상품이 여러 개 달릴 수 있다
+        (예: 전기자전거 → 1일 · 2일 · 야간).
+
+        **연결 자산과 옵션은 등록 때만 정한다** — 수정(PUT)에서 바꾸려 하면 400
+        `PRODUCT_OPTION_IMMUTABLE` 이다.
+
+        제약:
+        - 연결 자산은 **활성 자산만** 고를 수 있다(삭제된 자산이면 409 `ASSET_DELETED`).
+        - 옵션은 **연결 자산의 카테고리에 맞는 것만** — 자전거 = `HOURS_2`/`DAY_1`/`DAY_2`/`NIGHT`,
+          낚싯대 = `DAY_1`/`DAY_2`. 어긋나면 400 `INVALID_OPTION_FOR_CATEGORY`.
+        - 같은 자산 × 같은 옵션의 **활성 상품은 1개만** (409 `DUPLICATE_PRODUCT_OPTION`).
+          삭제된 조합은 재등록할 수 있다.
+        - 타지역 반납 추가요금은 **2일(`DAY_2`) 상품에만** 둘 수 있다(자전거·낚싯대 모두).
+          그 외 옵션에 값을 주면 400 `INVALID_CROSS_REGION_COMBO`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreateRequest' }
+      responses:
+        '201':
+          description: 등록 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400':
+          description: |
+            `VALIDATION_ERROR` — 필수값 누락·형식 오류
+            / `INVALID_OPTION_FOR_CATEGORY` — 연결 자산 카테고리에 없는 옵션
+            / `INVALID_CROSS_REGION_COMBO` — 2일 상품이 아닌데 타지역 반납 추가요금을 줌
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AssetNotFound'
+        '409':
+          description: |
+            `DUPLICATE_PRODUCT_OPTION` — 같은 자산·옵션의 활성 상품이 이미 있음
+            / `ASSET_DELETED` — 삭제된 자산에는 상품을 달 수 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema: { type: string }
+        description: 상품 PK(숫자지만 문자열로 직렬화된다).
+
+    get:
+      tags: [admin-product]
+      x-screens: [S1-A5]
+      summary: 상품 상세 조회 (S1-A5)
+      description: 수정 화면이 기존 값을 채우려고 부른다. 삭제된 상품도 조회된다.
+      responses:
+        '200':
+          description: 상품 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ProductNotFound'
+
+    put:
+      tags: [admin-product]
+      x-screens: [S1-A5]
+      summary: 상품 수정 (S1-A5)
+      description: |
+        가격·표출·타지역 반납 추가요금·설명·이미지를 바꾼다. **연결 자산과 옵션은 바꿀 수
+        없다** — 요청 본문에 아예 없고, 화면에서도 읽기 전용이다.
+
+        **삭제된 상품은 수정할 수 없다**(409 `PRODUCT_DELETED`).
+
+        이미지는 **통째로 교체**한다(부분 수정 없음) — 보낸 배열이 그대로 새 목록이 된다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductUpdateRequest' }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400':
+          description: '`VALIDATION_ERROR` / `INVALID_CROSS_REGION_COMBO`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ProductNotFound'
+        '409':
+          description: '`PRODUCT_DELETED` — 삭제된 상품은 수정 불가'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    delete:
+      tags: [admin-product]
+      x-screens: [S1-A5]
+      summary: 상품 삭제 (A5-M1)
+      description: |
+        **소프트 삭제만** 한다 — 예약 이력이 상품을 참조하므로 행을 지우지 않는다.
+        목록에서는 기본적으로 빠지고(`includeDeleted=false`), 같은 자산·옵션 조합을
+        다시 등록할 수 있게 된다.
+
+        자산 삭제와 달리 **복원 API는 없다**(운영 정책).
+      responses:
+        '204':
+          description: 삭제 완료
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ProductNotFound'
+        '409':
+          description: '`PRODUCT_ALREADY_DELETED` — 이미 삭제된 상품'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/products/{productId}/visibility:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema: { type: string }
+
+    patch:
+      tags: [admin-product]
+      x-screens: [S1-A4]
+      summary: 상품 표출 토글 (S1-A4)
+      description: |
+        상품 목록(S1-A4)의 **고객앱 / 여행사앱 표출 토글** 전용이다. 둘은 서로 독립이라
+        한쪽만 보내도 된다(보내지 않은 쪽은 그대로 둔다). 둘 다 비면 400이다.
+
+        상품 전체를 저장하지 않고 토글만 하려고 PUT 과 분리했다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductVisibilityRequest' }
+      responses:
+        '200':
+          description: 변경 후 상품
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400':
+          description: '`VALIDATION_ERROR` — customerVisible/agencyVisible 이 둘 다 비었음'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ProductNotFound'
+        '409':
+          description: '`PRODUCT_DELETED` — 삭제된 상품은 표출 변경 불가'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /admin/agencies:
     get:
@@ -1378,6 +1610,14 @@ components:
           example:
             code: DUPLICATE_ASSET_NAME
             message: 이미 사용 중인 자산 명칭입니다.
+    ProductNotFound:
+      description: 존재하지 않는 상품
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: PRODUCT_NOT_FOUND
+            message: 상품을 찾을 수 없습니다.
     AdjustmentNotFound:
       description: 존재하지 않는 재고 조정
       content:
@@ -1457,7 +1697,7 @@ components:
 
     Asset:
       type: object
-      required: [assetId, name, category, deleted, hasInventoryRecords, createdAt, updatedAt]
+      required: [assetId, name, category, deleted, hasInventoryRecords, productCount, createdAt, updatedAt]
       description: |
         대여 자산의 **명칭·카테고리 마스터**(S1-A2). 자산은 이 둘만 가진다 — 보유
         대수는 전부 재고 세팅(S1-A3)이 `자산 × 날짜` 단위로 관리하므로 이 스키마에
@@ -1483,6 +1723,12 @@ components:
             이 자산을 참조하는 **날짜별 재고 레코드(기준 보유량 이력 또는 재고 조정)가
             1건 이상** 있는지. 삭제 모달의 문구·처리 분기(CASE 1 완전 삭제 / CASE 2
             소프트 삭제)를 삭제를 부르기 전에 정하기 위한 값이다.
+        productCount:
+          type: integer
+          description: |
+            이 자산에 연결된 **삭제되지 않은 상품 수**. 자산 카드에 '연결 상품 N개'로
+            표시하고(S1-A2), 1 이상이면 삭제 모달이 **CASE 0**(삭제 불가, 상품 먼저
+            삭제) 문구로 간다 — 삭제를 부르기 전에 정하기 위한 값이다.
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         deletedAt:
@@ -1731,6 +1977,142 @@ components:
       properties:
         date: { type: string, format: date }
         closed: { type: boolean }
+
+    RentalOptionType:
+      type: string
+      enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+      description: |
+        대여 옵션 — 2시간 / 1일 / 2일 / 야간. 고객 Core API 의 동명 스키마와 같은 값이다.
+
+        **선택 가능한 옵션은 연결 자산의 카테고리가 정한다**:
+        자전거 = `HOURS_2`·`DAY_1`·`DAY_2`·`NIGHT`, 낚싯대 = `DAY_1`·`DAY_2`.
+
+    Product:
+      type: object
+      required:
+        [productId, assetId, assetName, category, optionType, displayName,
+         customerPrice, agencyPrice, customerVisible, agencyVisible, imageUrls,
+         deleted, createdAt, updatedAt]
+      description: |
+        상품 하나 = **연결 자산 1개 + 대여 옵션 1개**(S1-A5). 옵션마다 가격·사진·설명이
+        달라서 자산 하나에 옵션 배열을 중첩시키지 않고 조합마다 독립된 상품으로 둔다.
+
+        수량은 이 스키마에 없다 — 예약은 **연결 자산의 재고**(S1-A3)를 쓰고, 같은 자산의
+        상품끼리 재고와 여행사 할당을 함께 사용한다.
+      properties:
+        productId:
+          type: string
+          description: 상품 PK(숫자지만 문자열로 직렬화된다).
+        assetId:
+          type: string
+          description: 연결 자산 PK. **등록 때만 정해지고 이후 바뀌지 않는다.**
+        assetName:
+          type: string
+          description: 연결 자산의 명칭. 목록(S1-A4)이 자산별로 묶을 때 소제목으로 쓴다.
+        category:
+          allOf:
+            - $ref: '#/components/schemas/AssetCategory'
+          description: 연결 자산의 카테고리. 상품이 따로 갖는 값이 아니라 자산에서 따라온다.
+        optionType:
+          allOf:
+            - $ref: '#/components/schemas/RentalOptionType'
+          description: 대여 옵션. **등록 때만 정해지고 이후 바뀌지 않는다.**
+        displayName:
+          type: string
+          description: |
+            화면에 쓰는 상품명 — **`자산명 · 옵션`** 형태로 서버가 만들어 준다
+            (예: `전기자전거 · 2일`). 별도 입력 항목이 아니다(S1-A5).
+        customerPrice:
+          type: integer
+          description: 고객가(KRW, 원 정수).
+        agencyPrice:
+          type: integer
+          description: 여행사 정산가(KRW). **고객앱에는 절대 노출하지 않는다.**
+        customerVisible:
+          type: boolean
+          description: 고객앱 목록 노출 여부. 상품을 지우지 않고 숨기는 토글(S1-A4).
+        agencyVisible:
+          type: boolean
+          description: 여행사앱 목록 노출 여부. customerVisible 과 독립이다.
+        crossRegionReturnExtraFee:
+          type: [integer, 'null']
+          description: |
+            타지역 반납 추가요금(KRW). **2일(`DAY_2`) 상품에만** 값이 있고 그 외에는 null 이다.
+        description:
+          type: [string, 'null']
+          description: 상세 설명. 없으면 null.
+        imageUrls:
+          type: array
+          items: { type: string }
+          description: 상품 이미지 URL. 배열 순서가 곧 표시 순서이고 **0번이 대표 이미지**다.
+        deleted:
+          type: boolean
+          description: 소프트 삭제 여부. 자산과 달리 복원 API가 없다.
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt:
+          type: [string, 'null']
+          format: date-time
+          description: 소프트 삭제 시각. `deleted` 가 false 면 null.
+
+    ProductCreateRequest:
+      type: object
+      required: [assetId, optionType, customerPrice, agencyPrice, customerVisible, agencyVisible]
+      description: |
+        상품 등록(S1-A5) 요청 본문. `assetId`·`optionType` 을 받는 건 등록뿐이라
+        수정과 스키마를 나눴다.
+      properties:
+        assetId:
+          type: string
+          description: 연결 자산 PK. **활성 자산만** 고를 수 있다.
+        optionType:
+          allOf:
+            - $ref: '#/components/schemas/RentalOptionType'
+          description: 연결 자산의 카테고리가 허용하는 옵션이어야 한다.
+        customerPrice: { type: integer, minimum: 0 }
+        agencyPrice: { type: integer, minimum: 0 }
+        customerVisible: { type: boolean }
+        agencyVisible: { type: boolean }
+        crossRegionReturnExtraFee:
+          type: [integer, 'null']
+          minimum: 0
+          description: 2일(`DAY_2`) 상품에만 허용. 그 외 옵션에 값을 주면 400이다.
+        description:
+          type: [string, 'null']
+        imageUrls:
+          type: array
+          items: { type: string }
+          description: 생략하면 이미지 없음. 빈 배열은 400이다(생략과 구분).
+
+    ProductUpdateRequest:
+      type: object
+      required: [customerPrice, agencyPrice, customerVisible, agencyVisible]
+      description: |
+        상품 수정(S1-A5) 요청 본문. **연결 자산·옵션이 없다** — 등록 때 정한 값이 그대로
+        가기 때문이다(화면에서도 읽기 전용). 보낸 값으로 통째로 교체한다.
+      properties:
+        customerPrice: { type: integer, minimum: 0 }
+        agencyPrice: { type: integer, minimum: 0 }
+        customerVisible: { type: boolean }
+        agencyVisible: { type: boolean }
+        crossRegionReturnExtraFee:
+          type: [integer, 'null']
+          minimum: 0
+        description:
+          type: [string, 'null']
+        imageUrls:
+          type: array
+          items: { type: string }
+          description: 생략하면 기존 이미지를 모두 지운다(통째로 교체).
+
+    ProductVisibilityRequest:
+      type: object
+      description: |
+        표출 토글(S1-A4) 전용. 둘 다 선택이지만 **최소 하나는 있어야 한다**.
+        보내지 않은 쪽은 기존 값을 그대로 둔다.
+      properties:
+        customerVisible: { type: boolean }
+        agencyVisible: { type: boolean }
 
     AgencyInvitationStatus:
       type: string

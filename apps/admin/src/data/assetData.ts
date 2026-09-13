@@ -24,6 +24,7 @@ function mockAsset(assetId: string, name: string, category: AssetCategory): Asse
     category,
     deleted: false,
     hasInventoryRecords: true,
+    productCount: 0,
     createdAt: MOCK_TIMESTAMP,
     updatedAt: MOCK_TIMESTAMP,
     deletedAt: null,
