@@ -163,6 +163,38 @@ export interface AdminSettingsInput {
   agencyCancelDeadlineDays: number;
 }
 
+/**
+ * FAQ·콘텐츠 관리(S4-A1/A3) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * 고객앱 FAQ 목업이 쓰는 도메인 타입(FaqEntry)과 필드명(id/order)이 달라 따로 둔다.
+ */
+export interface AdminFaq {
+  faqId: string;
+  question: string;
+  answer: string;
+  /** 오름차순. 삭제로 번호 사이가 빌 수 있다 — 순서만 의미가 있다. */
+  displayOrder: number;
+}
+
+export interface FaqInput {
+  question: string;
+  answer: string;
+}
+
+/** 랜딩 히어로 배너 한 장. 3장 고정이라 조회·저장 모두 slot 1·2·3이 하나씩이다. */
+export interface HeroBanner {
+  slot: number;
+  /** 줄바꿈(\n) 보존 */
+  title: string;
+  subtitle: string | null;
+  /**
+   * `/content/images/…` = 관리자가 올린 이미지(프록시 경유로 읽는다),
+   * 그 밖의 `/…` = 웹앱 정적 파일(초기값).
+   */
+  pcImageUrl: string;
+  mobileImageUrl: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -186,7 +218,8 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     const res = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
-        "content-type": "application/json",
+        // FormData(파일 업로드)는 브라우저가 boundary가 붙은 content-type을 직접 넣어야 한다.
+        ...(init?.body instanceof FormData ? {} : { "content-type": "application/json" }),
         ...(opts.getHeaders?.() ?? {}),
         ...(init?.headers ?? {}),
       },
@@ -343,6 +376,39 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       get: () => request<AdminSettings>("/settings"),
       update: (body: AdminSettingsInput) =>
         request<AdminSettings>("/settings", { method: "PUT", body: JSON.stringify(body) }),
+    },
+    /**
+     * FAQ 관리(S4-A1). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).
+     * 새 항목은 맨 뒤에 붙고, 순서는 reorder로만 바꾼다.
+     */
+    faqs: {
+      list: () => request<AdminFaq[]>("/faqs"),
+      create: (body: FaqInput) =>
+        request<AdminFaq>("/faqs", { method: "POST", body: JSON.stringify(body) }),
+      update: (faqId: string, body: FaqInput) =>
+        request<AdminFaq>(`/faqs/${faqId}`, { method: "PUT", body: JSON.stringify(body) }),
+      remove: (faqId: string) => request<void>(`/faqs/${faqId}`, { method: "DELETE" }),
+      /** 전체 id를 원하는 순서대로 보낸다. 그 사이 등록·삭제가 있었으면 409(FAQ_ORDER_MISMATCH). */
+      reorder: (faqIds: string[]) =>
+        request<AdminFaq[]>("/faqs/order", { method: "PUT", body: JSON.stringify({ faqIds }) }),
+    },
+    /**
+     * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
+     * 새 이미지는 uploadImage로 먼저 올리고, 받은 주소를 updateBanners에 넣어야 반영된다.
+     */
+    content: {
+      banners: () => request<HeroBanner[]>("/content/banners"),
+      updateBanners: (banners: HeroBanner[]) =>
+        request<HeroBanner[]>("/content/banners", { method: "PUT", body: JSON.stringify({ banners }) }),
+      intro: () => request<{ body: string }>("/content/intro"),
+      updateIntro: (body: string) =>
+        request<{ body: string }>("/content/intro", { method: "PUT", body: JSON.stringify({ body }) }),
+      /** PNG·JPG·WEBP, 10MB까지. 형식이 틀리면 400(INVALID_IMAGE), 크면 413(IMAGE_TOO_LARGE). */
+      uploadImage: (file: File) => {
+        const form = new FormData();
+        form.append("file", file);
+        return request<{ imageUrl: string }>("/content/images", { method: "POST", body: form });
+      },
     },
   };
 }

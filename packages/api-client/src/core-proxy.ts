@@ -49,7 +49,8 @@ async function proxy(request: Request, context: RouteContext, prefix: string): P
   const res = await fetch(target, {
     method: request.method,
     headers,
-    body: hasBody ? await request.text() : undefined,
+    // text()가 아니라 바이트 그대로 넘긴다 — 파일 업로드(multipart, S4-A3)는 바이너리라 문자열로 읽으면 깨진다.
+    body: hasBody ? await request.arrayBuffer() : undefined,
     cache: "no-store",
     redirect: "manual",
   });

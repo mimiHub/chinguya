@@ -5,7 +5,7 @@
 ## 파일
 
 - `openapi/chinguya-slice1-openapi.yaml` — **고객** 대상 Slice 1 Core API 계약(초안). Redocly lint 통과 기준.
-- `openapi/chinguya-admin-api.yaml` — **관리자** 대상 Core API 계약. 현재는 인증(S0-A2), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3), 여행사 관리(S2-A1/A2/A3). 나머지 관리자 운영 API는 구현되는 대로 이어 붙인다.
+- `openapi/chinguya-admin-api.yaml` — **관리자** 대상 Core API 계약. 현재는 인증(S0-A2), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3), 여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3). 나머지 관리자 운영 API는 구현되는 대로 이어 붙인다.
 - `openapi/chinguya-agency-api.yaml` — **여행사** 대상 Core API 계약. 현재는 계정 등록(S2-G1)과 로그인(S2-G2). 대시보드·예약·인보이스(S2-G3~G7)는 구현되는 대로 이어 붙인다.
 
 세 문서는 쿠키가 다르다 — 고객 `access_token`(30분) / 관리자 `admin_access_token`(4시간) / 여행사 `agency_access_token`(4시간). 서명 키도 관리자와 여행사가 서로 다르다(키가 같으면 감사 검사 버그 하나로 토큰이 서로 통용될 수 있다). 경로는 고객·여행사가 `/v1` 프리픽스를 쓰고 관리자만 없다.
