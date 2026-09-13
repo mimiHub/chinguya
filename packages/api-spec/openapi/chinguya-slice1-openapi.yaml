@@ -1,15 +1,24 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.4]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.5]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
 #       S1-C6 예약 상세·바우처 / S1-C7 취소 요청)
+#       + 고객 계정 (S0-C1 카카오 로그인 / S0-C2 아이디 입력 / S0-C3 세션)
 #
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.5 변경(2026-09-13 — 고객 카카오 로그인 실연동):
+#   1. `auth` 태그 추가: 카카오 인가 URL·카카오 로그인·가입(아이디)·세션·로그아웃.
+#      로그인과 가입은 같은 카카오 로그인 엔드포인트에서 결과로 갈린다
+#      (`LOGGED_IN` / `SIGNUP_REQUIRED`).
+#   2. 고객 아이디 규칙 확정: 영문 소문자+숫자 4~20자, 중복 불가, 변경 불가.
+#      표시·식별용이며 로그인 수단이 아니다(비밀번호 없음).
+#   3. 소셜 연동은 카카오만. 네이버·구글은 `SocialProvider` 값만 남겨 둔다.
 #
 # v0.4 변경(2026-09-02, PM 확정 반영 — 와이어프레임 S1-C5/C6/C7 개편과 동시):
 #   1. **부분취소(항목 단위 취소) 도입.** 취소 견적·취소 요청이 예약 단위에서
@@ -57,7 +66,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.4.0-draft
+  version: 0.5.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -102,6 +111,8 @@ tags:
     description: 예약 생성·조회·입금요청 (S1-C3, S1-C4, S1-C5, S1-C6)
   - name: cancellation
     description: 취소 견적·요청 (S1-C7, 항목 단위)
+  - name: auth
+    description: 고객 카카오 로그인·회원가입·세션 (S0-C1, S0-C2, S0-C3)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -505,6 +516,158 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/kakao/authorize-url:
+    get:
+      tags: [auth]
+      x-screens: [S0-C1]
+      summary: 카카오 인가 URL 조회 (S0-C1)
+      description: |
+        카카오 동의 화면 주소를 돌려준다. 앱 키와 Redirect URI를 **서버 설정 한 곳**에서만
+        관리하려고, BFF가 주소를 직접 만들지 않고 이 값을 받아 302 한다.
+
+        `state`는 BFF가 만들어 자기 오리진 쿠키에 보관하고, 카카오 콜백으로 돌아온 값과
+        비교한다(CSRF 방지). 서버는 받은 값을 URL에 넣기만 한다.
+      security: []
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 카카오 인가 URL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KakaoAuthorizeUrl' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /auth/kakao/login:
+    post:
+      tags: [auth]
+      x-screens: [S0-C1]
+      summary: 카카오 로그인 (S0-C1)
+      description: |
+        카카오 콜백의 인가 코드로 카카오 사용자(회원번호·닉네임)를 확인한다.
+        로그인·회원가입 화면이 **같은 엔드포인트**를 쓰고 결과로 갈린다.
+
+        - 가입된 회원 → `LOGGED_IN` + `access_token` 쿠키.
+        - 처음 온 사람 → `SIGNUP_REQUIRED` + `signup_token` 쿠키(10분). 이 쿠키로
+          `POST /auth/signup`(S0-C2)을 부른다.
+
+        카카오 회원번호는 응답 본문에 싣지 않는다 — 가입 요청에서 클라이언트가 바꿔
+        치지 못하도록 서명된 `signup_token` 안에만 둔다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KakaoLoginRequest' }
+      responses:
+        '200':
+          description: 로그인 완료 또는 가입 필요
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: |
+                `LOGGED_IN`: `access_token=<JWT>; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800`
+                `SIGNUP_REQUIRED`: `signup_token=<JWT>; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`
+                (`Secure` 는 운영에서만).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KakaoLoginResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: |
+            카카오 인증 실패(`KAKAO_AUTH_FAILED`) — 인가 코드 만료·재사용, 앱 키·
+            Redirect URI 불일치 등.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/signup:
+    post:
+      tags: [auth]
+      x-screens: [S0-C2]
+      summary: 회원가입 — 아이디 설정 (S0-C2)
+      description: |
+        `signup_token` 쿠키(카카오 로그인의 `SIGNUP_REQUIRED` 결과)와 아이디로 가입을
+        마치고 바로 로그인시킨다.
+
+        아이디 규칙: **영문 소문자+숫자 4~20자**, 중복 불가, 가입 후 변경 불가.
+        아이디는 표시·식별용이며 로그인 수단이 아니다(비밀번호 없음).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '200':
+          description: 가입 완료
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: |
+                `access_token=<JWT>; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800` 발급과
+                함께 `signup_token` 을 만료(Max-Age=0)시킨다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerSession' }
+        '400':
+          description: 아이디 형식 오류(`INVALID_LOGIN_ID`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: |
+            `signup_token` 없음·만료(`SIGNUP_TOKEN_INVALID`). 카카오 로그인부터 다시 한다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: |
+            `DUPLICATE_LOGIN_ID`(이미 쓰는 아이디), `ALREADY_REGISTERED`(이미 가입된
+            카카오 계정).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/me:
+    get:
+      tags: [auth]
+      x-screens: [S0-C3]
+      summary: 현재 세션 조회 (S0-C3)
+      description: |
+        쿠키의 토큰을 검증하고 세션 정보를 돌려준다. 고객 앱이 처음 뜰 때 불러
+        로그인 여부와 아이디·연결 소셜(S0-C3)을 얻는다.
+      responses:
+        '200':
+          description: 세션 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      x-screens: [S0-C3]
+      summary: 로그아웃 (S0-C3)
+      description: |
+        쿠키를 만료시킨다. 서버에 세션 저장소가 없으므로(stateless JWT) 실제 효과는
+        쿠키 삭제뿐이다.
+
+        ⚠ 이미 만료된 세션으로 부르면 401 이다. BFF는 401 도 로그아웃 성공으로
+        취급하고 자기 오리진 쿠키를 지워야 한다.
+      responses:
+        '204':
+          description: 로그아웃 완료
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: 만료된 `access_token` (Max-Age=0).
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
 # -----------------------------------------------------------------------------
 components:
@@ -1020,6 +1183,65 @@ components:
         reason:
           type: string
           description: 취소 사유(선택).
+    KakaoAuthorizeUrl:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: 카카오 동의 화면 주소. BFF가 이 주소로 302 한다.
+
+    KakaoLoginRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 카카오 콜백으로 받은 인가 코드(1회용).
+
+    KakaoLoginResult:
+      type: object
+      required: [result, session]
+      properties:
+        result:
+          type: string
+          enum: [LOGGED_IN, SIGNUP_REQUIRED]
+          description: |
+            `LOGGED_IN` = 가입된 회원, 로그인 완료.
+            `SIGNUP_REQUIRED` = 처음 온 사람, 아이디 입력(S0-C2)으로 보낸다.
+        session:
+          oneOf:
+            - $ref: '#/components/schemas/CustomerSession'
+            - type: 'null'
+          description: '`LOGGED_IN`일 때만 값이 있다.'
+
+    SignupRequest:
+      type: object
+      required: [loginId]
+      properties:
+        loginId:
+          type: string
+          pattern: '^[a-z0-9]{4,20}$'
+          description: 영문 소문자+숫자 4~20자. 중복 불가, 가입 후 변경 불가.
+
+    SocialProvider:
+      type: string
+      enum: [KAKAO, NAVER, GOOGLE]
+      description: 연결 소셜. 현재 연동은 KAKAO만 있다(NAVER·GOOGLE은 추후).
+
+    CustomerSession:
+      type: object
+      required: [customerId, loginId, socialProvider, expiresAt]
+      properties:
+        customerId: { type: string }
+        loginId: { type: string }
+        socialProvider: { $ref: '#/components/schemas/SocialProvider' }
+        expiresAt:
+          type: string
+          format: date-time
+          description: 액세스 토큰 만료 시각(UTC).
+
 
     Error:
       type: object
@@ -1035,6 +1257,12 @@ components:
               (전체 취소만 가능).
             - `ITEM_NOT_CANCELLABLE` — 이미 취소됐거나 취소요청 중인 항목을
               지정.
+            v0.5 고객 인증 관련:
+            - `KAKAO_AUTH_FAILED` — 카카오 인가 코드 교환·사용자 조회 실패.
+            - `SIGNUP_TOKEN_INVALID` — 가입 쿠키 없음·만료.
+            - `INVALID_LOGIN_ID` — 아이디 형식 오류.
+            - `DUPLICATE_LOGIN_ID` — 이미 쓰는 아이디.
+            - `ALREADY_REGISTERED` — 이미 가입된 소셜 계정.
             - `INVALID_BOOKING_ITEM` — 이 예약에 속하지 않는 bookingItemId.
         message: { type: string }
         fieldErrors:
@@ -1088,6 +1316,11 @@ security:
 #      미확정 — 확정되면 CancelRequest.refundAccount를 선택값으로 바꾸고
 #      저장 계좌 조회 필드를 추가할 수 있다.
 #
+#
+# 5. 고객 세션 연장 (v0.5 신규)
+#    - `access_token` 은 30분이고 리프레시 토큰이 없다. 30분이 지나면 카카오
+#      로그인을 다시 해야 한다(카카오 세션이 살아 있으면 버튼 한 번). 예약 도중
+#      만료되는 경험을 막으려면 리프레시 토큰 또는 만료 연장 방식을 정해야 한다.
 # 4. 수수료 원 단위 반올림 규칙 (v0.4 신규)
 #    - `lineAmount × feeRate`의 소수점 처리(반올림/버림/올림)가 미확정.
 #      항목별로 계산해 합산하므로 항목 수만큼 오차가 누적될 수 있어

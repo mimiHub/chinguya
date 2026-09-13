@@ -1,7 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
-import type { SocialProvider } from "@/data/authData";
+import { useState, type ReactNode } from "react";
+import { Stack } from "@chinguya/ui/stack";
+import { Alert } from "@chinguya/ui/alert";
+
+/** 화면에 그리는 소셜 버튼 종류(표시 이름). */
+type SocialProvider = "카카오" | "네이버" | "구글";
 
 // 카카오 공식 로고(말풍선)를 최대한 단순화해서 흉내낸 아이콘 — 정확한 브랜드 에셋 대신 형태만
 // 재현한다(다른 두 아이콘도 마찬가지).
@@ -75,21 +79,20 @@ const PROVIDER_STYLE: Record<
 };
 
 /** S0-C1 화면에 소셜 버튼을 그리는 순서(참고 디자인 기준: 네이버 → 카카오 → Google). */
-export const SOCIAL_PROVIDER_ORDER: SocialProvider[] = ["네이버", "카카오", "구글"];
+const SOCIAL_PROVIDER_ORDER: SocialProvider[] = ["네이버", "카카오", "구글"];
 
-export interface SocialLoginButtonProps {
+interface SocialLoginButtonProps {
   provider: SocialProvider;
   onClick: () => void;
 }
 
 /**
- * S0-C1(소셜 로그인) 소셜 버튼 — 브랜드 색·로고 배지를 그대로 재현한다(참고 디자인 기준).
+ * 소셜 버튼 하나 — 브랜드 색·로고 배지를 그대로 재현한다(참고 디자인 기준).
  * 공용 Button 컴포넌트는 "가운데 정렬 텍스트 한 줄"짜리 알약/사각 버튼을 전제로 하는데, 이
  * 디자인은 왼쪽에 원형 로고 배지를 절대 위치로 얹고 텍스트는 버튼 전체 기준으로 가운데
  * 정렬해야 해서 모양이 근본적으로 다르다 — 그래서 Button을 쓰지 않고 직접 만들었다.
- * login·signup(S0-C1 단계) 두 화면에서 똑같이 쓰여서 공용 컴포넌트로 뺐다.
  */
-export function SocialLoginButton({ provider, onClick }: SocialLoginButtonProps) {
+function SocialLoginButton({ provider, onClick }: SocialLoginButtonProps) {
   const { label, icon, buttonClassName, textClassName } = PROVIDER_STYLE[provider];
   return (
     <button
@@ -102,5 +105,40 @@ export function SocialLoginButton({ provider, onClick }: SocialLoginButtonProps)
       </span>
       <span className={`text-base font-medium ${textClassName}`}>{label}</span>
     </button>
+  );
+}
+
+/**
+ * S0-C1(소셜 로그인) 버튼 묶음 — login·signup(S0-C1 단계) 두 화면에서 똑같이 쓴다.
+ *
+ * 카카오만 실제로 연동돼 있다. 카카오 버튼은 BFF(/api/customer/kakao/start)로 페이지 전체를
+ * 이동시키고, 카카오 동의 → 콜백에서 가입 여부에 따라 로그인 완료 또는 아이디 입력(S0-C2)으로
+ * 갈린다. 그래서 로그인·회원가입 어느 화면에서 눌러도 결과가 같다. 네이버·구글은 버튼만 두고
+ * "준비 중" 안내를 띄운다.
+ *
+ * @param redirect 로그인(또는 가입) 후 돌아갈 경로
+ */
+export function SocialLoginButtons({ redirect }: { redirect: string }) {
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handleClick = (provider: SocialProvider) => {
+    if (provider === "카카오") {
+      window.location.assign(`/api/customer/kakao/start?redirect=${encodeURIComponent(redirect)}`);
+      return;
+    }
+    setNotice(`${provider} 로그인은 준비 중이에요. 카카오로 시작해 주세요.`);
+  };
+
+  return (
+    <Stack direction="column" gap="sm">
+      {SOCIAL_PROVIDER_ORDER.map((provider) => (
+        <SocialLoginButton key={provider} provider={provider} onClick={() => handleClick(provider)} />
+      ))}
+      {notice && (
+        <Alert status="info" icon={false}>
+          {notice}
+        </Alert>
+      )}
+    </Stack>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
+import { CUSTOMER_SOCIAL_PROVIDER_LABEL, OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 import { Banner } from "@chinguya/ui/banner";
 import { Card } from "@chinguya/ui/card";
 import { Title } from "@chinguya/ui/title";
@@ -21,7 +21,7 @@ import { useCart, type CartLine } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
 import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
 import { getMember, updatePassportName } from "@/data/memberData";
-import { getIsLoggedIn, logout } from "@/data/authData";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 // 미리보기는 최근 1건만 보여준다(2건 이상 나열하지 않음) — 더 보고 싶으면 아래
@@ -44,16 +44,14 @@ function lineAmount(line: CartLine): number {
 
 /**
  * 하단 탭 "내정보" — 회원정보 수정 화면(S0-C3)에 이 앱 다른 화면(예약 목록·장바구니)의
- * 미리보기도 함께 모아 대시보드 형태로 구성했다. 로그인 세션은 authData.ts 목업(모듈 변수)
- * 기준이라 로그아웃 상태에서는 대시보드 대신 "로그인이 필요합니다" 안내만 보여준다.
+ * 미리보기도 함께 모아 대시보드 형태로 구성했다. 로그아웃 상태에서는 대시보드 대신
+ * "로그인이 필요합니다" 안내만 보여준다.
  *
- * - 계정 정보는 getMember()/updatePassportName()(memberData.ts, 목업 저장소)로 다룬다.
- *   실제로는 로그인 세션의 사용자 계정 API로 대체될 자리다.
- * - 로그인 여부는 getIsLoggedIn()(authData.ts)으로 읽는다. 로그아웃·회원 탈퇴는 logout()을
- *   호출해 실제로 로그인 상태를 false로 바꾼다 — 확인 팝업 → 토스트 → 홈으로 이동까지는
- *   기획(S0-C3 화면 이동: 로그아웃/탈퇴 → 로그아웃 상태 홈)대로 동작한다. TODO: 실제 연동
- *   시 로그아웃은 POST /api/customer/logout, 탈퇴는 DELETE /api/customer/member 호출로
- *   교체(지금은 목업 세션 플래그만 바꾼다).
+ * - 로그인 여부·아이디·연결 소셜은 실제 세션(useCustomerAuth, GET /v1/auth/me)에서 읽는다.
+ *   로그아웃도 실제 세션을 지운다 — 확인 팝업 → 토스트 → 홈으로 이동은 기획(S0-C3 화면 이동:
+ *   로그아웃/탈퇴 → 로그아웃 상태 홈)대로 동작한다.
+ * - 여권 영문명은 아직 getMember()/updatePassportName()(memberData.ts, 목업 저장소)로 다룬다.
+ * - TODO: 회원 탈퇴 API가 아직 없어서 지금은 로그아웃만 한다(계정은 남는다).
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -67,7 +65,7 @@ export default function ProfilePage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const loggedIn = getIsLoggedIn();
+  const { session, loading, logout } = useCustomerAuth();
 
   const handleSavePassportName = () => {
     const trimmed = passportName.trim();
@@ -81,20 +79,23 @@ export default function ProfilePage() {
     setToastMessage("저장되었습니다");
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setToastMessage("로그아웃되었습니다");
     router.push("/");
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     setWithdrawOpen(false);
-    logout();
+    await logout();
     setToastMessage("회원 탈퇴가 처리되었습니다");
     router.push("/");
   };
 
-  if (!loggedIn) {
+  // 세션 조회가 끝나기 전에는 "로그인이 필요합니다"가 잠깐 비치지 않게 아무것도 그리지 않는다.
+  if (loading) return null;
+
+  if (!session) {
     return (
       <main>
         <Banner size="lg" title="계정" image="/banner-store.png" />
@@ -123,8 +124,8 @@ export default function ProfilePage() {
           <Card>
             <Title leaf size="md">내정보</Title>
             <Kv items={[
-              { key: "이메일(아이디)", value: member.email },
-              { key: "연결 소셜", value: member.connectedSocial },
+              { key: "아이디", value: session.loginId },
+              { key: "연결 소셜", value: CUSTOMER_SOCIAL_PROVIDER_LABEL[session.socialProvider] },
             ]} />
 
             <Stack direction="column" gap="sm" className="mt-4">
