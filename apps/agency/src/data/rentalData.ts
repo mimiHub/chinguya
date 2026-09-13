@@ -1,4 +1,4 @@
-import type { Product, RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
+import type { Product, RentalOptionKey } from "@chinguya/types";
 
 /**
  * 렌탈 상품 목업 데이터 (agency 앱용).
@@ -16,7 +16,7 @@ const price = (customerWon: number, agencyWon: number) => ({ customerPrice: cust
 export const rentalProducts: Product[] = [
   {
     id: "bike-electric",
-    category: "bike",
+    category: "BICYCLE",
     title: "전기자전거",
     name: "전기자전거 대여(당일 오후 4시 반납)",
     description: "전동 어시스트로 오르막도 편하게 다닐 수 있는 전기자전거 대여 상품입니다.",
@@ -32,7 +32,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "bike-regular",
-    category: "bike",
+    category: "BICYCLE",
     title: "일반자전거",
     name: "일반자전거 대여(당일 오후 4시 반납)",
     description: "가볍게 타기 좋은 일반자전거 대여 상품입니다.",
@@ -48,7 +48,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "fishing-regular",
-    category: "fishing",
+    category: "FISHING_ROD",
     title: "일반낚시대",
     name: "일반낚시대 세트 렌탈",
     description: "입문자도 편하게 사용할 수 있는 일반 낚시대 세트 대여 상품입니다.",
@@ -64,7 +64,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "fishing-reel",
-    category: "fishing",
+    category: "FISHING_ROD",
     title: "릴낚시대",
     name: "릴낚시대 세트 렌탈",
     description: "릴을 이용한 캐스팅 낚시를 즐기실 수 있는 릴낚시대 세트 대여 상품입니다.",
@@ -79,12 +79,6 @@ export const rentalProducts: Product[] = [
     agencyVisible: true,
   },
 ];
-
-/** 화면에 보여줄 한글 라벨. customer 쪽과 동일 — apps/customer/src/data/rentalData.ts 참고. */
-export const CATEGORY_LABEL: Record<RentalCategoryKey, string> = {
-  bike: "자전거",
-  fishing: "낚싯대",
-};
 
 /** id로 상품 하나 찾기 */
 export function findRentalProductById(id: string): Product | undefined {

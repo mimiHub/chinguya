@@ -3,7 +3,8 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
+import type { AssetCategory, RentalOptionKey } from "@chinguya/types";
+import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Chip } from "@chinguya/ui/chip";
@@ -19,7 +20,6 @@ import { ComingSoon } from "@chinguya/ui/coming-soon";
 import {
   findAdminProductVariantById,
   CATALOG_TITLES,
-  CATEGORY_LABEL,
   RENTAL_OPTION_LABEL,
   RENTAL_OPTION_ORDER,
 } from "@/data/productData";
@@ -45,7 +45,7 @@ export default function AdminProductEditPage() {
   // 훅은 이른 return보다 먼저 선언해야 하므로(React 훅 규칙), 상품이 없을 수도 있는 상태 그대로
   // useState를 먼저 다 선언해두고, 렌더링 마지막에 "없는 상품" 화면으로 갈아끼운다.
   const firstCatalog = CATALOG_TITLES[0];
-  const [category, setCategory] = useState<RentalCategoryKey>(existing?.category ?? firstCatalog?.category ?? "bike");
+  const [category, setCategory] = useState<AssetCategory>(existing?.category ?? firstCatalog?.category ?? "BICYCLE");
   const [title, setTitle] = useState(existing?.title ?? firstCatalog?.title ?? "");
   const [image, setImage] = useState(existing?.image ?? firstCatalog?.image ?? "");
   const [option, setOption] = useState<RentalOptionKey>(existing?.option ?? "2h");
@@ -91,7 +91,7 @@ export default function AdminProductEditPage() {
           </div>
           {!isNew && (
             <Text weight="bold">
-              [{CATEGORY_LABEL[category]}] {title} · {RENTAL_OPTION_LABEL[option]}
+              [{ASSET_CATEGORY_LABEL[category]}] {title} · {RENTAL_OPTION_LABEL[option]}
             </Text>
           )}
         </Stack>

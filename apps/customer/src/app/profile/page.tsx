@@ -217,7 +217,7 @@ export default function ProfilePage() {
                     >
                       <Text weight="medium">{product.name}</Text>
                       <Text variant="sub">
-                        {RENTAL_OPTION_LABEL[line.option]} · {line.qty}{product.category === "bike" ? "대" : "개"}
+                        {RENTAL_OPTION_LABEL[line.option]} · {line.qty}{product.category === "BICYCLE" ? "대" : "개"}
                       </Text>
                       <Text weight="bold" className="text-right">
                         ₩ {lineAmount(line).toLocaleString()}

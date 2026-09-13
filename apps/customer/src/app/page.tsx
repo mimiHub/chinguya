@@ -1,20 +1,21 @@
 import NextLink from "next/link";
-import type { RentalCategoryKey } from "@chinguya/types";
+import type { AssetCategory } from "@chinguya/types";
+import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Card } from "@chinguya/ui/card";
 import { Button } from "@chinguya/ui/button";
 import { HomeCarousel } from "@/components/HomeCarousel";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { CATEGORY_LABEL, rentalProducts } from "@/data/rentalData";
+import { rentalProducts } from "@/data/rentalData";
 
 // 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지·스티커. 이미지는 캐러셀에 이미 쓰던
 // 배너 이미지를 재사용한다(banner-pc-2=자전거 코스, banner-pc-3=낚시 장면 — HomeCarousel.tsx
 // SLIDES 참고). 스티커는 테마색이 있는 sticker-bike.png 대신, 시안처럼 점박이/체크 무늬
 // 범용 스티커(sticker02/03)를 썼다.
-const RENTAL_CATEGORIES: { key: RentalCategoryKey; image: string; sticker: string }[] = [
-  { key: "bike", image: "/banner-pc-2.png", sticker: "/sticker02.png" },
-  { key: "fishing", image: "/banner-pc-3.png", sticker: "/sticker03.png" },
+const RENTAL_CATEGORIES: { key: AssetCategory; image: string; sticker: string }[] = [
+  { key: "BICYCLE", image: "/banner-pc-2.png", sticker: "/sticker02.png" },
+  { key: "FISHING_ROD", image: "/banner-pc-3.png", sticker: "/sticker03.png" },
 ];
 
 // 카드 사진 위에 흩뿌릴 별 위치 — 장식용이라 고정값으로 충분 (cafe-next의 CategoryCard.jsx와
@@ -30,7 +31,7 @@ const STARS = [
 ];
 
 /** 카테고리 안에서 노출 중인 상품들의 1일 요금 중 가장 저렴한 값 — 카드에 "◯◯원~"으로 표기 */
-function fromPriceOf(category: RentalCategoryKey): number {
+function fromPriceOf(category: AssetCategory): number {
   const prices = rentalProducts
     .filter((p) => p.customerVisible && p.category === category)
     .map((p) => p.priceByOption["1d"].customerPrice);
@@ -80,7 +81,7 @@ export default function Page() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={category.image}
-                    alt={CATEGORY_LABEL[category.key]}
+                    alt={ASSET_CATEGORY_LABEL[category.key]}
                     className="aspect-[4/3] w-full rounded-lg object-cover"
                   />
                   {/* 사진 위에서 별처럼 반짝이는 점 (cafe-next와 동일한 twinkle 애니메이션) */}
@@ -103,7 +104,7 @@ export default function Page() {
                   <Text variant="sub">대여서비스 · 1일 요금</Text>
                   <div className="mt-1 flex items-end justify-between">
                     <Text weight="bold" size="2xl">
-                      {CATEGORY_LABEL[category.key]}
+                      {ASSET_CATEGORY_LABEL[category.key]}
                     </Text>
                     <Text weight="bold" as="span">
                       {fromPriceOf(category.key).toLocaleString()}원~

@@ -236,7 +236,7 @@ export default function CartPage() {
                         )}
                         <Text variant="sub" tone="ink" as="span">
                           {line.qty}
-                          {product.category === "bike" ? "대" : "개"} / <b>{lineAmount(line).toLocaleString()}</b>원
+                          {product.category === "BICYCLE" ? "대" : "개"} / <b>{lineAmount(line).toLocaleString()}</b>원
                         </Text>
                         
                       </Stack>

@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { RentalCategoryKey } from "@chinguya/types";
+import type { AssetCategory } from "@chinguya/types";
 import { getCustomerExposedQty } from "@chinguya/catalog-data";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
@@ -24,11 +24,11 @@ function oneDayPrice(product: (typeof rentalProducts)[number]) {
 
 // 와이어프레임(S1/S3-C1)에는 "전체" 탭이 없다 — 자전거/낚싯대 두 탭만 있고, 각 탭에는
 // 관리자가 customerVisible을 켜둔 상품만 나열된다. 기본 선택 탭은 첫 번째 카테고리(자전거),
-// 단 홈 Rental 카드처럼 ?category=fishing 로 들어오면 그 탭이 먼저 선택된 채로 열린다.
+// 단 홈 Rental 카드처럼 ?category=FISHING_ROD 로 들어오면 그 탭이 먼저 선택된 채로 열린다.
 function RentalListContent() {
   const searchParams = useSearchParams();
-  const initialCategory: RentalCategoryKey = searchParams.get("category") === "fishing" ? "fishing" : "bike";
-  const [filter, setFilter] = useState<RentalCategoryKey>(initialCategory);
+  const initialCategory: AssetCategory = searchParams.get("category") === "FISHING_ROD" ? "FISHING_ROD" : "BICYCLE";
+  const [filter, setFilter] = useState<AssetCategory>(initialCategory);
 
   /**
    * 목록은 "상품 카탈로그 하나당 카드 1개"가 아니다 — 실제 쇼핑몰(쿠팡 등) 검색 결과처럼,
@@ -56,10 +56,10 @@ function RentalListContent() {
       </Title>
 
       <Chip.List className="mt-4">
-        <Chip on={filter === "bike"} onClick={() => setFilter("bike")}>
+        <Chip on={filter === "BICYCLE"} onClick={() => setFilter("BICYCLE")}>
           자전거
         </Chip>
-        <Chip on={filter === "fishing"} onClick={() => setFilter("fishing")}>
+        <Chip on={filter === "FISHING_ROD"} onClick={() => setFilter("FISHING_ROD")}>
           낚싯대
         </Chip>
       </Chip.List>

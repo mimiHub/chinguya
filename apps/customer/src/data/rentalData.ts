@@ -1,4 +1,4 @@
-import type { Product, RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
+import type { Product, RentalOptionKey } from "@chinguya/types";
 
 /**
  * 렌탈 상품 목업 데이터.
@@ -21,7 +21,7 @@ const price = (customerWon: number, agencyWon: number) => ({ customerPrice: cust
 export const rentalProducts: Product[] = [
   {
     id: "bike-electric",
-    category: "bike",
+    category: "BICYCLE",
     title: "전기자전거",
     name: "전기자전거 대여(당일 오후 4시 반납)",
     description: "전동 어시스트로 오르막도 편하게 다닐 수 있는 전기자전거 대여 상품입니다.",
@@ -37,7 +37,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "bike-regular",
-    category: "bike",
+    category: "BICYCLE",
     title: "일반자전거",
     name: "일반자전거 대여(당일 오후 4시 반납)",
     description: "가볍게 타기 좋은 일반자전거 대여 상품입니다.",
@@ -53,7 +53,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "fishing-regular",
-    category: "fishing",
+    category: "FISHING_ROD",
     title: "일반낚시대",
     name: "일반낚시대 세트 렌탈",
     description: "입문자도 편하게 사용할 수 있는 일반 낚시대 세트 대여 상품입니다.",
@@ -69,7 +69,7 @@ export const rentalProducts: Product[] = [
   },
   {
     id: "fishing-reel",
-    category: "fishing",
+    category: "FISHING_ROD",
     title: "릴낚시대",
     name: "릴낚시대 세트 렌탈",
     description: "릴을 이용한 캐스팅 낚시를 즐기실 수 있는 릴낚시대 세트 대여 상품입니다.",
@@ -93,13 +93,10 @@ export const rentalNotice = [
 
 /**
  * 화면에 보여줄 한글 라벨 모음.
- * packages/types 쪽 타입(RentalCategoryKey, RentalOptionKey)에는 "bike"/"2h" 같은
- * 식별자만 있고 글자는 없다 — 사용자 노출 문구는 각 앱의 데이터/i18n 쪽 책임이라서 여기 둔다.
+ * packages/types 쪽 타입(RentalOptionKey)에는 "2h" 같은 식별자만 있고 글자는 없다 —
+ * 사용자 노출 문구는 각 앱의 데이터/i18n 쪽 책임이라서 여기 둔다.
+ * (카테고리 라벨만은 세 앱이 공유하므로 packages/types의 ASSET_CATEGORY_LABEL을 쓴다.)
  */
-export const CATEGORY_LABEL: Record<RentalCategoryKey, string> = {
-  bike: "자전거",
-  fishing: "낚싯대",
-};
 
 export const RENTAL_OPTION_LABEL: Record<RentalOptionKey, string> = {
   "2h": "2시간",

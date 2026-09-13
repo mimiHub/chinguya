@@ -51,8 +51,17 @@ export type RentalOptionKey = "2h" | "1d" | "2d" | "night";
 
 export const RENTAL_OPTION_KEYS: readonly RentalOptionKey[] = ["2h", "1d", "2d", "night"];
 
-/** 렌탈 상품의 상위 분류. 관리자가 새 카테고리를 자유롭게 만드는 구조가 아니라 기획서에 고정된 두 가지. */
-export type RentalCategoryKey = "bike" | "fishing";
+/**
+ * 자산의 상위 분류. 관리자가 새 카테고리를 자유롭게 만드는 구조가 아니라 기획서에 고정된 두 가지.
+ * 값 표기는 Core API 계약(api-spec의 ProductCategory)·DB CHECK 제약과 동일하게 맞춘다.
+ */
+export type AssetCategory = "BICYCLE" | "FISHING_ROD";
+
+/** 카테고리의 화면 노출 라벨. i18n 도입 전까지 세 앱이 공유하는 단일 출처다. */
+export const ASSET_CATEGORY_LABEL: Record<AssetCategory, string> = {
+  BICYCLE: "자전거",
+  FISHING_ROD: "낚싯대",
+};
 
 /**
  * 상품(대여 품목) — 카탈로그 항목 하나(예: "전동자전거")가 Product 하나다.
@@ -62,7 +71,7 @@ export type RentalCategoryKey = "bike" | "fishing";
  */
 export interface Product {
   id: string;
-  category: RentalCategoryKey;
+  category: AssetCategory;
   /** 상세 페이지 상단 굵은 타이틀 (예: "전동자전거") */
   title: string;
   /** 목록/상세의 부제 설명 (예: "전동자전거 대여(당일 오후 4시 반납)") */

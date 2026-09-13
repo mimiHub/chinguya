@@ -1,4 +1,4 @@
-import type { PriceBook, RentalCategoryKey, RentalOptionKey } from "@chinguya/types";
+import type { AssetCategory, PriceBook, RentalOptionKey } from "@chinguya/types";
 import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 
 /**
@@ -21,7 +21,7 @@ import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
 export interface AdminProductVariant {
   /** URL(/products/[id])에 그대로 쓰이는 값이라 한글·공백·괄호 없이 영문 슬러그만 쓴다 */
   id: string;
-  category: RentalCategoryKey;
+  category: AssetCategory;
   /** 카탈로그 타이틀(예: "전기자전거") — 관리자가 자유 입력하지 않고 CATALOG_TITLES 중에서 고른다 */
   title: string;
   image: string;
@@ -35,11 +35,11 @@ export interface AdminProductVariant {
 }
 
 /** 신규 상품 등록 시 고를 수 있는 카탈로그 목록(자산 관리와 이름을 맞춰둠) */
-export const CATALOG_TITLES: { slug: string; category: RentalCategoryKey; title: string; image: string }[] = [
-  { slug: "bike-electric", category: "bike", title: "전기자전거", image: "/elec-bike.png" },
-  { slug: "bike-regular", category: "bike", title: "일반자전거", image: "/bike.png" },
-  { slug: "fishing-regular", category: "fishing", title: "일반낚시대", image: "/fishing-set.png" },
-  { slug: "fishing-reel", category: "fishing", title: "릴낚시대", image: "/fishing-reel-set.png" },
+export const CATALOG_TITLES: { slug: string; category: AssetCategory; title: string; image: string }[] = [
+  { slug: "bike-electric", category: "BICYCLE", title: "전기자전거", image: "/elec-bike.png" },
+  { slug: "bike-regular", category: "BICYCLE", title: "일반자전거", image: "/bike.png" },
+  { slug: "fishing-regular", category: "FISHING_ROD", title: "일반낚시대", image: "/fishing-set.png" },
+  { slug: "fishing-reel", category: "FISHING_ROD", title: "릴낚시대", image: "/fishing-reel-set.png" },
 ];
 
 const price = (customerWon: number, agencyWon: number): PriceBook => ({ customerPrice: customerWon, agencyPrice: agencyWon });
@@ -50,7 +50,7 @@ function variantId(slug: string, option: RentalOptionKey): string {
 
 function buildVariants(
   slug: string,
-  category: RentalCategoryKey,
+  category: AssetCategory,
   title: string,
   image: string,
   pricesByOption: Record<RentalOptionKey, number>,
@@ -69,25 +69,25 @@ function buildVariants(
 }
 
 export const adminProductVariants: AdminProductVariant[] = [
-  ...buildVariants("bike-electric", "bike", "전기자전거", "/elec-bike.png", {
+  ...buildVariants("bike-electric", "BICYCLE", "전기자전거", "/elec-bike.png", {
     "2h": 6000,
     "1d": 15000,
     "2d": 27000,
     night: 8000,
   }),
-  ...buildVariants("bike-regular", "bike", "일반자전거", "/bike.png", {
+  ...buildVariants("bike-regular", "BICYCLE", "일반자전거", "/bike.png", {
     "2h": 3000,
     "1d": 8000,
     "2d": 14000,
     night: 5000,
   }),
-  ...buildVariants("fishing-regular", "fishing", "일반낚시대", "/fishing-set.png", {
+  ...buildVariants("fishing-regular", "FISHING_ROD", "일반낚시대", "/fishing-set.png", {
     "2h": 3000,
     "1d": 7000,
     "2d": 12000,
     night: 8000,
   }),
-  ...buildVariants("fishing-reel", "fishing", "릴낚시대", "/fishing-reel-set.png", {
+  ...buildVariants("fishing-reel", "FISHING_ROD", "릴낚시대", "/fishing-reel-set.png", {
     "2h": 5000,
     "1d": 12000,
     "2d": 20000,
@@ -98,11 +98,6 @@ export const adminProductVariants: AdminProductVariant[] = [
 export function findAdminProductVariantById(id: string): AdminProductVariant | undefined {
   return adminProductVariants.find((v) => v.id === id);
 }
-
-export const CATEGORY_LABEL: Record<RentalCategoryKey, string> = {
-  bike: "자전거",
-  fishing: "낚싯대",
-};
 
 export const RENTAL_OPTION_LABEL: Record<RentalOptionKey, string> = {
   "2h": "2시간",
