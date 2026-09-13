@@ -13,6 +13,12 @@ openapi: 3.1.0
 # 고객 대상 계약은 chinguya-slice1-openapi.yaml 에 따로 있다. 그 문서는 헤더에서
 # 스스로를 '고객 대상 Core API'로 한정하므로 관리자 계약은 이 파일로 분리한다.
 #
+# x-screens: 각 operation에 이 확장 필드로 **그 엔드포인트를 쓰는 화면코드**를 단다.
+#            노션 「페이지 정의서」의 `API 상태` 를 어느 행에 찍을지 이 값으로만 판단한다
+#            (주석·summary로 추정하지 않는다 — chinguya-api/CLAUDE.md).
+#            값은 와이어프레임 원본 화면코드다. 여러 화면이 쓰면 모두 적고,
+#            로그아웃·세션조회처럼 특정 화면에 귀속되지 않는 공통 엔드포인트는 `[]` 다.
+#            **새 operation을 추가하면 x-screens도 함께 단다.**
 # 아키텍처: 관리자 앱(Next.js)은 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. Core가 내려준 JWT를 BFF가 자기 오리진 쿠키로 다시 심는다
 #           (Core에는 CORS 설정이 없고 쿠키가 SameSite=Lax라 브라우저 직접 호출 불가).
@@ -90,6 +96,7 @@ paths:
   /admin/auth/login:
     post:
       tags: [admin-auth]
+      x-screens: [S0-A2]
       summary: 관리자 로그인 (S0-A2)
       description: |
         아이디·비밀번호로 인증하고 액세스 토큰(JWT)을 **HttpOnly 쿠키로** 발급한다.
@@ -126,6 +133,7 @@ paths:
   /admin/auth/logout:
     post:
       tags: [admin-auth]
+      x-screens: []
       summary: 관리자 로그아웃
       description: 액세스 토큰 쿠키를 Max-Age=0 으로 만료시킨다. 서버는 stateless라 토큰 폐기 목록은 두지 않는다.
       responses:
@@ -141,6 +149,7 @@ paths:
   /admin/auth/me:
     get:
       tags: [admin-auth]
+      x-screens: []
       summary: 현재 로그인 세션 조회
       description: |
         쿠키의 JWT를 검증해 현재 관리자 정보를 돌려준다. 화면 재진입·새로고침 때
@@ -157,6 +166,7 @@ paths:
   /admin/assets:
     get:
       tags: [admin-asset]
+      x-screens: [S1-A2]
       summary: 자산 목록 조회 (S1-A2)
       description: |
         자산 명칭 마스터 목록. 자산은 소수(현재 4종)라 페이지네이션 없이 전량 반환한다.
@@ -185,6 +195,7 @@ paths:
 
     post:
       tags: [admin-asset]
+      x-screens: [S1-A2]
       summary: 자산 등록 (A2-M1)
       description: |
         명칭과 카테고리를 받아 자산을 만든다. 앞뒤 공백은 서버가 제거한다.
@@ -228,6 +239,7 @@ paths:
 
     put:
       tags: [admin-asset]
+      x-screens: [S1-A2]
       summary: 자산 명칭 수정 (A2-M2)
       description: |
         명칭만 바꾼다. **카테고리는 여기서 바꿀 수 없다** — 등록 때 정한 값이 그대로
@@ -266,6 +278,7 @@ paths:
 
     delete:
       tags: [admin-asset]
+      x-screens: [S1-A2]
       summary: 자산 삭제 (A2-M3)
       description: |
         **재고 레코드 유무로 처리가 갈린다** — 0건이면 완전 삭제(hard), 1건 이상이면
@@ -302,6 +315,7 @@ paths:
 
     post:
       tags: [admin-asset]
+      x-screens: [S1-A2]
       summary: 자산 복원 (A2-M4)
       description: |
         소프트 삭제된 자산을 다시 활성으로 되돌린다. **id가 그대로라 과거 재고·예약
@@ -348,6 +362,7 @@ paths:
         schema: { type: string }
     get:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 월간 재고 스냅샷 (달력, S1-A3)
       description: |
         그 달 전체 일자의 계산된 스냅샷을 한 번에 돌려준다 — 달력이 이 배열 하나로
@@ -393,6 +408,7 @@ paths:
         schema: { type: string, format: date }
     get:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 선택일 상세 (S1-A3)
       description: 달력에서 날짜를 탭했을 때 하단 상세 패널(기준 보유량 · 이 날 조정 N줄 · 총 보유 · 여행사 할당 · 고객 가용 · 예약 · 잔여 · 매장 휴무)이 쓰는 값.
       responses:
@@ -414,6 +430,7 @@ paths:
         schema: { type: string }
     get:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 현재(오늘 기준) 기준 보유량
       responses:
         '200':
@@ -434,6 +451,7 @@ paths:
         schema: { type: string }
     post:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 기준 보유량 변경 (A3-M1)
       description: |
         구매·처분처럼 **영구적인 변화**를 적용 시작일과 함께 기록한다(이력 누적, 덮어쓰지
@@ -469,6 +487,7 @@ paths:
         schema: { type: string }
     get:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 현재(오늘 기준) 여행사별 기준 할당
       description: |
         삭제되지 않은 여행사 전부를 등록 순으로 돌려준다(할당이 없으면 `value` 0).
@@ -495,6 +514,7 @@ paths:
         schema: { type: string }
     post:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 여행사 기준 할당 변경 (A3-M4)
       description: |
         기준 보유량 변경(A3-M1)과 같은 방식 — 계약 변경 같은 **영구적인 변화**를 적용
@@ -544,6 +564,7 @@ paths:
         schema: { type: string }
     post:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 재고 조정 추가 (A3-M2)
       description: |
         수리·임시 임차 등 **일시적인 증감**(±N)을 기간(+요일 지정)과 함께 기록한다.
@@ -589,6 +610,7 @@ paths:
         schema: { type: string }
     post:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 재고 조정 추가 시 초과 미리보기 (A3-M3)
       description: |
         아무것도 저장하지 않는 계산 전용 엔드포인트 — 그래서 SUPER_ADMIN이 아니어도
@@ -627,6 +649,7 @@ paths:
         schema: { type: string }
     put:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 재고 조정 수정 (A3-M2)
       requestBody:
         required: true
@@ -657,6 +680,7 @@ paths:
           $ref: '#/components/responses/AllocationExceedsStock'
     delete:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 재고 조정 해제 (A3-M2)
       description: |
         마이너스 **할당** 조정을 해제하면 그 여행사 할당이 다시 늘어난다 — 그 때문에 할당 합 >
@@ -681,6 +705,7 @@ paths:
         schema: { type: string }
     put:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 재고 조정 수정 시 초과 미리보기 (A3-M3)
       description: |
         수정 중인 조정 자신은 계산에서 빼고(중복 반영 방지) 새 값을 얹어 미리 계산한다.
@@ -711,6 +736,7 @@ paths:
         schema: { type: string, format: date }
     put:
       tags: [admin-inventory]
+      x-screens: [S1-A3]
       summary: 매장 휴무 토글 (전 자산 공통)
       description: 이 날짜는 모든 자산이 함께 쉰다 — 수량은 보존되고 판매만 차단된다. 자산 하나만 중단하려면 재고 조정으로 수량 0을 만든다.
       requestBody:
@@ -742,6 +768,7 @@ paths:
   /admin/agencies:
     get:
       tags: [admin-agency]
+      x-screens: [S2-A1]
       summary: 여행사 목록 조회 (S2-A1)
       description: |
         여행사(거래처) 목록. 자산과 마찬가지로 소수라 페이지네이션 없이 전량 반환한다.
@@ -766,6 +793,7 @@ paths:
 
     post:
       tags: [admin-agency]
+      x-screens: [S2-A2]
       summary: 여행사 등록 + 초대 메일 발송 (S2-A2)
       description: |
         여행사를 만들고 담당자 이메일로 **계정 등록 초대 링크**를 보낸다. 두 일이 한
@@ -813,6 +841,7 @@ paths:
 
     get:
       tags: [admin-agency]
+      x-screens: [S2-A3]
       summary: 여행사 상세 조회 (S2-A3)
       responses:
         '200':
@@ -827,6 +856,7 @@ paths:
 
     put:
       tags: [admin-agency]
+      x-screens: [S2-A3]
       summary: 여행사 정보 수정 (S2-A3)
       description: |
         명칭·담당자·연락처·이메일을 바꾼다. 사용 가능/불가는 여기가 아니라 전용
@@ -864,6 +894,7 @@ paths:
 
     delete:
       tags: [admin-agency]
+      x-screens: [S2-A1]
       summary: 여행사 삭제 (S2-A1)
       description: |
         **항상 소프트 삭제**다. 자산(S1-A2)처럼 하드/소프트를 가르지 않는 이유는,
@@ -899,6 +930,7 @@ paths:
 
     patch:
       tags: [admin-agency]
+      x-screens: [S2-A1]
       summary: 사용 가능/불가 토글 (S2-A1)
       description: |
         `active=false` 로 바꾸면 그 여행사 계정의 **로그인·예약이 차단**된다.
@@ -942,6 +974,7 @@ paths:
 
     post:
       tags: [admin-agency]
+      x-screens: [S2-A3]
       summary: 초대 메일 재발송 (S2-A3)
       description: |
         새 토큰을 끊어 담당자 이메일로 다시 보낸다. **이전에 보낸 초대 링크는 이 순간
