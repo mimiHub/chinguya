@@ -106,6 +106,12 @@ export interface Asset {
   assetId: string;
   /** 자산 명칭 (예: "전기자전거", "일반자전거") */
   name: string;
+  /**
+   * 자산의 카테고리. **등록(A2-M1) 때만 정하고 이후 바꿀 수 없다** — 수정(A2-M2)에서는
+   * 읽기 전용이고, 복원(A2-M4)해도 기존 값을 그대로 승계한다. 연결 상품의 선택 가능
+   * 옵션이 이 값을 따라가기 때문이다.
+   */
+  category: AssetCategory;
   /** 소프트삭제 플래그. true면 "삭제됨"으로 노출하고 재고 화면 선택기에서는 제외한다(복원 가능). */
   deleted: boolean;
   /**
@@ -272,6 +278,31 @@ export interface AgencySession {
   agencyName: string;
   accountId: string;
   loginId: string;
+  /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
+  expiresAt: string;
+}
+
+/**
+ * 고객 아이디 규칙(S0-C2): 영문 소문자+숫자 4~20자. 중복 불가, 가입 후 변경 불가.
+ * 표시·식별용이며 로그인 수단이 아니다(로그인은 소셜로만). 서버 검증·DB CHECK(V10)와 같은 값.
+ */
+export const CUSTOMER_LOGIN_ID_PATTERN = /^[a-z0-9]{4,20}$/;
+
+/** 고객 소셜 제공자. Core API 계약(slice1 openapi의 SocialProvider)과 같다. 연동은 KAKAO만 되어 있다. */
+export type CustomerSocialProvider = "KAKAO" | "NAVER" | "GOOGLE";
+
+/** 소셜 제공자의 화면 노출 라벨(S0-C3 '연결 소셜'). */
+export const CUSTOMER_SOCIAL_PROVIDER_LABEL: Record<CustomerSocialProvider, string> = {
+  KAKAO: "카카오",
+  NAVER: "네이버",
+  GOOGLE: "구글",
+};
+
+/** 고객 로그인 세션(S0-C3). GET /v1/auth/me · POST /v1/auth/signup 응답과 같은 모양. */
+export interface CustomerSession {
+  customerId: string;
+  loginId: string;
+  socialProvider: CustomerSocialProvider;
   /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
   expiresAt: string;
 }

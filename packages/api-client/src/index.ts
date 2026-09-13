@@ -4,10 +4,12 @@ import type {
   AgencyReservation,
   Invoice,
   Asset,
+  AssetCategory,
   AssetDeletionMode,
   Agency,
   AgencyCreateResult,
   AgencyInvitationResult,
+  DepositAccount,
 } from "@chinguya/types";
 
 /**
@@ -130,6 +132,37 @@ export interface OverCapacityDate {
   allocated: number;
 }
 
+/**
+ * 계좌·정책 설정(S1-A10) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * 요율표 한 구간. 끝 일수·라벨은 서버가 시작 일수로 만든다.
+ */
+export interface CancellationPolicyTier {
+  minDaysBefore: number;
+  /** 구간 끝(포함). null이면 상한 없음(마지막 구간). */
+  maxDaysBefore: number | null;
+  /** 0~1, 소수 셋째 자리까지 */
+  feeRate: number;
+  /** 예) 당일, D-2~1, D-7 이상 */
+  label: string;
+}
+
+export interface AdminSettings {
+  /** 아직 등록 전이면 null(운영 최초 상태). */
+  depositAccount: DepositAccount | null;
+  /** 시작 일수 오름차순 */
+  cancellationPolicy: CancellationPolicyTier[];
+  /** 여행사 취소 마감일(이용일 D-N). ⚠ 아직 이 값을 쓰는 서버 로직이 없다(api-spec 헤더 TODO 9). */
+  agencyCancelDeadlineDays: number;
+}
+
+/** 저장 요청 — 세 값을 통째로 교체한다. 요율표 순서는 상관없다(서버가 정렬). */
+export interface AdminSettingsInput {
+  depositAccount: DepositAccount;
+  cancellationPolicy: { minDaysBefore: number; feeRate: number }[];
+  agencyCancelDeadlineDays: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -201,13 +234,16 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** includeDeleted=true면 '삭제됨' 자산까지 포함한다(자산 관리 화면이 쓰는 형태). */
       list: (includeDeleted = false) =>
         request<Asset[]>(`/assets?includeDeleted=${includeDeleted}`),
-      create: (name: string) =>
-        request<Asset>("/assets", { method: "POST", body: JSON.stringify({ name }) }),
+      /** 카테고리는 등록 때만 보낸다 — 수정·복원에는 없고 서버가 기존 값을 유지한다. */
+      create: (name: string, category: AssetCategory) =>
+        request<Asset>("/assets", { method: "POST", body: JSON.stringify({ name, category }) }),
+      /** 명칭만 바꾼다. 카테고리는 서버가 받지 않는다(A2-M2에서 읽기 전용). */
       rename: (assetId: string, name: string) =>
         request<Asset>(`/assets/${assetId}`, { method: "PUT", body: JSON.stringify({ name }) }),
       /** 재고 레코드 유무에 따라 서버가 완전삭제/소프트삭제를 고르고, 어느 쪽이었는지 알려준다. */
       remove: (assetId: string) =>
         request<{ deletion: AssetDeletionMode }>(`/assets/${assetId}`, { method: "DELETE" }),
+      /** 명칭만 보낸다 — 카테고리는 삭제 전 값을 그대로 승계한다. */
       restore: (assetId: string, name: string) =>
         request<Asset>(`/assets/${assetId}/restore`, {
           method: "POST",
@@ -298,6 +334,15 @@ export function createApiClient(opts: ApiClientOptions = {}) {
           method: "PUT",
           body: JSON.stringify({ closed }),
         }),
+    },
+    /**
+     * 계좌·정책 설정(S1-A10). 조회는 관리자 누구나, 저장은 슈퍼어드민만(403).
+     * 요율표에 당일(0일) 구간이 없거나 시작 일수가 겹치면 400(INVALID_CANCELLATION_POLICY).
+     */
+    settings: {
+      get: () => request<AdminSettings>("/settings"),
+      update: (body: AdminSettingsInput) =>
+        request<AdminSettings>("/settings", { method: "PUT", body: JSON.stringify(body) }),
     },
   };
 }

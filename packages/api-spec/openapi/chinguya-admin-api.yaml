@@ -187,15 +187,19 @@ paths:
       tags: [admin-asset]
       summary: 자산 등록 (A2-M1)
       description: |
-        명칭 하나만 받아 자산을 만든다. 앞뒤 공백은 서버가 제거한다.
+        명칭과 카테고리를 받아 자산을 만든다. 앞뒤 공백은 서버가 제거한다.
+
+        **카테고리는 등록 때만 정한다** — 수정(PUT)에는 없고, 복원은 기존 값을 승계한다.
+        연결 상품의 옵션이 카테고리를 따르기 때문에 나중에 바꿀 수 없다(S1-A2).
 
         중복 검사는 **활성 자산끼리만** 한다 — 소프트 삭제된 자산의 명칭은 재사용할 수
-        있어서, 같은 이름이 목록에 둘 보일 수 있다(하나는 '삭제됨').
+        있어서, 같은 이름이 목록에 둘 보일 수 있다(하나는 '삭제됨'). 카테고리가 달라도
+        명칭이 같으면 중복이다.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/AssetNameRequest' }
+            schema: { $ref: '#/components/schemas/AssetCreateRequest' }
       responses:
         '201':
           description: 등록 완료
@@ -203,7 +207,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Asset' }
         '400':
-          description: name 누락 또는 공백만 입력
+          description: name 누락/공백만 입력, 또는 category 누락·허용값 아님
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -226,7 +230,8 @@ paths:
       tags: [admin-asset]
       summary: 자산 명칭 수정 (A2-M2)
       description: |
-        명칭만 바꾼다. **삭제됨 상태의 자산은 수정할 수 없다**(409 `ASSET_DELETED`) —
+        명칭만 바꾼다. **카테고리는 여기서 바꿀 수 없다** — 등록 때 정한 값이 그대로
+        간다(A2-M2에서 읽기 전용). **삭제됨 상태의 자산은 수정할 수 없다**(409 `ASSET_DELETED`) —
         되살리려면 복원 엔드포인트를 쓴다. 중복 검사는 등록과 같이 활성 자산끼리만 하며,
         자기 자신은 비교에서 제외한다(값을 바꾸지 않고 저장해도 409가 아니다).
       requestBody:
@@ -300,7 +305,7 @@ paths:
       summary: 자산 복원 (A2-M4)
       description: |
         소프트 삭제된 자산을 다시 활성으로 되돌린다. **id가 그대로라 과거 재고·예약
-        이력을 그대로 승계**한다.
+        이력과 카테고리를 그대로 승계**한다(요청 본문에 카테고리가 없는 이유).
 
         명칭은 요청 본문으로 받는다 — 삭제된 명칭은 재사용 가능해서 그 사이 같은
         이름의 활성 자산이 생겼을 수 있고, 그때는 409 `DUPLICATE_ASSET_NAME` 로
@@ -1091,16 +1096,21 @@ components:
 
     Asset:
       type: object
-      required: [assetId, name, deleted, hasInventoryRecords, createdAt, updatedAt]
+      required: [assetId, name, category, deleted, hasInventoryRecords, createdAt, updatedAt]
       description: |
-        대여 자산의 **명칭 마스터**(S1-A2). 자산은 명칭만 가진다 — 보유 대수는
-        전부 재고 세팅(S1-A3)이 `자산 × 날짜` 단위로 관리하므로 이 스키마에 수량
-        필드는 없다. 사유(수리/입고/외부임대)도 관리하지 않는다.
+        대여 자산의 **명칭·카테고리 마스터**(S1-A2). 자산은 이 둘만 가진다 — 보유
+        대수는 전부 재고 세팅(S1-A3)이 `자산 × 날짜` 단위로 관리하므로 이 스키마에
+        수량 필드는 없다. 사유(수리/입고/외부임대)도 관리하지 않는다.
       properties:
         assetId:
           type: string
           description: 자산 PK(숫자지만 문자열로 직렬화된다).
         name: { type: string }
+        category:
+          allOf:
+            - $ref: '#/components/schemas/AssetCategory'
+          description: |
+            등록 때 정해지고 이후 바뀌지 않는다. 복원해도 그대로 승계한다.
         deleted:
           type: boolean
           description: |
@@ -1119,10 +1129,38 @@ components:
           format: date-time
           description: 소프트 삭제 시각. `deleted` 가 false 면 null.
 
+    AssetCategory:
+      type: string
+      enum: [BICYCLE, FISHING_ROD]
+      description: |
+        자산의 상위 분류 — 자전거 / 낚싯대. 기획서에 고정된 두 값이며 관리자가 늘릴 수
+        없다(S1-A2). 고객앱 카테고리 칩(S1-C1)과 관리자 상품 목록 탭(S1-A4)이 이 값을
+        기준으로 갈리고, 상품의 선택 가능 옵션도 여기서 정해진다
+        (자전거 = 2시간/1일/2일/야간, 낚싯대 = 1일/2일).
+
+        고객 Core API의 `ProductCategory`(chinguya-slice1-openapi.yaml)와 **같은 값**이다.
+
+    AssetCreateRequest:
+      type: object
+      required: [name, category]
+      description: |
+        자산 등록(A2-M1) 요청 본문. 카테고리를 받는 건 등록뿐이라 수정·복원과 스키마를
+        나눴다.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 자산 명칭. 서버가 앞뒤 공백을 제거한 뒤 저장·중복검사한다.
+        category:
+          $ref: '#/components/schemas/AssetCategory'
+
     AssetNameRequest:
       type: object
       required: [name]
-      description: 등록·수정·복원이 공유하는 요청 본문. 입력 항목이 명칭 하나뿐이라 분리하지 않는다.
+      description: |
+        자산 명칭 수정(A2-M2)·복원(A2-M4)이 공유하는 요청 본문. 두 경우 모두 입력 항목이
+        명칭 하나뿐이다 — 카테고리는 등록 때만 정하고 여기서는 바꿀 수 없다.
       properties:
         name:
           type: string

@@ -1,4 +1,4 @@
-import type { Asset } from "@chinguya/types";
+import type { Asset, AssetCategory } from "@chinguya/types";
 
 /**
  * 자산(명칭 마스터) 목업 데이터.
@@ -17,10 +17,11 @@ import type { Asset } from "@chinguya/types";
  */
 const MOCK_TIMESTAMP = "2026-09-01T00:00:00Z";
 
-function mockAsset(assetId: string, name: string): Asset {
+function mockAsset(assetId: string, name: string, category: AssetCategory): Asset {
   return {
     assetId,
     name,
+    category,
     deleted: false,
     hasInventoryRecords: true,
     createdAt: MOCK_TIMESTAMP,
@@ -30,8 +31,8 @@ function mockAsset(assetId: string, name: string): Asset {
 }
 
 export const assets: Asset[] = [
-  mockAsset("asset-bike-electric", "전기자전거"),
-  mockAsset("asset-bike-regular", "일반자전거"),
-  mockAsset("asset-fishing-regular", "일반낚시대"),
-  mockAsset("asset-fishing-reel", "릴낚시대"),
+  mockAsset("asset-bike-electric", "전기자전거", "BICYCLE"),
+  mockAsset("asset-bike-regular", "일반자전거", "BICYCLE"),
+  mockAsset("asset-fishing-regular", "일반낚시대", "FISHING_ROD"),
+  mockAsset("asset-fishing-reel", "릴낚시대", "FISHING_ROD"),
 ];
