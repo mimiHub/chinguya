@@ -12,16 +12,20 @@ import { Popup } from "@chinguya/ui/popup";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Input } from "@chinguya/ui/input";
+import { Dropdown } from "@chinguya/ui/dropdown";
 import { Toast } from "@chinguya/ui/toast";
 import { Alert } from "@chinguya/ui/alert";
 import { createApiClient, ApiError } from "@chinguya/api-client";
-import type { Asset } from "@chinguya/types";
+import type { Asset, AssetCategory } from "@chinguya/types";
+import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
- * 자산 관리(S1-A2) — 명칭 마스터 · 모달 CRUD.
+ * 자산 관리(S1-A2) — 명칭·카테고리 마스터 · 모달 CRUD.
  *
- * 자산의 "명칭"만 등록·수정·삭제·복원한다. 실제 보유 수량(기준 보유량)과 날짜별 재고
+ * 자산의 "명칭"과 "카테고리"를 등록·수정·삭제·복원한다. 카테고리는 등록(A2-M1) 때만
+ * 고르고 이후 바꿀 수 없다 — 연결 상품의 선택 가능 옵션이 카테고리를 따라가기 때문이다.
+ * 그래서 수정(A2-M2)에서는 읽기 전용으로 보여주고, 복원(A2-M4)은 기존 값을 승계한다. 실제 보유 수량(기준 보유량)과 날짜별 재고
  * 조정은 이 화면이 아니라 날짜별 재고 세팅(S1-A3, /inventory)에서 관리한다.
  *
  * Core API(GET/POST/PUT/DELETE /admin/assets)에 실연동돼 있다 — 계약은
@@ -68,12 +72,14 @@ export default function AdminAssetsPage() {
 
   const [registerOpen, setRegisterOpen] = useState(false);
   const [registerName, setRegisterName] = useState("");
+  const [registerCategory, setRegisterCategory] = useState<AssetCategory>("BICYCLE");
   const [registerError, setRegisterError] = useState("");
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editOriginalName, setEditOriginalName] = useState("");
+  const [editCategory, setEditCategory] = useState<AssetCategory>("BICYCLE");
   const [editError, setEditError] = useState("");
 
   const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null);
@@ -84,6 +90,7 @@ export default function AdminAssetsPage() {
 
   const openRegister = () => {
     setRegisterName("");
+    setRegisterCategory("BICYCLE");
     setRegisterError("");
     setRegisterOpen(true);
   };
@@ -96,7 +103,7 @@ export default function AdminAssetsPage() {
     }
     setSubmitting(true);
     try {
-      await api.assets.create(trimmed);
+      await api.assets.create(trimmed, registerCategory);
       await reload();
       setRegisterOpen(false);
       setToastMessage("자산이 등록되었습니다");
@@ -111,6 +118,7 @@ export default function AdminAssetsPage() {
     setEditingId(asset.assetId);
     setEditName(asset.name);
     setEditOriginalName(asset.name);
+    setEditCategory(asset.category);
     setEditError("");
     setEditOpen(true);
   };
@@ -210,7 +218,10 @@ export default function AdminAssetsPage() {
         {activeAssets.map((asset) => (
           <Card key={asset.assetId} padding="sm">
             <Stack justify="between" align="center">
-              <Text weight="bold">{asset.name}</Text>
+              <Stack gap="sm" align="center">
+                <Text weight="bold">{asset.name}</Text>
+                <Badge>{ASSET_CATEGORY_LABEL[asset.category]}</Badge>
+              </Stack>
               {isSuperAdmin && (
                 <Stack gap="xs">
                   <Button size="sm" onClick={() => openEdit(asset)}>
@@ -238,6 +249,7 @@ export default function AdminAssetsPage() {
                 <Stack justify="between" align="center">
                   <Stack gap="sm" align="start">
                     <Text weight="bold">{asset.name}</Text>
+                    <Badge>{ASSET_CATEGORY_LABEL[asset.category]}</Badge>
                     <Badge variant="error">삭제됨</Badge>
                   </Stack>
                   {isSuperAdmin && (
@@ -266,6 +278,20 @@ export default function AdminAssetsPage() {
               placeholder="예) 전기 자전거"
             />
           </LabeledBox>
+          <LabeledBox
+            label="카테고리"
+            required
+            helper="등록 후에는 바꿀 수 없습니다 — 상품의 선택 가능 옵션이 카테고리를 따릅니다."
+          >
+            <Dropdown<AssetCategory>
+              value={registerCategory}
+              onChange={setRegisterCategory}
+              options={[
+                { value: "BICYCLE", label: ASSET_CATEGORY_LABEL.BICYCLE },
+                { value: "FISHING_ROD", label: ASSET_CATEGORY_LABEL.FISHING_ROD },
+              ]}
+            />
+          </LabeledBox>
           <Stack gap="sm">
             <Button variant="outline" fullWidth onClick={() => setRegisterOpen(false)}>
               취소
@@ -285,6 +311,9 @@ export default function AdminAssetsPage() {
             helper="기존 명칭이 미리 채워집니다. 값을 바꾸지 않으면 저장 버튼이 비활성화됩니다."
           >
             <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </LabeledBox>
+          <LabeledBox label="카테고리" helper="등록 때 정한 값이라 수정할 수 없습니다.">
+            <Text>{ASSET_CATEGORY_LABEL[editCategory]}</Text>
           </LabeledBox>
           <Stack gap="sm">
             <Button variant="outline" fullWidth onClick={() => setEditOpen(false)}>

@@ -5,7 +5,7 @@ import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IconHamburger } from "@chinguya/ui/icon-hamburger";
 import { IconX } from "@chinguya/ui/icon-x";
-import { getIsLoggedIn, logout } from "@/data/authData";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 // 대메뉴 목록 — PC·모바일 구분 없이 항상 햄버거 버튼을 눌러 여는 드로어 메뉴에 쓰인다
 // (예전엔 PC에서 가로로 나열했지만, 항목이 늘면서 항상 햄버거로 통일했다). "메뉴" 탭은
@@ -46,10 +46,7 @@ export function TopNav() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // authData.ts 목업 세션을 렌더링 시점에 그대로 읽는다 — 로그인/로그아웃은 항상 페이지
-  // 이동(router.push)을 동반해서 pathname이 바뀌고, 그때 이 컴포넌트가 다시 렌더링되며
-  // 최신값을 읽는다(memberData.ts 등 다른 목업 저장소와 같은 "이동할 때마다 새로 읽기" 방식).
-  const loggedIn = getIsLoggedIn();
+  const { session, loading, logout } = useCustomerAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > getScrollThreshold());
@@ -182,13 +179,13 @@ export function TopNav() {
         </nav>
 
         {/* 로그인 여부에 따라 로그아웃/로그인 버튼을 바꿔 보여준다. 로그아웃을 누르면
-            실제로 세션을 지우고(logout()) 홈으로 이동한다. */}
+            실제로 세션을 지우고(logout()) 홈으로 이동한다. 세션 조회 중에는 둘 다 숨긴다. */}
         <div className="flex-1" />
-        {loggedIn ? (
+        {loading ? null : session ? (
           <button
             type="button"
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               setMenuOpen(false);
               router.push("/");
             }}

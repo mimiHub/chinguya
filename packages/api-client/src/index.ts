@@ -1,13 +1,17 @@
 import type {
-  Product,
   CustomerReservation,
   AgencyReservation,
   Invoice,
+  AdminProduct,
+  AdminProductCreate,
+  AdminProductUpdate,
   Asset,
+  AssetCategory,
   AssetDeletionMode,
   Agency,
   AgencyCreateResult,
   AgencyInvitationResult,
+  DepositAccount,
 } from "@chinguya/types";
 
 /**
@@ -130,6 +134,69 @@ export interface OverCapacityDate {
   allocated: number;
 }
 
+/**
+ * 계좌·정책 설정(S1-A10) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * 요율표 한 구간. 끝 일수·라벨은 서버가 시작 일수로 만든다.
+ */
+export interface CancellationPolicyTier {
+  minDaysBefore: number;
+  /** 구간 끝(포함). null이면 상한 없음(마지막 구간). */
+  maxDaysBefore: number | null;
+  /** 0~1, 소수 셋째 자리까지 */
+  feeRate: number;
+  /** 예) 당일, D-2~1, D-7 이상 */
+  label: string;
+}
+
+export interface AdminSettings {
+  /** 아직 등록 전이면 null(운영 최초 상태). */
+  depositAccount: DepositAccount | null;
+  /** 시작 일수 오름차순 */
+  cancellationPolicy: CancellationPolicyTier[];
+  /** 여행사 취소 마감일(이용일 D-N). ⚠ 아직 이 값을 쓰는 서버 로직이 없다(api-spec 헤더 TODO 9). */
+  agencyCancelDeadlineDays: number;
+}
+
+/** 저장 요청 — 세 값을 통째로 교체한다. 요율표 순서는 상관없다(서버가 정렬). */
+export interface AdminSettingsInput {
+  depositAccount: DepositAccount;
+  cancellationPolicy: { minDaysBefore: number; feeRate: number }[];
+  agencyCancelDeadlineDays: number;
+}
+
+/**
+ * FAQ·콘텐츠 관리(S4-A1/A3) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * 고객앱 FAQ 목업이 쓰는 도메인 타입(FaqEntry)과 필드명(id/order)이 달라 따로 둔다.
+ */
+export interface AdminFaq {
+  faqId: string;
+  question: string;
+  answer: string;
+  /** 오름차순. 삭제로 번호 사이가 빌 수 있다 — 순서만 의미가 있다. */
+  displayOrder: number;
+}
+
+export interface FaqInput {
+  question: string;
+  answer: string;
+}
+
+/** 랜딩 히어로 배너 한 장. 3장 고정이라 조회·저장 모두 slot 1·2·3이 하나씩이다. */
+export interface HeroBanner {
+  slot: number;
+  /** 줄바꿈(\n) 보존 */
+  title: string;
+  subtitle: string | null;
+  /**
+   * `/content/images/…` = 관리자가 올린 이미지(프록시 경유로 읽는다),
+   * 그 밖의 `/…` = 웹앱 정적 파일(초기값).
+   */
+  pcImageUrl: string;
+  mobileImageUrl: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -153,7 +220,8 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     const res = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
-        "content-type": "application/json",
+        // FormData(파일 업로드)는 브라우저가 boundary가 붙은 content-type을 직접 넣어야 한다.
+        ...(init?.body instanceof FormData ? {} : { "content-type": "application/json" }),
         ...(opts.getHeaders?.() ?? {}),
         ...(init?.headers ?? {}),
       },
@@ -173,9 +241,6 @@ export function createApiClient(opts: ApiClientOptions = {}) {
 
   return {
     request,
-    products: {
-      list: () => request<Product[]>("/products"),
-    },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
       create: (body: Partial<CustomerReservation>) =>
@@ -201,17 +266,53 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** includeDeleted=true면 '삭제됨' 자산까지 포함한다(자산 관리 화면이 쓰는 형태). */
       list: (includeDeleted = false) =>
         request<Asset[]>(`/assets?includeDeleted=${includeDeleted}`),
-      create: (name: string) =>
-        request<Asset>("/assets", { method: "POST", body: JSON.stringify({ name }) }),
+      /** 카테고리는 등록 때만 보낸다 — 수정·복원에는 없고 서버가 기존 값을 유지한다. */
+      create: (name: string, category: AssetCategory) =>
+        request<Asset>("/assets", { method: "POST", body: JSON.stringify({ name, category }) }),
+      /** 명칭만 바꾼다. 카테고리는 서버가 받지 않는다(A2-M2에서 읽기 전용). */
       rename: (assetId: string, name: string) =>
         request<Asset>(`/assets/${assetId}`, { method: "PUT", body: JSON.stringify({ name }) }),
       /** 재고 레코드 유무에 따라 서버가 완전삭제/소프트삭제를 고르고, 어느 쪽이었는지 알려준다. */
       remove: (assetId: string) =>
         request<{ deletion: AssetDeletionMode }>(`/assets/${assetId}`, { method: "DELETE" }),
+      /** 명칭만 보낸다 — 카테고리는 삭제 전 값을 그대로 승계한다. */
       restore: (assetId: string, name: string) =>
         request<Asset>(`/assets/${assetId}/restore`, {
           method: "POST",
           body: JSON.stringify({ name }),
+        }),
+    },
+    /**
+     * 관리자 상품 관리(S1-A4 목록·표출 토글 / S1-A5 등록·수정·삭제).
+     *
+     * 상품 = 연결 자산 1개 + 대여 옵션 1개. 목록은 자산·여행사와 같이 페이지네이션 없이
+     * 전량 반환하고, 화면(S1-A4)이 카테고리 탭 → 자산별 묶음으로 그린다.
+     */
+    products: {
+      /** category·assetId 로 거른다. includeDeleted=true 면 소프트 삭제된 상품까지. */
+      list: (params: { category?: AssetCategory; assetId?: string; includeDeleted?: boolean } = {}) => {
+        const query = new URLSearchParams();
+        if (params.category) query.set("category", params.category);
+        if (params.assetId) query.set("assetId", params.assetId);
+        if (params.includeDeleted) query.set("includeDeleted", "true");
+        const qs = query.toString();
+        return request<AdminProduct[]>(`/products${qs ? `?${qs}` : ""}`);
+      },
+      get: (productId: string) => request<AdminProduct>(`/products/${productId}`),
+      /** 연결 자산·옵션은 여기서만 정한다. 활성 자산만, 카테고리가 허용하는 옵션만. */
+      create: (body: AdminProductCreate) =>
+        request<AdminProduct>("/products", { method: "POST", body: JSON.stringify(body) }),
+      /** 연결 자산·옵션은 못 바꾼다. 이미지는 보낸 배열로 통째 교체된다. */
+      update: (productId: string, body: AdminProductUpdate) =>
+        request<AdminProduct>(`/products/${productId}`, { method: "PUT", body: JSON.stringify(body) }),
+      /** 소프트 삭제만 한다(예약 이력 보존). 복원 API는 없다. */
+      remove: (productId: string) =>
+        request<void>(`/products/${productId}`, { method: "DELETE" }),
+      /** S1-A4 표출 토글. 고객앱·여행사앱이 독립이라 한쪽만 보내도 된다. */
+      setVisibility: (productId: string, body: { customerVisible?: boolean; agencyVisible?: boolean }) =>
+        request<AdminProduct>(`/products/${productId}/visibility`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
         }),
     },
     /**
@@ -298,6 +399,48 @@ export function createApiClient(opts: ApiClientOptions = {}) {
           method: "PUT",
           body: JSON.stringify({ closed }),
         }),
+    },
+    /**
+     * 계좌·정책 설정(S1-A10). 조회는 관리자 누구나, 저장은 슈퍼어드민만(403).
+     * 요율표에 당일(0일) 구간이 없거나 시작 일수가 겹치면 400(INVALID_CANCELLATION_POLICY).
+     */
+    settings: {
+      get: () => request<AdminSettings>("/settings"),
+      update: (body: AdminSettingsInput) =>
+        request<AdminSettings>("/settings", { method: "PUT", body: JSON.stringify(body) }),
+    },
+    /**
+     * FAQ 관리(S4-A1). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).
+     * 새 항목은 맨 뒤에 붙고, 순서는 reorder로만 바꾼다.
+     */
+    faqs: {
+      list: () => request<AdminFaq[]>("/faqs"),
+      create: (body: FaqInput) =>
+        request<AdminFaq>("/faqs", { method: "POST", body: JSON.stringify(body) }),
+      update: (faqId: string, body: FaqInput) =>
+        request<AdminFaq>(`/faqs/${faqId}`, { method: "PUT", body: JSON.stringify(body) }),
+      remove: (faqId: string) => request<void>(`/faqs/${faqId}`, { method: "DELETE" }),
+      /** 전체 id를 원하는 순서대로 보낸다. 그 사이 등록·삭제가 있었으면 409(FAQ_ORDER_MISMATCH). */
+      reorder: (faqIds: string[]) =>
+        request<AdminFaq[]>("/faqs/order", { method: "PUT", body: JSON.stringify({ faqIds }) }),
+    },
+    /**
+     * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
+     * 새 이미지는 uploadImage로 먼저 올리고, 받은 주소를 updateBanners에 넣어야 반영된다.
+     */
+    content: {
+      banners: () => request<HeroBanner[]>("/content/banners"),
+      updateBanners: (banners: HeroBanner[]) =>
+        request<HeroBanner[]>("/content/banners", { method: "PUT", body: JSON.stringify({ banners }) }),
+      intro: () => request<{ body: string }>("/content/intro"),
+      updateIntro: (body: string) =>
+        request<{ body: string }>("/content/intro", { method: "PUT", body: JSON.stringify({ body }) }),
+      /** PNG·JPG·WEBP, 10MB까지. 형식이 틀리면 400(INVALID_IMAGE), 크면 413(IMAGE_TOO_LARGE). */
+      uploadImage: (file: File) => {
+        const form = new FormData();
+        form.append("file", file);
+        return request<{ imageUrl: string }>("/content/images", { method: "POST", body: form });
+      },
     },
   };
 }

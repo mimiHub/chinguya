@@ -39,9 +39,8 @@ export default function AdminReservationDetailPage() {
   }
 
   // 취소 수수료율은 관리자 설정(계좌·정책, /settings)의 차등 요율표를 이용일까지 남은
-  // 일수로 조회해서 정한다. 단, /settings 화면의 "저장"은 아직 실제로 값을 반영하지 않는
-  // 목업이라(그 화면의 TODO 주석 참고), 여기서 읽는 cancellationFeeRules는 항상 초기
-  // 시드값이다 — 관리자가 설정 화면에서 요율을 고쳐도 이 화면엔 아직 반영되지 않는다.
+  // 일수로 조회해서 정한다. 단, 이 화면은 아직 목업 예약이라 요율표도 목업(settingsData)을
+  // 읽는다 — /settings 화면이 Core API에 저장한 실제 요율표는 여기 반영되지 않는다.
   const daysLeft = daysBeforeUse(reservation.useDate);
   const cancelFeeRate = resolveCancellationFeeRate(cancellationFeeRules, daysLeft);
   const cancelFee = Math.round(reservation.amountKrw * cancelFeeRate);

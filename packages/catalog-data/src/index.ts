@@ -1,4 +1,4 @@
-import type { HeroBannerSlide, RentalCategoryKey } from "@chinguya/types";
+import type { AssetCategory, HeroBannerSlide } from "@chinguya/types";
 
 /**
  * 상품별 재고 배분 목업 — customer/admin/agency 세 앱이 전부 이 패키지를 가져다 써서 같은
@@ -17,7 +17,7 @@ import type { HeroBannerSlide, RentalCategoryKey } from "@chinguya/types";
  */
 export interface ProductStock {
   productId: string;
-  category: RentalCategoryKey;
+  category: AssetCategory;
   /** 총 보유 대수 (admin의 기준 보유량/날짜별 재고 세팅과 같은 값) */
   totalCount: number;
   /** 여행사에 할당한 수량 (admin의 여행사 할당 세팅 결과) */
@@ -25,10 +25,10 @@ export interface ProductStock {
 }
 
 export const productStocks: ProductStock[] = [
-  { productId: "bike-electric", category: "bike", totalCount: 8, agencyAllocated: 5 },
-  { productId: "bike-regular", category: "bike", totalCount: 10, agencyAllocated: 6 },
-  { productId: "fishing-regular", category: "fishing", totalCount: 6, agencyAllocated: 3 },
-  { productId: "fishing-reel", category: "fishing", totalCount: 4, agencyAllocated: 2 },
+  { productId: "bike-electric", category: "BICYCLE", totalCount: 8, agencyAllocated: 5 },
+  { productId: "bike-regular", category: "BICYCLE", totalCount: 10, agencyAllocated: 6 },
+  { productId: "fishing-regular", category: "FISHING_ROD", totalCount: 6, agencyAllocated: 3 },
+  { productId: "fishing-reel", category: "FISHING_ROD", totalCount: 4, agencyAllocated: 2 },
 ];
 
 export function getProductStock(productId: string): ProductStock | undefined {

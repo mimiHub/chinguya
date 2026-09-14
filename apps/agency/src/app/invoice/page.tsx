@@ -4,7 +4,8 @@ import { EmptyState } from "@chinguya/ui/empty-state";
 import { Table } from "@chinguya/ui/table";
 import { Stack } from "@chinguya/ui/stack";
 import { Card } from "@chinguya/ui/card";
-import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { findRentalProductById } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { listReservations } from "@/data/reservationData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 

@@ -16,7 +16,7 @@ import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Toast } from "@chinguya/ui/toast";
 import { agencies } from "@/data/agencyData";
 import { findInvoiceById, getInvoiceLineItems, setInvoiceSettled } from "@/data/invoiceData";
-import { RENTAL_OPTION_LABEL } from "@/data/productData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 
 /**
  * 인보이스 상세(S2-A6). 목록(S2-A5)에서 카드를 눌러 들어온다. 전월 여행사 예약 라인아이템

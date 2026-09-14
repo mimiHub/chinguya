@@ -18,7 +18,8 @@ import { FormMessage } from "@chinguya/ui/form-message";
 import { Alert } from "@chinguya/ui/alert";
 import { Banner } from "@chinguya/ui/banner";
 import { useCart, type CartLine } from "@/context/CartContext";
-import { findRentalProductById, RENTAL_OPTION_LABEL } from "@/data/rentalData";
+import { findRentalProductById } from "@/data/rentalData";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { createReservation } from "@/data/reservationData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -236,7 +237,7 @@ export default function CartPage() {
                         )}
                         <Text variant="sub" tone="ink" as="span">
                           {line.qty}
-                          {product.category === "bike" ? "대" : "개"} / <b>{lineAmount(line).toLocaleString()}</b>원
+                          {product.category === "BICYCLE" ? "대" : "개"} / <b>{lineAmount(line).toLocaleString()}</b>원
                         </Text>
                         
                       </Stack>

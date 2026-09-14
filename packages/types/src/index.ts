@@ -44,15 +44,40 @@ export interface PriceBook {
 
 /**
  * 대여 옵션 종류. 자전거/낚싯대 공통으로 쓰는 고정 옵션이며, 가격은 상품마다 옵션별로 다르게 매겨진다.
- * 화면에 보여줄 한글/일본어 라벨("2시간", "1일" 등)은 여기 두지 않는다 — 사용자 노출 문구는
- * 하드코딩 금지 규칙에 따라 src/locales/{ko,ja} 의 i18n 키로 관리한다.
+ * 값 표기는 Core API 계약(RentalOptionType)·DB CHECK 제약과 동일하게 맞춘다.
  */
-export type RentalOptionKey = "2h" | "1d" | "2d" | "night";
+export type RentalOptionKey = "HOURS_2" | "DAY_1" | "DAY_2" | "NIGHT";
 
-export const RENTAL_OPTION_KEYS: readonly RentalOptionKey[] = ["2h", "1d", "2d", "night"];
+export const RENTAL_OPTION_KEYS: readonly RentalOptionKey[] = ["HOURS_2", "DAY_1", "DAY_2", "NIGHT"];
 
-/** 렌탈 상품의 상위 분류. 관리자가 새 카테고리를 자유롭게 만드는 구조가 아니라 기획서에 고정된 두 가지. */
-export type RentalCategoryKey = "bike" | "fishing";
+/**
+ * 옵션의 화면 노출 라벨. 카테고리 라벨과 같은 이유로 여기 둔다 — 세 앱이 같은 문구를 쓰고,
+ * 상품명 `자산명 · 옵션` 의 뒷부분을 서버도 이 표기로 만든다(i18n 도입 전까지의 단일 출처).
+ */
+export const RENTAL_OPTION_LABEL: Record<RentalOptionKey, string> = {
+  HOURS_2: "2시간",
+  DAY_1: "1일",
+  DAY_2: "2일",
+  NIGHT: "야간",
+};
+
+/** 선택 가능한 옵션은 연결 자산의 카테고리가 정한다(S1-A5). */
+export const OPTIONS_BY_CATEGORY: Record<AssetCategory, readonly RentalOptionKey[]> = {
+  BICYCLE: ["HOURS_2", "DAY_1", "DAY_2", "NIGHT"],
+  FISHING_ROD: ["DAY_1", "DAY_2"],
+};
+
+/**
+ * 자산의 상위 분류. 관리자가 새 카테고리를 자유롭게 만드는 구조가 아니라 기획서에 고정된 두 가지.
+ * 값 표기는 Core API 계약(api-spec의 ProductCategory)·DB CHECK 제약과 동일하게 맞춘다.
+ */
+export type AssetCategory = "BICYCLE" | "FISHING_ROD";
+
+/** 카테고리의 화면 노출 라벨. i18n 도입 전까지 세 앱이 공유하는 단일 출처다. */
+export const ASSET_CATEGORY_LABEL: Record<AssetCategory, string> = {
+  BICYCLE: "자전거",
+  FISHING_ROD: "낚싯대",
+};
 
 /**
  * 상품(대여 품목) — 카탈로그 항목 하나(예: "전동자전거")가 Product 하나다.
@@ -62,7 +87,7 @@ export type RentalCategoryKey = "bike" | "fishing";
  */
 export interface Product {
   id: string;
-  category: RentalCategoryKey;
+  category: AssetCategory;
   /** 상세 페이지 상단 굵은 타이틀 (예: "전동자전거") */
   title: string;
   /** 목록/상세의 부제 설명 (예: "전동자전거 대여(당일 오후 4시 반납)") */
@@ -97,6 +122,12 @@ export interface Asset {
   assetId: string;
   /** 자산 명칭 (예: "전기자전거", "일반자전거") */
   name: string;
+  /**
+   * 자산의 카테고리. **등록(A2-M1) 때만 정하고 이후 바꿀 수 없다** — 수정(A2-M2)에서는
+   * 읽기 전용이고, 복원(A2-M4)해도 기존 값을 그대로 승계한다. 연결 상품의 선택 가능
+   * 옵션이 이 값을 따라가기 때문이다.
+   */
+  category: AssetCategory;
   /** 소프트삭제 플래그. true면 "삭제됨"으로 노출하고 재고 화면 선택기에서는 제외한다(복원 가능). */
   deleted: boolean;
   /**
@@ -107,11 +138,66 @@ export interface Asset {
    * 삭제는 늘 완전 삭제다(api-spec 헤더 TODO 6).
    */
   hasInventoryRecords: boolean;
+  /**
+   * 이 자산에 연결된 삭제되지 않은 상품 수. 자산 카드의 '연결 상품 N개'이고,
+   * 1 이상이면 삭제 모달이 **CASE 0**(삭제 불가 — 상품 먼저 삭제)로 간다(S1-A2).
+   */
+  productCount: number;
   createdAt: string;
   updatedAt: string;
   /** 소프트삭제 시각(ISO). deleted가 false면 null. */
   deletedAt: string | null;
 }
+
+/**
+ * 관리자 상품(S1-A4/A5) — **연결 자산 1개 + 대여 옵션 1개**.
+ *
+ * 자산 1개에 상품이 여러 개 달린다(예: 전기자전거 → 1일·2일·야간). 수량 필드가 없는 것이
+ * 의도다 — 예약은 연결 자산의 재고(S1-A3)를 쓰고, 같은 자산의 상품끼리 재고를 함께 쓴다.
+ */
+export interface AdminProduct {
+  productId: string;
+  /** 연결 자산. **등록 때만 정해지고 이후 바뀌지 않는다.** */
+  assetId: string;
+  /** 연결 자산의 명칭. 목록(S1-A4)이 자산별로 묶을 때 소제목으로 쓴다. */
+  assetName: string;
+  /** 연결 자산의 카테고리. 상품이 따로 갖는 값이 아니라 자산에서 따라온다. */
+  category: AssetCategory;
+  /** 대여 옵션. assetId와 마찬가지로 등록 때만 정해진다. */
+  optionType: RentalOptionKey;
+  /** `자산명 · 옵션` 형태로 서버가 만들어 주는 상품명(입력 항목 아님). */
+  displayName: string;
+  customerPrice: number;
+  /** 여행사 정산가. **고객앱에 절대 노출하지 않는다.** */
+  agencyPrice: number;
+  customerVisible: boolean;
+  agencyVisible: boolean;
+  /** 타지역 반납 추가요금. 2일(DAY_2) 상품에만 값이 있고 그 외에는 null. */
+  crossRegionReturnExtraFee: number | null;
+  description: string | null;
+  /** 배열 순서가 표시 순서이고 0번이 대표 이미지. */
+  imageUrls: string[];
+  deleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+/** 상품 등록(S1-A5). assetId·optionType은 등록 때만 보낸다. */
+export interface AdminProductCreate {
+  assetId: string;
+  optionType: RentalOptionKey;
+  customerPrice: number;
+  agencyPrice: number;
+  customerVisible: boolean;
+  agencyVisible: boolean;
+  crossRegionReturnExtraFee?: number | null;
+  description?: string | null;
+  imageUrls?: string[];
+}
+
+/** 상품 수정(S1-A5). 연결 자산·옵션이 없다 — 등록 때 정한 값이 그대로 간다. */
+export type AdminProductUpdate = Omit<AdminProductCreate, "assetId" | "optionType">;
 
 /** 자산 삭제(A2-M3)가 실제로 어떻게 처리됐는지. 화면은 이 값으로 토스트 문구를 고른다. */
 export type AssetDeletionMode = "HARD" | "SOFT";
@@ -263,6 +349,37 @@ export interface AgencySession {
   agencyName: string;
   accountId: string;
   loginId: string;
+  /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
+  expiresAt: string;
+}
+
+/**
+ * 고객 아이디 규칙(S0-C2): 영문 소문자+숫자 4~20자. 중복 불가, 가입 후 변경 불가.
+ * 표시·식별용이며 로그인 수단이 아니다(로그인은 소셜로만). 서버 검증·DB CHECK(V10)와 같은 값.
+ */
+export const CUSTOMER_LOGIN_ID_PATTERN = /^[a-z0-9]{4,20}$/;
+
+/** 고객 소셜 제공자. Core API 계약(slice1 openapi의 SocialProvider)과 같다. 연동은 KAKAO만 되어 있다. */
+export type CustomerSocialProvider = "KAKAO" | "NAVER" | "GOOGLE";
+
+/** 소셜 제공자의 화면 노출 라벨(S0-C3 '연결 소셜'). */
+export const CUSTOMER_SOCIAL_PROVIDER_LABEL: Record<CustomerSocialProvider, string> = {
+  KAKAO: "카카오",
+  NAVER: "네이버",
+  GOOGLE: "구글",
+};
+
+/** 고객 로그인 세션(S0-C3). GET /v1/auth/me · POST /v1/auth/signup 응답과 같은 모양. */
+export interface CustomerSession {
+  customerId: string;
+  loginId: string;
+  socialProvider: CustomerSocialProvider;
+  /**
+   * 저장된 여권 영문명(S0-C3에서 편집). 한 번도 저장하지 않았으면 null이다.
+   * 예약 확정 시 이 값이 예약의 여권명으로 스냅샷 복사되므로, 여기서 바꿔도
+   * 이미 만들어진 예약은 바뀌지 않는다 — 다음 예약의 기본값이다.
+   */
+  passportName: string | null;
   /** 액세스 토큰 만료 시각(ISO 8601, UTC) */
   expiresAt: string;
 }

@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Footer } from "@/components/Footer";
 import { TopNav } from "@/components/TopNav";
 import { CartProvider } from "@/context/CartContext";
+import { CustomerAuthProvider } from "@/context/CustomerAuthContext";
 import "./globals.css";
 import { MswProvider } from "./msw-provider";
 
@@ -23,12 +24,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           길 땐 그냥 자연스럽게 페이지 전체가 스크롤된다(높이를 고정/제한하지 않았으므로). */}
       <body className="flex min-h-screen flex-col pb-16 md:pb-0">
         <MswProvider>
-          <CartProvider>
-            <TopNav />
-            <div className="flex-1">{children}</div>
-            <Footer />
-            <BottomNav />
-          </CartProvider>
+          <CustomerAuthProvider>
+            <CartProvider>
+              <TopNav />
+              <div className="flex-1">{children}</div>
+              <Footer />
+              <BottomNav />
+            </CartProvider>
+          </CustomerAuthProvider>
         </MswProvider>
       </body>
     </html>

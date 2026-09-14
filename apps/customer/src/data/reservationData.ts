@@ -15,7 +15,7 @@ const reservations: CustomerReservation[] = [
   {
     id: "FR-26080001",
     productId: "bike-electric",
-    rentalOption: "1d",
+    rentalOption: "DAY_1",
     status: "received",
     passportName: "GILDONG HONG",
     useDate: "2026-08-25",
@@ -26,7 +26,7 @@ const reservations: CustomerReservation[] = [
   {
     id: "FR-26080002",
     productId: "bike-regular",
-    rentalOption: "2d",
+    rentalOption: "DAY_2",
     status: "completed",
     passportName: "GILDONG HONG",
     useDate: "2026-08-10",
@@ -38,7 +38,7 @@ const reservations: CustomerReservation[] = [
   {
     id: "FR-26080003",
     productId: "fishing-reel",
-    rentalOption: "1d",
+    rentalOption: "DAY_1",
     status: "cancel_requested",
     passportName: "GILDONG HONG",
     useDate: "2026-08-22",
@@ -49,7 +49,7 @@ const reservations: CustomerReservation[] = [
   {
     id: "FR-26080004",
     productId: "fishing-regular",
-    rentalOption: "night",
+    rentalOption: "NIGHT",
     status: "cancelled",
     passportName: "GILDONG HONG",
     useDate: "2026-08-05",

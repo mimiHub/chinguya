@@ -59,7 +59,7 @@ const ICONS: Record<string, ReactNode> = {
  * 들어가는 진입점이 아니고, /mypage가 실제로 "내 예약" 화면이기 때문이다.
  * "내정보" 탭(/profile, 기획서 S0-C3 회원정보)은 로그인 상태와 무관하게 항상 같은 경로로
  * 연결한다 — 로그인 여부에 따른 화면 분기(대시보드 / "로그인이 필요합니다" 안내)는
- * profile/page.tsx 안에서 authData.ts 목업 세션을 보고 스스로 처리한다.
+ * profile/page.tsx 안에서 로그인 세션(useCustomerAuth)을 보고 스스로 처리한다.
  */
 export function BottomNav() {
   const pathname = usePathname();
