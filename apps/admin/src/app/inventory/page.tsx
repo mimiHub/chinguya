@@ -17,6 +17,7 @@ import { LabeledBox } from "@chinguya/ui/labeled-box";
 import { Dropdown } from "@chinguya/ui/dropdown";
 import { Toast } from "@chinguya/ui/toast";
 import { Alert } from "@chinguya/ui/alert";
+import { HelpTooltip } from "@chinguya/ui/help-tooltip";
 import {
   createApiClient,
   ApiError,
@@ -31,6 +32,31 @@ import type { Asset } from "@chinguya/types";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+/** 재고 조정 "태그" 캡슐 선택기의 기본 후보. 팀에서 자주 쓰는 라벨을 미리 깔아둔다. */
+const DEFAULT_TAG_OPTIONS = ["임차", "수리"];
+const TAG_OPTIONS_STORAGE_KEY = "chinguya-admin-inventory-tag-options";
+
+/**
+ * 태그는 서버가 코드값을 두지 않는 자유 라벨이라(api-spec 참고), "자주 쓰는 태그" 목록은
+ * 서버가 아니라 이 브라우저에 로컬로만 저장해서 다음에도 캡슐로 바로 고를 수 있게 한다 —
+ * 팀원마다, 이 컴퓨터마다 따로 쌓인다. localStorage가 없거나(SSR) 값이 깨져 있으면 그냥
+ * 기본값만 쓴다.
+ */
+function loadTagOptions(): string[] {
+  if (typeof window === "undefined") return DEFAULT_TAG_OPTIONS;
+  try {
+    const raw = window.localStorage.getItem(TAG_OPTIONS_STORAGE_KEY);
+    const saved = raw ? (JSON.parse(raw) as string[]) : [];
+    const merged = [...DEFAULT_TAG_OPTIONS];
+    for (const tag of saved) {
+      if (tag && !merged.includes(tag)) merged.push(tag);
+    }
+    return merged;
+  } catch {
+    return DEFAULT_TAG_OPTIONS;
+  }
+}
 
 const api = createApiClient();
 
@@ -129,9 +155,36 @@ export default function AdminInventoryPage() {
   const [adjustNoEndDate, setAdjustNoEndDate] = useState(false);
   const [adjustWeekdays, setAdjustWeekdays] = useState<number[]>([]);
   const [adjustTag, setAdjustTag] = useState("");
+  const [tagOptions, setTagOptions] = useState<string[]>(DEFAULT_TAG_OPTIONS);
+  const [addingTagOption, setAddingTagOption] = useState(false);
+  const [newTagOptionInput, setNewTagOptionInput] = useState("");
   const [adjustMemo, setAdjustMemo] = useState("");
   const [adjustError, setAdjustError] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+
+  // 로컬에 저장해둔 태그 후보를 마운트 시 한 번만 읽어온다(useState 초기값에서 바로 읽으면
+  // 서버 렌더 결과와 달라져 하이드레이션 경고가 날 수 있어 effect로 미룬다).
+  useEffect(() => {
+    setTagOptions(loadTagOptions());
+  }, []);
+
+  const addTagOption = (rawTag: string) => {
+    const tag = rawTag.trim();
+    if (!tag) return;
+    setTagOptions((prev) => {
+      if (prev.includes(tag)) return prev;
+      const next = [...prev, tag];
+      try {
+        window.localStorage.setItem(TAG_OPTIONS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage를 못 쓰는 환경이면 이번 세션 동안만 목록에 남고, 다음 방문엔 기본값으로 돌아간다.
+      }
+      return next;
+    });
+    setAdjustTag(tag);
+    setAddingTagOption(false);
+    setNewTagOptionInput("");
+  };
 
   const [overCapacityOpen, setOverCapacityOpen] = useState(false);
   const [overCapacityDates, setOverCapacityDates] = useState<OverCapacityDate[]>([]);
@@ -305,6 +358,8 @@ export default function AdminInventoryPage() {
     setAdjustNoEndDate(false);
     setAdjustWeekdays([]);
     setAdjustTag("");
+    setAddingTagOption(false);
+    setNewTagOptionInput("");
     setAdjustMemo("");
     setAdjustError("");
     setAdjustOpen(true);
@@ -322,7 +377,12 @@ export default function AdminInventoryPage() {
     setAdjustEndDate(record.endDate ?? "");
     setAdjustNoEndDate(record.endDate === null);
     setAdjustWeekdays(record.weekdays ?? []);
+    // 예전에 자유 입력으로 직접 쳐 넣은 태그라 캡슐 후보에 없을 수도 있다 — 그런 경우에도
+    // 수정 화면을 열면 바로 캡슐로 보이고 선택된 상태여야 하므로 후보 목록에 끼워 넣는다.
+    if (record.tag) addTagOption(record.tag);
     setAdjustTag(record.tag);
+    setAddingTagOption(false);
+    setNewTagOptionInput("");
     setAdjustMemo(record.memo);
     setAdjustError("");
     setAdjustOpen(true);
@@ -340,6 +400,30 @@ export default function AdminInventoryPage() {
 
   const toggleAdjustWeekday = (weekday: number) => {
     setAdjustWeekdays((prev) => (prev.includes(weekday) ? prev.filter((w) => w !== weekday) : [...prev, weekday]));
+  };
+
+  /**
+   * 요일 지정(예: 토·일)을 걸어놨는데 기간 자체가 그 요일을 하루도 못 채우면(대표적으로 팝업이
+   * 기본으로 채워주는 "시작일=종료일=선택한 날짜" 그대로 두고 요일만 좁힌 경우), 조정은 저장은
+   * 되지만 어느 날짜에도 실제로 적용되지 않는 유령 레코드가 된다 — 화면 어디서도 다시 보이지
+   * 않고 지울 수도 없다(날짜별 상세는 그날 적용되는 조정만 내려주기 때문). 그래서 저장 전에
+   * 기간·요일 조합이 실제로 최소 하루는 걸리는지 미리 검증한다. 7일 이상 기간이면 모든 요일이
+   * 한 번씩은 들어가므로 바로 통과시킨다.
+   */
+  const weekdayMatchesRange = (startDate: string, endDate: string | null, weekdays: number[]): boolean => {
+    if (weekdays.length === 0 || endDate === null) return true;
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+    const spanDays = Math.round((end.getTime() - start.getTime()) / 86400000);
+    if (spanDays < 0) return true; // 다른 검증(기간 역전 등)에 맡긴다.
+    if (spanDays >= 6) return true;
+    const weekdaySet = new Set(weekdays);
+    for (let i = 0; i <= spanDays; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      if (weekdaySet.has(d.getDay())) return true;
+    }
+    return false;
   };
 
   const buildAdjustInput = (): AdjustmentRequest | null => {
@@ -370,6 +454,10 @@ export default function AdminInventoryPage() {
   const handleSubmitAdjust = async () => {
     const input = buildAdjustInput();
     if (!input) return;
+    if (input.weekdays && !weekdayMatchesRange(input.startDate, input.endDate, input.weekdays)) {
+      setAdjustError("선택한 요일이 기간 안에 하루도 없어서 저장해도 어느 날짜에도 적용되지 않습니다. 기간을 넓히거나 요일 선택을 다시 확인해주세요.");
+      return;
+    }
     setAdjustSubmitting(true);
     try {
       const overCapacity = editingAdjustmentId
@@ -417,7 +505,7 @@ export default function AdminInventoryPage() {
 
   // 조정 한 줄 — 보유 조정은 태그(임차·수리 등), 할당 조정은 태그 자리에 대상 여행사를 표시한다.
   const renderAdjustment = (adj: InventoryAdjustment) => (
-    <Stack key={adj.id} direction="column" gap="xs" className="rounded-sm border border-line p-2">
+    <Stack key={adj.id} direction="column" gap="xs" className="rounded-sm border border-line bg-surface p-2">
       <Stack justify="between" align="center">
         {/* LabeledBox의 emphasis 라벨(강조색 점 + 굵고 큰 글씨)과 같은 스타일 — 이
             카드 안에서 "이날 조정"이 아래 메모/기간 줄과 확실히 구분되는 부제목이
@@ -545,11 +633,11 @@ export default function AdminInventoryPage() {
                   {viewMonth}월 {selectedDay}일 (선택)
                 </Text>
 
-                <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} />
+                <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} hideLastBorder={false} />
 
                 {stockAdjustments.map(renderAdjustment)}
 
-                <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} />
+                <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} hideLastBorder={false} />
 
                 {(dayDetail.allocations.length > 0 || agencyAdjustments.length > 0) && (
                   <Stack direction="column" gap="xs">
@@ -564,6 +652,7 @@ export default function AdminInventoryPage() {
                           value: `${dayDetail.allocated}개`,
                         },
                       ]}
+                      hideLastBorder={false}
                     />
                     {dayDetail.allocations.map((line) => (
                       <Stack key={line.agencyId} justify="between" align="center" className="pl-3">
@@ -593,6 +682,7 @@ export default function AdminInventoryPage() {
                       value: `${dayDetail.customerAvailable}개`,
                     },
                   ]}
+                  hideLastBorder={false}
                 />
 
                 <Kv
@@ -600,6 +690,7 @@ export default function AdminInventoryPage() {
                     { key: "예약", value: `${dayDetail.reserved}개` },
                     { key: "잔여", value: `${dayDetail.remaining}개` },
                   ]}
+                  hideLastBorder={false}
                 />
 
                 <Stack justify="between" align="center">
@@ -741,7 +832,20 @@ export default function AdminInventoryPage() {
               />
             </div>
           </LabeledBox>
-          <LabeledBox label="기간" required emphasis>
+          <LabeledBox
+            label={
+              <>
+                기간
+                <HelpTooltip>
+                  아래 요일 지정과 같이 쓸 때는, 반복하려는 요일이 실제로 포함되도록 기간을
+                  넉넉히 잡으세요(예: 여름 내내 매주 토·일이면 6/1~8/31). 하루짜리 조정이면
+                  시작일=종료일로 두고 요일 지정은 비워두세요.
+                </HelpTooltip>
+              </>
+            }
+            required
+            emphasis
+          >
             <div className="grid grid-cols-2 gap-2">
               <Input type="date" className="min-w-0" value={adjustStartDate} onChange={(e) => setAdjustStartDate(e.target.value)} />
               <Input
@@ -761,7 +865,19 @@ export default function AdminInventoryPage() {
               종료일 미정(복귀 시 종료 처리)
             </label>
           </LabeledBox>
-          <LabeledBox label="요일 지정 (선택)" emphasis>
+          <LabeledBox
+            label={
+              <>
+                요일 지정 (선택)
+                <HelpTooltip>
+                  선택한 요일에만, 위 기간 안에서 매주 반복 적용됩니다 — 날짜를 하나하나 고를
+                  필요 없어요. 예: 기간을 몇 달로 넓게 잡고 토·일만 켜면 그 기간의 매주 토·일에
+                  자동 반복. 아무 요일도 선택하지 않으면 기간 내 모든 날짜에 적용됩니다.
+                </HelpTooltip>
+              </>
+            }
+            emphasis
+          >
             <Stack gap="xs" wrap>
               {WEEKDAY_LABELS.map((label, weekday) => (
                 <button
@@ -781,6 +897,54 @@ export default function AdminInventoryPage() {
             </Stack>
           </LabeledBox>
 
+          {/* 조정 줄 카드 상단에 배지로 뜨는 자유 라벨(예 "임차"/"수리") — 서버는 코드값 없이
+              자유 문자열로만 받는다(api-spec InventoryAdjustment.tag 설명 참고). 그래도 매번
+              새로 타이핑하기 번거로우니, 자산 선택기와 같은 캡슐(Chip) 방식으로 지금까지 쓴
+              태그를 바로 골라 쓰고 + 로 새 캡슐을 늘릴 수 있게 한다. 이 후보 목록 자체는
+              서버에 없는 값이라 이 브라우저에만 저장한다(loadTagOptions/addTagOption 참고). */}
+          <LabeledBox label="태그 (선택)" emphasis helper="조정 줄 위에 배지로 표시됩니다. + 를 눌러 새 태그를 추가하세요.">
+            <Chip.List scrollArrows>
+              {tagOptions.map((tag) => (
+                <Chip
+                  key={tag}
+                  on={adjustTag === tag}
+                  onClick={() => setAdjustTag((prev) => (prev === tag ? "" : tag))}
+                >
+                  {tag}
+                </Chip>
+              ))}
+              {addingTagOption ? (
+                <Input
+                  autoFocus
+                  fullWidth={false}
+                  size="sm"
+                  className="w-24"
+                  value={newTagOptionInput}
+                  onChange={(e) => setNewTagOptionInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTagOption(newTagOptionInput);
+                    } else if (e.key === "Escape") {
+                      setAddingTagOption(false);
+                      setNewTagOptionInput("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (newTagOptionInput.trim()) addTagOption(newTagOptionInput);
+                    else setAddingTagOption(false);
+                  }}
+                  placeholder="새 태그"
+                  maxLength={60}
+                />
+              ) : (
+                <Chip onClick={() => setAddingTagOption(true)} aria-label="태그 추가">
+                  +
+                </Chip>
+              )}
+            </Chip.List>
+          </LabeledBox>
+
           <LabeledBox label="메모" emphasis error={adjustError}>
             <Input as="textarea" rows={2} value={adjustMemo} onChange={(e) => setAdjustMemo(e.target.value)} placeholder="예) 펑크 2대" />
           </LabeledBox>
@@ -798,16 +962,16 @@ export default function AdminInventoryPage() {
 
       <Popup open={overCapacityOpen} onClose={() => setOverCapacityOpen(false)} title="재고 초과 경고">
         <Stack direction="column" gap="md">
-          <Text variant="sub">
-            {overCapacityDates.length}개 날짜에서 재고 초과가 생깁니다:{" "}
-            {overCapacityDates
-              .map((d) =>
-                d.allocated > d.totalStockAfter
+          <Text variant="sub">{overCapacityDates.length}개 날짜에서 재고 초과가 생깁니다:</Text>
+          <Stack direction="column" gap="xs">
+            {overCapacityDates.map((d) => (
+              <Text key={d.date} variant="sub">
+                {d.allocated > d.totalStockAfter
                   ? `${d.date}(할당 ${d.allocated} / 총 보유 ${d.totalStockAfter})`
-                  : `${d.date}(예약 ${d.reserved} / 고객 가용 ${Math.max(d.totalStockAfter - d.allocated, 0)})`,
-              )
-              .join(", ")}
-          </Text>
+                  : `${d.date}(예약 ${d.reserved} / 고객 가용 ${Math.max(d.totalStockAfter - d.allocated, 0)})`}
+              </Text>
+            ))}
+          </Stack>
           <Text variant="sub">
             실제 파손·수리는 사실이므로 저장은 허용합니다. 할당 초과 날은 고객 가용이 0으로 막히고, 어느 여행사
             할당을 줄일지는 직접 정해 주세요.

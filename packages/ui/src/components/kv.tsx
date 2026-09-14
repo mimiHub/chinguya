@@ -36,11 +36,19 @@ export interface KvProps {
   leaf?: boolean;
   /** 행 전체 글자 크기. 기본 sm(14px), xs(12px)로 더 작게도 가능 */
   size?: Size;
+  /**
+   * 기본 true — 이 Kv 안에서 배열상 마지막 행의 구분선을 지운다(뒤에 다른 내용 없이 이 Kv가
+   * 곧 그 영역의 끝일 때를 가정한 기본값). 재고 세팅(inventory)처럼 항목 하나짜리 Kv 여러 개를
+   * 연달아 늘어놓아 전체가 한 목록처럼 보여야 하는 화면에서는, 각 Kv가 자기 안에서는 매번
+   * "마지막 행"이라 이 기본값 때문에 모든 구분선이 사라져버린다 — 그런 화면에서는
+   * false로 꺼서 매 행마다 구분선이 그대로 남게 한다.
+   */
+  hideLastBorder?: boolean;
   className?: string;
 }
 
 /** key-value 나열 목록(예약 상세, 주문 요약 등) */
-export function Kv({ items = [], leaf = false, size = "sm", className = "" }: KvProps) {
+export function Kv({ items = [], leaf = false, size = "sm", hideLastBorder = true, className = "" }: KvProps) {
   return (
     <div className={className}>
       {items.map((item, i) => {
@@ -50,7 +58,8 @@ export function Kv({ items = [], leaf = false, size = "sm", className = "" }: Kv
           <div
             key={i}
             className={[
-              "flex items-center justify-between gap-1 border-b border-dashed border-line py-2 last:border-b-0",
+              "flex items-center justify-between gap-1 border-b border-dashed border-line py-2",
+              hideLastBorder ? "last:border-b-0" : "",
               sizeClass[size],
               isLeft ? "flex-col items-start" : "",
             ]
