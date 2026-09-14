@@ -1,4 +1,5 @@
 import type {
+  AdminRole,
   CustomerReservation,
   AdminProduct,
   AdminProductCreate,
@@ -162,6 +163,27 @@ export interface AdminSettingsInput {
   depositAccount: DepositAccount;
   cancellationPolicy: { minDaysBefore: number; feeRate: number }[];
   agencyCancelDeadlineDays: number;
+}
+
+/**
+ * 관리자 계정 관리(S0-A5/A6) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ */
+export interface AdminAccount {
+  adminId: string;
+  loginId: string;
+  role: AdminRole;
+}
+
+export interface AdminAccountCreateInput {
+  loginId: string;
+  password: string;
+  role: AdminRole;
+}
+
+export interface AdminAccountUpdateInput {
+  role: AdminRole;
+  /** 생략하면 기존 비밀번호를 유지한다. 아이디는 바꿀 수 없다. */
+  password?: string;
 }
 
 /**
@@ -1170,6 +1192,19 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       get: () => request<AdminSettings>("/settings"),
       update: (body: AdminSettingsInput) =>
         request<AdminSettings>("/settings", { method: "PUT", body: JSON.stringify(body) }),
+    },
+    /**
+     * 관리자 계정 관리(S0-A5/A6). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).
+     * 아이디가 겹치면(삭제된 계정 포함) 409(DUPLICATE_LOGIN_ID), 마지막 슈퍼어드민을 내리거나
+     * 삭제하면 409(LAST_SUPER_ADMIN). 삭제는 소프트 삭제다.
+     */
+    admins: {
+      list: () => request<AdminAccount[]>("/admins"),
+      create: (body: AdminAccountCreateInput) =>
+        request<AdminAccount>("/admins", { method: "POST", body: JSON.stringify(body) }),
+      update: (adminId: string, body: AdminAccountUpdateInput) =>
+        request<AdminAccount>(`/admins/${adminId}`, { method: "PUT", body: JSON.stringify(body) }),
+      remove: (adminId: string) => request<void>(`/admins/${adminId}`, { method: "DELETE" }),
     },
     /**
      * FAQ 관리(S4-A1). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).

@@ -1,59 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import type { AdminRole } from "@chinguya/types";
-import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Toast } from "@chinguya/ui";
-import { adminAccounts, type AdminAccount } from "@/data/authData";
+import { createApiClient, ApiError, type AdminAccount } from "@chinguya/api-client";
+import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Alert } from "@chinguya/ui";
+import { useAdminAuth } from "@/context/AdminAuthContext";
+
+const api = createApiClient();
 
 const ROLE_LABEL: Record<AdminRole, string> = {
   STAFF: "관리자",
   SUPER_ADMIN: "슈퍼어드민",
 };
 
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message;
+  return fallback;
+}
+
 /**
- * S0-A5/A6 관리자 관리.
- * 일반 관리자는 조회 전용, 슈퍼어드민만 계정을 추가/삭제할 수 있다는 규칙이 있고, 이제
- * useAdminAuth().isSuperAdmin 으로 현재 등급을 알 수 있다 — 다만 등록/삭제 버튼 게이팅은
- * 다른 쓰기 화면들과 함께 별도 작업으로 미뤄둔 상태다(서버는 이미 403으로 막고 있다).
- * 계정 CRUD API도 아직 없어서 이 화면은 목 데이터로만 동작한다.
+ * S0-A5 관리자 목록 · S0-A6 관리자 등록/수정 (와이어프레임 `a-admins`).
+ *
+ * Core API(/admin/admins) 실연동. 조회는 누구나, 등록·수정·삭제는 슈퍼어드민만이라 STAFF에게는
+ * 버튼을 숨긴다(서버도 403으로 막는다). 등록과 수정은 같은 팝업을 쓴다 — 수정에서는 아이디를
+ * 바꿀 수 없고, 비밀번호를 비워 두면 기존 비밀번호가 유지된다.
+ * 삭제는 소프트 삭제이고, 마지막 슈퍼어드민의 강등·삭제는 서버가 409로 막아 그 문구를 보여준다.
  */
 export default function AdminAccountsPage() {
-  const [accounts, setAccounts] = useState<AdminAccount[]>(adminAccounts);
+  const { isSuperAdmin } = useAdminAuth();
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [id, setId] = useState("");
+  /** null = 등록, 값이 있으면 그 계정을 수정 중 */
+  const [editing, setEditing] = useState<AdminAccount | null>(null);
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [role, setRole] = useState<AdminRole>("STAFF");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminAccount | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const resetForm = () => {
-    setId("");
+  useEffect(() => {
+    api.admins
+      .list()
+      .then((list) => {
+        setAccounts(list);
+        setLoaded(true);
+      })
+      .catch((err) => setLoadError(errorMessage(err, "관리자 목록을 불러오지 못했습니다.")));
+  }, []);
+
+  const openForm = (account: AdminAccount | null) => {
+    setEditing(account);
+    setLoginId(account?.loginId ?? "");
     setPassword("");
-    setName("");
-    setRole("STAFF");
+    setRole(account?.role ?? "STAFF");
     setError(null);
+    setPopupOpen(true);
   };
 
-  const handleAdd = () => {
-    if (!id.trim() || !password.trim() || !name.trim()) {
-      setError("아이디 · 비밀번호 · 이름을 모두 입력해 주세요.");
+  const handleSave = async () => {
+    if (!editing && (!loginId.trim() || !password)) {
+      setError("아이디 · 비밀번호를 모두 입력해 주세요.");
       return;
     }
-    if (accounts.some((a) => a.id === id.trim())) {
-      setError("이미 사용 중인 아이디입니다.");
-      return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (editing) {
+        const updated = await api.admins.update(editing.adminId, { role, password: password || undefined });
+        setAccounts((prev) => prev.map((a) => (a.adminId === updated.adminId ? updated : a)));
+      } else {
+        const created = await api.admins.create({ loginId: loginId.trim(), password, role });
+        setAccounts((prev) => [...prev, created]);
+      }
+      setPopupOpen(false);
+    } catch (err) {
+      setError(errorMessage(err, "저장하지 못했습니다."));
+    } finally {
+      setSubmitting(false);
     }
-    setAccounts((prev) => [...prev, { id: id.trim(), password, name: name.trim(), role }]);
-    setPopupOpen(false);
-    resetForm();
   };
 
-  const handleConfirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setAccounts((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+    const target = deleteTarget;
     setDeleteTarget(null);
+    setDeleteError(null);
+    try {
+      await api.admins.remove(target.adminId);
+      setAccounts((prev) => prev.filter((a) => a.adminId !== target.adminId));
+    } catch (err) {
+      setDeleteError(errorMessage(err, "삭제하지 못했습니다."));
+    }
   };
 
   return (
@@ -64,48 +106,78 @@ export default function AdminAccountsPage() {
         </NextLink>
         <Stack justify="between" align="center">
           <Title size="md">관리자 관리</Title>
-          <Button
-            size="sm"
-            variant="subtle"
-            onClick={() => {
-              resetForm();
-              setPopupOpen(true);
-            }}
-          >
-            + 등록
-          </Button>
+          {isSuperAdmin && loaded && (
+            <Button size="sm" variant="subtle" onClick={() => openForm(null)}>
+              + 등록
+            </Button>
+          )}
         </Stack>
       </Stack>
 
-      <Stack direction="column" gap="sm" className="mt-4">
-        {accounts.map((account) => (
-          <Card key={account.id} padding="sm">
-            <Stack justify="between" align="center">
-              <Stack direction="column" gap="xs">
+      {loadError && (
+        <Alert status="error" className="mt-4">
+          {loadError}
+        </Alert>
+      )}
+
+      {!loaded && !loadError && (
+        <Stack direction="column" className="mt-4">
+          <Text variant="sub">불러오는 중…</Text>
+        </Stack>
+      )}
+
+      {loaded && (
+        <Stack direction="column" gap="sm" className="mt-4">
+          {accounts.map((account) => (
+            <Card key={account.adminId} padding="sm" onClick={isSuperAdmin ? () => openForm(account) : undefined}>
+              <Stack justify="between" align="center">
                 <Stack gap="xs" align="center">
-                  <Text weight="bold">{account.name}</Text>
+                  <Text weight="bold">{account.loginId}</Text>
                   <Badge variant={account.role === "SUPER_ADMIN" ? "primary" : "gray"}>
                     {ROLE_LABEL[account.role]}
                   </Badge>
                 </Stack>
-                <Text variant="sub">{account.id}</Text>
+                {isSuperAdmin && (
+                  <IconX
+                    aria-label={`${account.loginId} 삭제`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(account);
+                    }}
+                  />
+                )}
               </Stack>
-              <IconX aria-label={`${account.name} 삭제`} onClick={() => setDeleteTarget(account)} />
-            </Stack>
-          </Card>
-        ))}
-      </Stack>      
+            </Card>
+          ))}
+          {deleteError && <Alert status="error">{deleteError}</Alert>}
+          <Text variant="sub">일반 관리자는 조회 전용입니다. 등록·수정·삭제는 슈퍼어드민만 할 수 있어요.</Text>
+        </Stack>
+      )}
 
-      <Popup open={popupOpen} onClose={() => setPopupOpen(false)} title="관리자 등록">
+      <Popup open={popupOpen} onClose={() => setPopupOpen(false)} title={editing ? "관리자 수정" : "관리자 등록"}>
         <Stack direction="column" gap="md">
-          <LabeledBox label="아이디" required>
-            <Input value={id} onChange={(e) => setId(e.target.value)} error={!!error} />
+          <LabeledBox
+            label="아이디"
+            required={!editing}
+            helper={editing ? "아이디는 바꿀 수 없습니다." : "영문·숫자·._- 4~50자"}
+          >
+            <Input value={loginId} disabled={Boolean(editing)} onChange={(e) => setLoginId(e.target.value)} />
           </LabeledBox>
-          <LabeledBox label="비밀번호" required>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={!!error} />
-          </LabeledBox>
-          <LabeledBox label="이름" required>
-            <Input value={name} onChange={(e) => setName(e.target.value)} error={!!error} />
+          <LabeledBox
+            label="비밀번호"
+            required={!editing}
+            helper={
+              editing
+                ? "비워 두면 기존 비밀번호를 유지합니다. 바꿀 때는 공백 없는 영문·숫자·기호 8~72자"
+                : "공백 없는 영문·숫자·기호 8~72자"
+            }
+          >
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+            />
           </LabeledBox>
           <LabeledBox label="권한" required>
             <Chip.List>
@@ -117,20 +189,24 @@ export default function AdminAccountsPage() {
             </Chip.List>
           </LabeledBox>
 
-          <Button fullWidth onClick={handleAdd}>
-            등록
+          {error && (
+            <Alert status="error" icon={false}>
+              {error}
+            </Alert>
+          )}
+
+          <Button fullWidth disabled={submitting} onClick={() => void handleSave()}>
+            {submitting ? "저장 중…" : editing ? "저장" : "등록"}
           </Button>
         </Stack>
       </Popup>
 
       <ConfirmPopup
         open={Boolean(deleteTarget)}
-        message={`'${deleteTarget?.name}' 관리자 계정을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
-        onConfirm={handleConfirmDelete}
+        message={`'${deleteTarget?.loginId}' 관리자 계정을 삭제합니다. 삭제한 아이디는 다시 쓸 수 없습니다.`}
+        onConfirm={() => void confirmDelete()}
         onClose={() => setDeleteTarget(null)}
       />
-
-      <Toast open={!!error} onClose={() => setError(null)} message={error ?? ""} status="error" />
     </main>
   );
 }

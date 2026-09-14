@@ -3,7 +3,8 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
-# 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
+# 범위: 관리자 인증(S0-A2 로그인), 관리자 계정 관리(S0-A5/A6), 자산 관리(S1-A2),
+#       날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
 #       여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3), 예약 관리 목록·상세·
 #       입금확인·미입금 강제취소(S1-A6/A7/A8), 취소요청 처리(S1-A9),
 #       여행사 인보이스(S2-A5/A6).
@@ -65,8 +66,9 @@ openapi: 3.1.0
 #   2. **S0-A1(슈퍼어드민 최초 생성) 플로우가 없다.** 현재는 마이그레이션
 #      V3__admin_auth.sql 의 임시 시드 계정으로 대체 중이며, 그 파일 주석도
 #      운영 배포 전 교체를 경고하고 있다.
-#   3. **관리자 계정 CRUD(S0-A5/A6) API가 없다.** V3 마이그레이션이 범위 밖으로
-#      명시했다. 프론트의 해당 화면은 그때까지 목 데이터로 동작한다.
+#   3. (해결됨) 관리자 계정 CRUD(S0-A5/A6) API가 생겼다. 단, 토큰이 stateless라 **등급을
+#      내리거나 계정을 삭제해도 그 사람이 이미 받은 토큰은 만료(최대 4시간)까지 이전 등급으로
+#      동작한다.** 즉시 끊으려면 요청마다 계정을 다시 읽어야 한다 — 아직 하지 않는다.
 #   4. 토큰 만료(4시간) 시 UX가 미정 — 자동 갱신(리프레시 토큰)인지 재로그인인지.
 #      갱신 엔드포인트는 아직 없다.
 #   5. 로그인 실패 횟수 제한·계정 잠금 정책 없음.
@@ -96,7 +98,7 @@ info:
   title: 친구야 관리자 Core API
   version: 0.1.0
   description: |
-    관리자(A) 앱이 쓰는 Core API 계약. 현재는 인증(S0-A2), 자산 관리(S1-A2), 날짜별
+    관리자(A) 앱이 쓰는 Core API 계약. 현재는 인증(S0-A2), 관리자 계정 관리(S0-A5/A6), 자산 관리(S1-A2), 날짜별
     재고 세팅(S1-A3 — 여행사 할당 포함, 구 S2-A4 흡수), 여행사 관리(S2-A1/A2/A3),
     FAQ·콘텐츠 관리(S4-A1/A3)를 정의한다.
 
@@ -121,6 +123,8 @@ servers:
 tags:
   - name: admin-auth
     description: 관리자 로그인·로그아웃·세션 조회 (S0-A2)
+  - name: admin-account
+    description: 관리자 계정 목록·등록·수정(등급·비밀번호)·삭제 (S0-A5/A6)
   - name: admin-asset
     description: 자산(명칭 마스터) 등록·수정·삭제·복원 (S1-A2)
   - name: admin-inventory
@@ -212,6 +216,119 @@ paths:
               schema: { $ref: '#/components/schemas/AdminSessionResponse' }
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /admin/admins:
+    get:
+      tags: [admin-account]
+      x-screens: [S0-A5]
+      summary: 관리자 계정 목록 (S0-A5)
+      description: |
+        삭제되지 않은 계정을 등록 순서대로 돌려준다. 계정 수가 적어 페이지네이션은 없다.
+        조회는 STAFF도 할 수 있다(다른 조회 API와 같은 규칙).
+      responses:
+        '200':
+          description: 관리자 계정 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminAccount' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [admin-account]
+      x-screens: [S0-A6]
+      summary: 관리자 계정 등록 (S0-A6)
+      description: |
+        비밀번호는 BCrypt 해시로만 저장한다. 아이디는 **삭제된 계정의 것도 다시 쓸 수 없다**
+        (소프트 삭제라 행이 남고, 아이디 유니크가 전체 행에 걸려 있다).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminAccountCreateRequest' }
+      responses:
+        '201':
+          description: 등록됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminAccount' }
+        '400':
+          description: 아이디·비밀번호 형식 오류 또는 등급 누락(`VALIDATION_ERROR`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/DuplicateLoginId'
+
+  /admin/admins/{adminId}:
+    parameters:
+      - name: adminId
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      tags: [admin-account]
+      x-screens: [S0-A6]
+      summary: 관리자 계정 수정 (S0-A6)
+      description: |
+        등급을 바꾸고, `password` 를 보냈을 때만 비밀번호도 바꾼다(생략·null = 그대로).
+        아이디는 바꿀 수 없다.
+
+        **마지막 슈퍼어드민은 STAFF로 내릴 수 없다**(409 `LAST_SUPER_ADMIN`) — 쓰기 권한을
+        가진 사람이 아무도 남지 않기 때문이다.
+
+        ⚠ 등급을 내려도 그 사람이 이미 받은 토큰은 만료(최대 4시간)까지 이전 등급으로 동작한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminAccountUpdateRequest' }
+      responses:
+        '200':
+          description: 수정됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminAccount' }
+        '400':
+          description: 비밀번호 형식 오류 또는 등급 누락(`VALIDATION_ERROR`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AdminNotFound'
+        '409':
+          $ref: '#/components/responses/LastSuperAdmin'
+
+    delete:
+      tags: [admin-account]
+      x-screens: [S0-A5, S0-A6]
+      summary: 관리자 계정 삭제 (S0-A5/A6)
+      description: |
+        **소프트 삭제**다. 목록에서 빠지고 그 아이디로는 로그인할 수 없다(없는 계정과 같은 401).
+        복원 엔드포인트는 없다. 마지막 슈퍼어드민은 삭제할 수 없다(409 `LAST_SUPER_ADMIN`).
+
+        ⚠ 삭제해도 그 사람이 이미 받은 토큰은 만료(최대 4시간)까지 동작한다.
+      responses:
+        '204':
+          description: 삭제됨
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AdminNotFound'
+        '409':
+          $ref: '#/components/responses/LastSuperAdmin'
 
   /admin/assets:
     get:
@@ -2009,6 +2126,30 @@ components:
       schema: { type: string }
 
   responses:
+    AdminNotFound:
+      description: 존재하지 않거나 삭제된 관리자 계정
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: ADMIN_NOT_FOUND
+            message: 관리자 계정을 찾을 수 없습니다.
+    DuplicateLoginId:
+      description: 같은 아이디의 계정이 이미 있음(삭제된 계정 포함)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: DUPLICATE_LOGIN_ID
+            message: 이미 사용 중인 아이디입니다.
+    LastSuperAdmin:
+      description: 마지막 슈퍼어드민을 STAFF로 내리거나 삭제하려 했다
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: LAST_SUPER_ADMIN
+            message: 슈퍼어드민이 최소 1명은 있어야 합니다.
     Unauthorized:
       description: 인증 필요/만료 — 쿠키가 없거나 토큰이 유효하지 않다.
       content:
@@ -2155,6 +2296,43 @@ components:
           type: string
           format: date-time
           description: 액세스 토큰 만료 시각(UTC). 발급 시점 +4시간.
+
+    AdminAccount:
+      type: object
+      required: [adminId, loginId, role]
+      description: 관리자 계정 한 건(S0-A5/A6). 비밀번호는 내려주지 않는다.
+      properties:
+        adminId:
+          type: string
+          description: 관리자 PK(숫자지만 문자열로 직렬화된다). AdminSessionResponse.adminId 와 같은 값.
+        loginId: { type: string }
+        role: { $ref: '#/components/schemas/AdminRole' }
+
+    AdminAccountCreateRequest:
+      type: object
+      required: [loginId, password, role]
+      properties:
+        loginId:
+          type: string
+          pattern: '^[A-Za-z0-9._-]{4,50}$'
+          description: 영문·숫자·`.`·`_`·`-` 4~50자. 등록 후 바꿀 수 없다.
+        password:
+          type: string
+          format: password
+          pattern: '^[\x21-\x7E]{8,72}$'
+          description: 공백 없는 영문·숫자·기호 8~72자(BCrypt가 72바이트까지만 쓴다). 서버는 해시만 저장한다.
+        role: { $ref: '#/components/schemas/AdminRole' }
+
+    AdminAccountUpdateRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: '#/components/schemas/AdminRole' }
+        password:
+          type: [string, 'null']
+          format: password
+          pattern: '^[\x21-\x7E]{8,72}$'
+          description: 새 비밀번호. 생략하거나 null이면 기존 비밀번호를 유지한다.
 
     Asset:
       type: object
@@ -3183,6 +3361,11 @@ components:
 
             인증(S0-A2):
             - `INVALID_CREDENTIALS` — 아이디 없음 또는 비밀번호 불일치(둘을 구분하지 않는다).
+
+            관리자 계정(S0-A5/A6):
+            - `ADMIN_NOT_FOUND` — 존재하지 않거나 삭제된 관리자 계정.
+            - `DUPLICATE_LOGIN_ID` — 같은 아이디의 계정이 이미 있다(삭제된 계정 포함).
+            - `LAST_SUPER_ADMIN` — 마지막 슈퍼어드민을 STAFF로 내리거나 삭제하려 했다.
 
             자산(S1-A2):
             - `ASSET_NOT_FOUND` — 존재하지 않는 자산.
