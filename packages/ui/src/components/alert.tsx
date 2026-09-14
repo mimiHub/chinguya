@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { StatusIcon } from "./status-icon";
 
 export type AlertStatus = "success" | "warning" | "error" | "info";
+export type AlertTone = "light" | "dark";
 
 /**
  * success/warning/error/info 네 가지 상태를 위한 공용 안내 박스.
@@ -11,50 +13,63 @@ export type AlertStatus = "success" | "warning" | "error" | "info";
  * 그러다 하나만 바꾸고 다른 하나를 깜빡하면 배경은 노란데 글자는 검정인 식으로 어긋나기
  * 쉬웠다. Alert 하나로 합쳐서 "상태" 하나만 정하면 배경·글자·아이콘이 항상 같이 맞게 나온다.
  *
- * 색상은 packages/tailwind-config/theme.css 의 시맨틱 토큰(--color-success 등)을 그대로 쓴다.
- * 값을 바꾸고 싶으면 이 파일이 아니라 theme.css 쪽을 고친다.
+ * 아이콘은 status-icon.tsx의 공용 배지(색 채워진 도형 + 흰 글리프)를 Toast와 함께 쓴다.
+ *
+ * 배경·글자 색은 packages/tailwind-config/theme.css 의 시맨틱 토큰(--color-success 등)을 그대로
+ * 쓴다. 값을 바꾸고 싶으면 이 파일이 아니라 theme.css 쪽을 고친다.
+ *
+ * tone(기본 "light")은 배경 톤을 고른다 — "light"는 지금까지의 옅은 상태색 배경(페이지 중간
+ * 안내 배너용, 기존 화면 전부 이 모양 그대로 유지됨). "dark"는 Toast(packages/ui/src/components
+ * /toast.tsx)와 같은 어두운 배경(--color-toast-bg) + 흰 글자 + 상태색 아이콘 조합이다 — 대시보드
+ * 알림처럼 Toast 디자인과 톤을 맞춰야 하는 "상시 노출 배너"에 쓴다. dark tone은 light tone보다
+ * 아이콘을 크게 세로 중앙정렬하고, 타이틀을 더 크게, 본문은 더 얇게 보여준다(레퍼런스 디자인
+ * 반영 — light tone의 기존 17곳 사용처는 이 변경의 영향을 받지 않는다).
  */
-// info 상태는 문자 "ℹ"(글꼴마다 모양이 들쭉날쭉하고 두께도 얇아 잘 안 보임) 대신, 동그라미
-// 안에 i가 든 흔한 인포 아이콘을 SVG로 직접 그려서 쓴다 — 원(stroke)·점(dot)·막대(stem)
-// 세 도형만 조합해서 아이콘 폰트나 외부 라이브러리 없이 만들 수 있다.
-const infoIcon = (
-  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
-    <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
-    <circle cx="10" cy="6.5" r="1.1" fill="currentColor" />
-    <rect x="9.1" y="9" width="1.8" height="5.5" rx="0.9" fill="currentColor" />
-  </svg>
-);
+/** light tone에서만 쓴다 — 배경·글자색이 한 세트로 묶여 있다(엷은 배경 + 진한 상태색 글자). */
+const lightClass: Record<AlertStatus, { box: string; text: string }> = {
+  success: { box: "bg-success-light", text: "text-success" },
+  warning: { box: "bg-warning-light", text: "text-warning" },
+  error: { box: "bg-error-light", text: "text-error" },
+  info: { box: "bg-info-light", text: "text-info" },
+};
 
-const statusClass: Record<AlertStatus, { box: string; text: string; icon: ReactNode }> = {
-  success: { box: "bg-success-light", text: "text-success", icon: "✓" },
-  warning: { box: "bg-warning-light", text: "text-warning", icon: "⚠" },
-  error: { box: "bg-error-light", text: "text-error", icon: "✕" },
-  info: { box: "bg-info-light", text: "text-info", icon: infoIcon },
+/** dark tone에서 아이콘만 상태색을 낸다(글자는 흰색 고정). */
+const darkIconColor: Record<AlertStatus, string> = {
+  success: "text-success",
+  warning: "text-warning",
+  error: "text-error",
+  info: "text-info",
 };
 
 export interface AlertProps {
   /** "success" | "warning" | "error" | "info" — 네 상태 중 하나, 배경·글자·아이콘이 한 번에 맞춰진다 */
   status: AlertStatus;
   title?: ReactNode;
-  /** 기본 true. 상태별 기본 아이콘(✓/⚠/✕/동그라미 i)을 숨기고 싶으면 false */
+  /** 기본 true. 상태별 기본 아이콘(색 채워진 배지)을 숨기고 싶으면 false */
   icon?: boolean;
   className?: string;
   children?: ReactNode;
+  /** 기본 "light". "dark"는 Toast와 같은 어두운 배경+흰 글자+상태색 아이콘 조합(상시 노출 배너용). */
+  tone?: AlertTone;
 }
 
-export function Alert({ status, title, icon = true, className = "", children }: AlertProps) {
-  const s = statusClass[status];
+export function Alert({ status, title, icon = true, className = "", children, tone = "light" }: AlertProps) {
+  const isDark = tone === "dark";
+  const box = isDark
+    ? "items-center rounded-2xl bg-toast-bg text-white"
+    : `items-start rounded-md ${lightClass[status].box} ${lightClass[status].text}`;
+  const iconClass = isDark ? darkIconColor[status] : "";
 
   return (
-    <div className={`flex items-start gap-2 rounded-md px-4 py-2 text-sm ${s.box} ${s.text} ${className}`}>
+    <div className={`flex gap-3 px-4 py-3 text-sm ${box} ${className}`}>
       {icon && (
-        <span aria-hidden="true" className="mt-0.5 shrink-0">
-          {s.icon}
+        <span aria-hidden="true" className={`shrink-0 ${isDark ? "" : "mt-0.5"} ${iconClass}`}>
+          <StatusIcon status={status} className={isDark ? "h-6 w-6" : "h-4 w-4"} />
         </span>
       )}
       <div className="flex flex-1 flex-col gap-1">
-        {title && <p className="font-bold">{title}</p>}
-        {children}
+        {title && <p className={isDark ? "text-base font-bold" : "font-bold"}>{title}</p>}
+        {isDark ? <div className="font-light">{children}</div> : children}
       </div>
     </div>
   );

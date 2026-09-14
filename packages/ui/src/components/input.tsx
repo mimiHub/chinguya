@@ -28,7 +28,12 @@ const sizeClass: Record<Size, string> = {
 // 원인. -webkit-text-fill-color를 직접 지정하고 opacity도 100으로 고정해서 브라우저가 값을
 // 더 죽이지 못하게 막는다.
 const baseFieldClass =
-  "rounded-sm border border-line bg-surface text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-input-focus disabled:bg-gray-200 disabled:text-muted disabled:opacity-100 disabled:[-webkit-text-fill-color:var(--color-muted)] disabled:cursor-not-allowed";
+  // border-line은 여기 고정으로 넣지 않는다 — error일 때 border-error를 뒤에 덧붙이는 식으로
+  // 두 border-color 유틸리티를 동시에 켜면, 어느 쪽이 이기는지가 JSX상 클래스 순서가 아니라
+  // Tailwind가 내부적으로 생성한 CSS 순서에 좌우된다 — className에 fullWidth를 고정으로 넣지
+  // 않는 이유(위 주석)나 card.tsx의 padding 충돌과 같은 유형의 버그다. 그래서 border-color는
+  // 아래 classNames에서 error ? "border-error" : "border-line" 형태로 항상 단 하나만 켠다.
+  "rounded-sm border bg-surface text-ink transition-colors placeholder:text-muted focus:outline-none focus:border-input-focus disabled:bg-gray-200 disabled:text-muted disabled:opacity-100 disabled:[-webkit-text-fill-color:var(--color-muted)] disabled:cursor-not-allowed";
 
 const checkboxClass =
   "relative inline-flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded-sm border-[1.5px] border-line bg-surface transition-colors hover:border-primary-500 checked:bg-primary-500 checked:border-primary-500 disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed cursor-pointer " +
@@ -84,7 +89,13 @@ export function Input({
     );
   }
 
-  const classNames = [baseFieldClass, fullWidth ? "w-full" : "", sizeClass[size], error ? "border-error" : "", className]
+  const classNames = [
+    baseFieldClass,
+    error ? "border-error" : "border-line",
+    fullWidth ? "w-full" : "",
+    sizeClass[size],
+    className,
+  ]
     .filter(Boolean)
     .join(" ");
 

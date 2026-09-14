@@ -276,6 +276,7 @@ export default function AdminAssetsPage() {
               value={registerName}
               onChange={(e) => setRegisterName(e.target.value)}
               placeholder="예) 전기 자전거"
+              error={!!registerError}
             />
           </LabeledBox>
           <LabeledBox
@@ -310,7 +311,7 @@ export default function AdminAssetsPage() {
             error={editError}
             helper="기존 명칭이 미리 채워집니다. 값을 바꾸지 않으면 저장 버튼이 비활성화됩니다."
           >
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} error={!!editError} />
           </LabeledBox>
           <LabeledBox label="카테고리" helper="등록 때 정한 값이라 수정할 수 없습니다.">
             <Text>{ASSET_CATEGORY_LABEL[editCategory]}</Text>
@@ -356,7 +357,7 @@ export default function AdminAssetsPage() {
             error={restoreError}
             helper="같은 명칭의 활성 자산이 이미 있으면 명칭 변경을 요구한 뒤 복원합니다."
           >
-            <Input value={restoreName} onChange={(e) => setRestoreName(e.target.value)} />
+            <Input value={restoreName} onChange={(e) => setRestoreName(e.target.value)} error={!!restoreError} />
           </LabeledBox>
           <Stack gap="sm">
             <Button variant="outline" fullWidth onClick={() => setRestoreTarget(null)}>
