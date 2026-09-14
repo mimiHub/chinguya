@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { EmptyState } from "@chinguya/ui/empty-state";
@@ -46,6 +47,7 @@ function errorMessage(err: unknown, fallback: string): string {
 
 export default function AdminAssetsPage() {
   const { isSuperAdmin } = useAdminAuth();
+  const router = useRouter();
 
   const [assets, setAssets] = useState<Asset[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -218,9 +220,14 @@ export default function AdminAssetsPage() {
         {activeAssets.map((asset) => (
           <Card key={asset.assetId} padding="sm">
             <Stack justify="between" align="center">
-              <Stack gap="sm" align="center">
-                <Text weight="bold">{asset.name}</Text>
-                <Badge>{ASSET_CATEGORY_LABEL[asset.category]}</Badge>
+              <Stack direction="column" gap="xs">
+                <Stack gap="sm" align="center">
+                  <Text weight="bold">{asset.name}</Text>
+                  <Badge>{ASSET_CATEGORY_LABEL[asset.category]}</Badge>
+                </Stack>
+                <Text variant="sub" size="xs">
+                  연결 상품 {asset.productCount}개
+                </Text>
               </Stack>
               {isSuperAdmin && (
                 <Stack gap="xs">
@@ -327,9 +334,36 @@ export default function AdminAssetsPage() {
         </Stack>
       </Popup>
 
-      {/* CASE 1(완전 삭제) / CASE 2(소프트 삭제) 문구 분기는 서버가 준 hasInventoryRecords로 정한다. */}
+      {/* CASE 0 — 연결 상품이 있으면 삭제할 수 없다. 상품을 먼저 지워야 하므로 삭제 버튼은
+          비활성으로 두고 상품 관리(S1-A4)로 보낸다. */}
+      <Popup
+        open={!!deleteTarget && deleteTarget.productCount > 0}
+        onClose={() => setDeleteTarget(null)}
+        title="자산 삭제"
+      >
+        <Stack direction="column" gap="md">
+          <Text variant="sub">
+            &apos;{deleteTarget?.name}&apos;에 연결된 상품 <b>{deleteTarget?.productCount}개</b>를 먼저
+            삭제해야 합니다.
+          </Text>
+          <Button variant="outline" size="sm" onClick={() => router.push("/products")}>
+            상품 관리로 이동
+          </Button>
+          <Stack gap="sm">
+            <Button variant="outline" fullWidth onClick={() => setDeleteTarget(null)}>
+              취소
+            </Button>
+            <Button variant="danger" fullWidth disabled>
+              삭제
+            </Button>
+          </Stack>
+        </Stack>
+      </Popup>
+
+      {/* 연결 상품이 없을 때만 실제 삭제로 간다. CASE 1(완전 삭제) / CASE 2(소프트 삭제)
+          문구 분기는 서버가 준 hasInventoryRecords로 정한다. */}
       <ConfirmPopup
-        open={!!deleteTarget}
+        open={!!deleteTarget && deleteTarget.productCount === 0}
         title={deleteTarget?.hasInventoryRecords ? "삭제하시겠습니까?" : "완전히 삭제하시겠습니까?"}
         message={
           deleteTarget ? (
