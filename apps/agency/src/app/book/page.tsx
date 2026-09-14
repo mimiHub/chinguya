@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Title } from "@chinguya/ui/title";
 import { EmptyState } from "@chinguya/ui/empty-state";
@@ -15,10 +15,11 @@ import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
 import { CalendarIcon } from "@chinguya/ui/calendar-icon";
 import { Popup } from "@chinguya/ui/popup";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { getBookingRows } from "@/data/bookingData";
+import { createApiClient, ApiError, type AgencyProduct, type AgencyProductList } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { createReservation } from "@/data/reservationData";
 import { Alert } from "@chinguya/ui/alert";
+
+const api = createApiClient();
 
 // 여행사 예약 가능 기간: 오늘 +3일 ~ +3개월 (packages/types의 BOOKING_WINDOW.agency 규칙과 동일)
 const MIN_LEAD_DAYS = 3;
@@ -82,15 +83,32 @@ function formatDisplayDate(value: string): string {
   return `${year}. ${String(month).padStart(2, "0")}. ${String(day).padStart(2, "0")}.`;
 }
 
+function productLabel(product: AgencyProduct, separator = " · "): string {
+  return `${product.assetName}${separator}${RENTAL_OPTION_LABEL[product.optionType]}`;
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
 /**
- * S2-G4/G5 상품 조회 · 예약. 여행사 할당 범위(가용) 내에서 상품별 수량을 골라 한 번에
+ * S2-G4/G5 상품 조회 · 예약(`g-book`). 여행사 할당 범위(가용) 내에서 상품별 수량을 골라 한 번에
  * "예약(즉시 완료)"한다 — 고객 예약과 달리 입금 절차 없이 바로 완료 상태가 된다.
+ *
+ * Core API(GET /v1/agency/products, POST /v1/agency/reservations)에 실연동돼 있다 — 계약은
+ * packages/api-spec/openapi/chinguya-agency-api.yaml. 가격·가용·금액은 전부 서버 값이다.
+ *
+ * 할당은 자산 단위라 같은 자산의 상품끼리 나눠 쓴다. 그래서 스테퍼 상한에서 같은 자산의 다른 줄에
+ * 담은 수량을 뺀다. 그래도 그사이 다른 예약이 할당을 썼으면 서버가 409로 막는다.
  */
 export default function AgencyBookPage() {
   const router = useRouter();
-  const rows = useMemo(() => getBookingRows(), []);
   const [useDate, setUseDate] = useState(defaultUseDate());
-  const [qtyByRow, setQtyByRow] = useState<Record<string, number>>({});
+  const [productList, setProductList] = useState<AgencyProductList | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [qtyByProduct, setQtyByProduct] = useState<Record<string, number>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [toastOpen, setToastOpen] = useState(false);
 
   // 날짜 필드를 누르면 브라우저 기본 달력 대신, 관리자 앱 재고 세팅 화면(inventory/page.tsx)과
@@ -135,29 +153,78 @@ export default function AgencyBookPage() {
     }
   };
 
-  const selectedRows = rows.filter((row) => (qtyByRow[row.id] ?? 0) > 0);
-  const total = selectedRows.reduce((sum, row) => sum + row.agencyPrice * (qtyByRow[row.id] ?? 0), 0);
-  const canSubmit = selectedRows.length > 0;
+  // 날짜를 빠르게 바꾸면 늦게 온 이전 날짜의 응답이 표를 덮어쓸 수 있어, 마지막으로 요청한 날짜만 반영한다.
+  const latestDateRef = useRef(useDate);
 
-  const setQty = (rowId: string, qty: number) => {
-    setQtyByRow((prev) => ({ ...prev, [rowId]: qty }));
+  const loadProducts = useCallback(async (date: string) => {
+    latestDateRef.current = date;
+    try {
+      const list = await api.agencyProducts.list(date);
+      if (latestDateRef.current !== date) return;
+      setLoadError(null);
+      setProductList(list);
+    } catch (err) {
+      if (latestDateRef.current !== date) return;
+      setLoadError(errorMessage(err, "상품을 불러오지 못했습니다."));
+    }
+  }, []);
+
+  // 날짜가 바뀌면 가용이 달라지므로 담은 수량을 비우고 다시 조회한다.
+  useEffect(() => {
+    setProductList(null);
+    setLoadError(null);
+    setQtyByProduct({});
+    setSubmitError(null);
+    void loadProducts(useDate);
+  }, [useDate, loadProducts]);
+
+  const rows = productList?.products ?? [];
+  const qtyOf = (productId: string) => qtyByProduct[productId] ?? 0;
+  const selectedRows = rows.filter((row) => qtyOf(row.productId) > 0);
+  const total = selectedRows.reduce((sum, row) => sum + row.agencyPrice * qtyOf(row.productId), 0);
+  const canSubmit = selectedRows.length > 0 && !submitting;
+
+  /** 같은 자산의 다른 줄에 담은 수량을 뺀 스테퍼 상한 — 할당이 자산 단위라서. */
+  const maxQtyOf = (row: AgencyProduct) => {
+    const usedBySameAsset = rows
+      .filter((other) => other.assetId === row.assetId && other.productId !== row.productId)
+      .reduce((sum, other) => sum + qtyOf(other.productId), 0);
+    return Math.max(row.available - usedBySameAsset, 0);
   };
 
-  const handleSubmit = () => {
+  const setQty = (productId: string, qty: number) => {
+    setQtyByProduct((prev) => ({ ...prev, [productId]: qty }));
+  };
+
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    selectedRows.forEach((row) => {
-      const qty = qtyByRow[row.id] ?? 0;
-      createReservation({
-        productId: row.productId,
-        rentalOption: row.option,
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await api.agencyReservations.create({
         useDate,
-        quantity: qty,
-        amountKrw: row.agencyPrice * qty,
+        items: selectedRows.map((row) => ({ productId: row.productId, quantity: qtyOf(row.productId) })),
       });
-    });
-    setQtyByRow({});
-    setToastOpen(true);
+      setQtyByProduct({});
+      setToastOpen(true);
+    } catch (err) {
+      setSubmitError(errorMessage(err, "예약하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    } finally {
+      setSubmitting(false);
+      // 성공이면 방금 쓴 할당이, 실패(409)면 그사이 다른 예약이 가용을 바꿨다 — 어느 쪽이든 다시 읽는다.
+      void loadProducts(useDate);
+    }
   };
+
+  const tableEmptyMessage = loadError ? (
+    <Alert status="error" icon={true}>
+      {loadError}
+    </Alert>
+  ) : productList === null ? (
+    <EmptyState>상품을 불러오는 중입니다.</EmptyState>
+  ) : (
+    <EmptyState>예약할 수 있는 상품이 없습니다.</EmptyState>
+  );
 
   return (
     <main className="flex h-full min-h-0 flex-col">
@@ -167,7 +234,7 @@ export default function AgencyBookPage() {
         </ScrollReveal>
         <Stack className="min-h-0 flex-1  flex gap-6">
           <Stack direction="column" className="min-h-0 flex-1">
-            
+
             <ScrollReveal delay={80} className="shrink-0">
             <Card className="shrink-0">
               <Stack direction="column" gap="sm">
@@ -206,6 +273,11 @@ export default function AgencyBookPage() {
               <Alert status="info" icon={true}>
                   예약 가능 기간 오늘 +3일 ~ +3개월 입니다.
               </Alert>
+              {productList?.closed ? (
+                <Alert status="warning" icon={true}>
+                  매장 휴무일이라 이 날짜는 예약할 수 없습니다.
+                </Alert>
+              ) : null}
               </Stack>
             </Card>
             </ScrollReveal>
@@ -225,16 +297,17 @@ export default function AgencyBookPage() {
                       { key: "available", label: "가용(할당)", width: "16%", align: "center" },
                       { key: "qty", label: "수량", width: "20%", align: "center" },
                     ]}
+                    emptyMessage={tableEmptyMessage}
                     rows={rows.map((row) => ({
-                      product: `${row.title} · ${RENTAL_OPTION_LABEL[row.option]}`,
+                      product: productLabel(row),
                       price: `₩${row.agencyPrice.toLocaleString()}`,
-                      available: row.allocatedQty,
+                      available: row.available,
                       qty: (
                         <Stepper
-                          value={qtyByRow[row.id] ?? 0}
+                          value={qtyOf(row.productId)}
                           min={0}
-                          max={row.allocatedQty}
-                          onChange={(v) => setQty(row.id, v)}
+                          max={maxQtyOf(row)}
+                          onChange={(v) => setQty(row.productId, v)}
                         />
                       ),
                     }))}
@@ -255,13 +328,18 @@ export default function AgencyBookPage() {
                       <Kv
                         items={[
                           ...selectedRows.map((row) => ({
-                            key: `${row.title}·${RENTAL_OPTION_LABEL[row.option]} ×${qtyByRow[row.id]}`,
-                            value: `${(row.agencyPrice * (qtyByRow[row.id] ?? 0)).toLocaleString()}`,
+                            key: `${productLabel(row, "·")} ×${qtyOf(row.productId)}`,
+                            value: `${(row.agencyPrice * qtyOf(row.productId)).toLocaleString()}`,
                           })),
                           { key: "합계", value: `₩${total.toLocaleString()}` },
                         ]}
                       />
                     )}
+                    {submitError ? (
+                      <Alert status="error" icon={true}>
+                        {submitError}
+                      </Alert>
+                    ) : null}
 
                    </Stack>
                   {/* 위에 있는 예약 목록(overflow-y-auto)이 스크롤될 때, 버튼과 목록이
@@ -270,17 +348,17 @@ export default function AgencyBookPage() {
                       음수로 주면 그림자가 위쪽으로 생긴다. */}
                   <div className="shadow-[0_-6px_8px_-6px_rgba(0,0,0,0.18)]">
                     <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
-                      예약 (즉시 완료)
+                      {submitting ? "예약 중…" : "예약 (즉시 완료)"}
                     </Button>
                   </div>
                 </Stack>
-              </Card>          
+              </Card>
               </Stack>
               </ScrollReveal>
             </Stack>
           </Stack>
 
-          
+
         </Stack>
       </Stack>
 

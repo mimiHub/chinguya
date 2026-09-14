@@ -12,6 +12,7 @@ import type {
   AgencyCreateResult,
   AgencyInvitationResult,
   DepositAccount,
+  RentalOptionKey,
 } from "@chinguya/types";
 
 /**
@@ -197,6 +198,52 @@ export interface HeroBanner {
   mobileImageUrl: string;
 }
 
+/**
+ * 여행사 상품 조회·예약(S2-G4/G5) API 타입. 계약 원본은 api-spec/openapi/chinguya-agency-api.yaml.
+ *
+ * packages/types의 AgencyReservation은 아직 목업(S2-G6 예약 목록)이 쓰는 모양이라 응답 타입을 여기 따로 둔다.
+ */
+export interface AgencyProduct {
+  productId: string;
+  /** 연결 자산. 같은 값을 가진 줄끼리 할당을 나눠 쓴다. */
+  assetId: string;
+  assetName: string;
+  category: AssetCategory;
+  optionType: RentalOptionKey;
+  /** 여행사가(KRW, 1대 기준) */
+  agencyPrice: number;
+  /** 이 줄만 담는다고 할 때 예약할 수 있는 최대 수량 */
+  available: number;
+}
+
+export interface AgencyProductList {
+  useDate: string;
+  /** 매장 휴무일이면 true — 이때 모든 available이 0이다. */
+  closed: boolean;
+  products: AgencyProduct[];
+}
+
+export interface AgencyReservationInput {
+  useDate: string;
+  /** 같은 productId를 두 번 넣으면 400. 금액은 보내지 않는다(서버가 여행사가로 계산). */
+  items: { productId: string; quantity: number }[];
+}
+
+export interface AgencyReservationResult {
+  reservationId: string;
+  reservationNumber: string;
+  useDate: string;
+  productId: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  /** 예약 시점 여행사가 */
+  unitPrice: number;
+  amount: number;
+  status: "COMPLETED" | "CANCELLED";
+  createdAt: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -251,6 +298,19 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     },
     agencyReservations: {
       list: () => request<AgencyReservation[]>("/agency/reservations"),
+      /**
+       * S2-G5 예약(즉시 완료). 줄마다 예약 1건이 생기고, 전부 성공하거나 전부 실패한다.
+       * 가용을 넘으면 409(ALLOCATION_EXCEEDED), 매장 휴무일이면 409(STORE_CLOSED).
+       */
+      create: (body: AgencyReservationInput) =>
+        request<AgencyReservationResult[]>("/agency/reservations", {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+    },
+    /** S2-G4 이용 날짜별 예약 가능 상품. 여행사 앱 프록시가 `/v1` 프리픽스를 붙인다. */
+    agencyProducts: {
+      list: (useDate: string) => request<AgencyProductList>(`/agency/products?useDate=${useDate}`),
     },
     invoices: {
       list: () => request<Invoice[]>("/agency/invoices"),
