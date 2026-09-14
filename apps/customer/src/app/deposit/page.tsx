@@ -1,45 +1,149 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createApiClient, ApiError, type CustomerDepositInfo } from "@chinguya/api-client";
 import { Title } from "@chinguya/ui/title";
+import { Text } from "@chinguya/ui/text";
 import { Stack } from "@chinguya/ui/stack";
 import { Card } from "@chinguya/ui/card";
 import { Kv } from "@chinguya/ui/kv";
 import { Button } from "@chinguya/ui/button";
 import { Alert } from "@chinguya/ui/alert";
-import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Toast } from "@chinguya/ui/toast";
 import { Banner } from "@chinguya/ui/banner";
-import { findReservationsByIds } from "@/data/reservationData";
-import { depositAccount } from "@/data/depositAccountData";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
- * S1-C4 입금 안내 · 확인 요청. 장바구니(S1-C3)에서 만들어진 예약 id들(콤마 구분)을 쿼리로
- * 받아 하나의 입금 안내로 묶어 보여준다. PG 미사용 — 안내 계좌로 직접 입금 후 "입금 확인 요청"을
- * 누르면 상태를 확인하러 예약 목록으로 이동한다.
+ * 입금 안내 · 확인 요청 `deposit`(S1-C4). 장바구니(S1-C3)에서 확정한 예약(?bookingId=)의 무통장 입금
+ * 안내를 보여 주고, 입금 후 "입금 확인 요청"을 받는다. PG 미사용.
  *
- * 예약은 장바구니에서 "예약하고 입금 안내 받기"를 누른 시점에 이미 상태 "접수"로 만들어져
- * 있다(문서 규칙: 접수 = 예약 생성 상태). "입금 확인 요청" 버튼은 실제로는 관리자에게 입금
- * 사실을 알리는 액션이라, 여기서는 토스트만 보여주고 상태를 다시 바꾸지는 않는다 — 관리자가
- * 입금을 확인하면 admin 쪽에서 상태를 "완료"로 바꾼다.
+ * Core API 실연동: GET /v1/bookings/{id}/deposit-info, POST /v1/bookings/{id}/deposit-request.
+ * 계약은 packages/api-spec/openapi/chinguya-slice1-openapi.yaml.
+ *
+ * 상태 흐름(Model B): 확정 직후 = 입금대기 → 입금 확인 요청 = 접수 → 관리자가 입금을 확인하면 완료.
+ * 요청은 입금대기일 때만 할 수 있다. 24시간 안에 입금하지 않으면 관리자가 강제취소할 수 있다.
  */
+
+const api = createApiClient();
+
+function formatDueBy(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function DepositContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const ids = (params.get("ids") ?? "").split(",").filter(Boolean);
-  const reservations = findReservationsByIds(ids);
+  const bookingId = params.get("bookingId") ?? "";
+  const { session, loading: authLoading } = useCustomerAuth();
+  const [info, setInfo] = useState<CustomerDepositInfo | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [requested, setRequested] = useState(false);
 
-  if (reservations.length === 0) {
-    return <ComingSoon label="예약 정보를 찾을 수 없습니다" />;
-  }
+  useEffect(() => {
+    if (authLoading || !session || !bookingId) return;
+    let active = true;
+    api.customerBookings
+      .depositInfo(bookingId)
+      .then((res) => {
+        if (active) setInfo(res);
+      })
+      .catch((err: unknown) => {
+        if (active) setLoadError(err instanceof ApiError ? err.message : "입금 안내를 불러오지 못했습니다.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [authLoading, session, bookingId]);
 
-  const totalAmount = reservations.reduce((sum, r) => sum + r.amountKrw, 0);
-  const primaryId = reservations[0]?.id;
-  const label = reservations.length > 1 ? `${primaryId} 외 ${reservations.length - 1}건` : primaryId;
+  const handleRequest = async () => {
+    if (!info) return;
+    setRequesting(true);
+    setRequestError(null);
+    try {
+      const booking = await api.customerBookings.requestDeposit(bookingId);
+      setInfo({ ...info, status: booking.status });
+      setRequested(true);
+    } catch (err) {
+      setRequestError(err instanceof ApiError ? err.message : "입금 확인 요청을 하지 못했습니다.");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const body = (() => {
+    if (authLoading) return null;
+    if (!session) {
+      return (
+        <Stack direction="column" gap="md" className="mt-6">
+          <Text tone="secondary">입금 안내는 로그인 후 확인할 수 있습니다.</Text>
+          <Button href={`/login?redirect=${encodeURIComponent(`/deposit?bookingId=${bookingId}`)}`}>로그인</Button>
+        </Stack>
+      );
+    }
+    if (!bookingId) {
+      return (
+        <Alert status="error" className="mt-4">
+          예약 정보를 찾을 수 없습니다.
+        </Alert>
+      );
+    }
+    if (loadError) {
+      return (
+        <Alert status="error" className="mt-4">
+          {loadError}
+        </Alert>
+      );
+    }
+    if (!info) {
+      return (
+        <Text variant="sub" className="mt-4">
+          불러오는 중…
+        </Text>
+      );
+    }
+    const awaitingDeposit = info.status === "AWAITING_DEPOSIT";
+    return (
+      <>
+        <ScrollReveal>
+        <Card className="mt-4">
+          <Kv
+            items={[
+              { key: "예약번호", value: info.bookingNumber },
+              { key: "입금 계좌", value: `${info.bankName} ${info.accountNumber}` },
+              { key: "예금주", value: info.accountHolder },
+              { key: "입금액", value: `₩ ${info.amount.toLocaleString()}` },
+              ...(info.dueBy ? [{ key: "입금 기한", value: formatDueBy(info.dueBy) }] : []),
+            ]}
+          />
+        </Card>
+        </ScrollReveal>
+
+        <ScrollReveal delay={100}>
+        <Alert status="info" className="mt-4" icon={false}>
+          PG 미사용. 안내 계좌(관리자 설정 1개)로 입금 후 아래 버튼으로 확인 요청 → 상태 접수.
+          24시간 내 미입금 시 관리자가 강제취소할 수 있습니다.
+        </Alert>
+        </ScrollReveal>
+
+        {requestError && (
+          <Alert status="error" className="mt-4" icon={false}>
+            {requestError}
+          </Alert>
+        )}
+
+        <Button fullWidth className="mt-6" disabled={!awaitingDeposit || requesting} onClick={handleRequest}>
+          {awaitingDeposit ? "입금 확인 요청" : "입금 확인 요청 완료"}
+        </Button>
+      </>
+    );
+  })();
 
   return (
     <main>
@@ -54,35 +158,7 @@ function DepositContent() {
         <Title size="lg">입금 안내</Title>
       </Stack>
 
-      <ScrollReveal>
-      <Card className="mt-4">
-        <Kv
-          items={[
-            { key: "예약번호", value: label },
-            { key: "입금 계좌", value: `${depositAccount.bankName} ${depositAccount.accountNumber}` },
-            { key: "예금주", value: depositAccount.accountHolder },
-            { key: "입금액", value: `₩ ${totalAmount.toLocaleString()}` },
-          ]}
-        />
-      </Card>
-      </ScrollReveal>
-
-      <ScrollReveal delay={100}>
-      <Alert status="info" className="mt-4" icon={false}>
-        PG 미사용. 안내 계좌(관리자 설정 1개)로 입금 후 아래 버튼으로 확인 요청 → 상태 접수.
-        24시간 내 미입금 시 관리자가 강제취소할 수 있습니다.
-      </Alert>
-      </ScrollReveal>
-
-      <Button
-        fullWidth
-        className="mt-6"
-        onClick={() => {
-          setRequested(true);
-        }}
-      >
-        입금 확인 요청
-      </Button>
+      {body}
 
       <Toast
         open={requested}

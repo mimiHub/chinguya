@@ -1,17 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { RentalOptionKey } from "@chinguya/types";
-import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
+import { BOOKING_WINDOW, RENTAL_OPTION_LABEL, type RentalOptionKey } from "@chinguya/types";
+import {
+  createApiClient,
+  ApiError,
+  DEFAULT_API_BASE_URL,
+  type CustomerAvailability,
+  type CustomerProductDetail,
+} from "@chinguya/api-client";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Chip } from "@chinguya/ui/chip";
 import { Card } from "@chinguya/ui/card";
 import { Stack } from "@chinguya/ui/stack";
 import { Toggle } from "@chinguya/ui/toggle";
-import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
+import { Calendar, type CalendarDay, type CalendarRange, type DayStatus } from "@chinguya/ui/calendar";
 import { Stepper } from "@chinguya/ui/stepper";
 import { Kv } from "@chinguya/ui/kv";
 import { Button } from "@chinguya/ui/button";
@@ -21,200 +27,244 @@ import { Popup } from "@chinguya/ui/popup";
 import { Toast } from "@chinguya/ui/toast";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Banner } from "@chinguya/ui/banner";
-import { findRentalProductById, RENTAL_OPTION_ORDER } from "@/data/rentalData";
-import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 /**
- * S3-C1(상품 상세) + S1-C2(예약 · 캘린더) 통합 화면.
+ * 상품 상세 · 예약 `detail`(S3-C1/S1-C2) — 옵션 → 날짜 → 수량을 한 화면에서 고른다.
  *
- * 원래는 상품 상세에서 "예약하기"를 누르면 /rental/reserve로 넘어가 날짜를 고르는 2단계
- * 흐름이었는데, 비동기 데일리 로그(2026-09-02, "'상품 상세'와 '예약 · 캘린더' 통합")에서
- * "페이지 단계가 많다"는 판단으로 한 화면으로 합치기로 했다 — 옵션·타지역 반납·날짜·수량을
- * 한 화면에서 다 고르고 바로 장바구니/예약까지 간다. /rental/reserve 경로는 완전히 없애지
- * 않고 이 화면으로 리다이렉트만 해준다(남아있을 수 있는 링크 대비, apps/agency의
- * /rental → /book 리다이렉트와 같은 패턴).
+ * Core API 실연동: GET /v1/products/{id}(상품·옵션), GET /v1/products/{id}/availability(달력),
+ * POST /v1/cart/items(담기 = 15분 임시 홀드). 계약은 packages/api-spec/openapi/chinguya-slice1-openapi.yaml.
  *
- * 옵션을 바꾸면 날짜 선택 모드(단일 날짜 vs 2일 연속 range)도 함께 바뀌므로, 이미 골라둔
- * 날짜·안내 문구는 옵션이 바뀔 때마다 초기화한다(엇갈린 모드로 남아있으면 상태가 꼬인다).
+ * - 옵션 칩 = 이 자산의 '표출 ON' 상품. 옵션이나 타지역 반납을 바꾸면 날짜 선택 방식·가용이 달라져
+ *   고른 날짜를 초기화한다.
+ * - 달력은 서버가 준 선택 가능 여부만 쓴다 — 2일은 이틀, 2일 + 타지역 반납은 반납 다음 날까지 서버가
+ *   따져서 시작일 단위로 알려 준다.
+ * - 수량 상한 = 고른 시작일의 잔여. 그 사이 다른 고객이 먼저 잡았으면 담기가 409 → "방금 마감" 팝업.
+ * - 담기·바로 예약은 로그인이 필요하다. 비로그인이면 로그인한 뒤 이 화면으로 돌아온다.
  */
 
-/**
- * 데모용: 실제로는 GET /api/products/{id}/availability?month=YYYY-MM 응답으로 이 함수를 대체한다.
- * status는 "ok"(예약가능) | "zero"(마감) | "disabled"(과거 날짜) 중 하나 — 기획서 기준 캘린더 상태는
- * 예약가능/선택/마감·불가 세 가지뿐이라 짧은 옵션(2시간)도 예약이 닓야로 들어오면 해당 '일' 전체가
- * 마감 처리되어야 한다(시간 슬롯이 아니라 하루 단위로 재고를 점유하는 서비스 규칙).
- */
-function buildMonthDays(year: number, month: number): CalendarDay[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const firstWeekday = new Date(year, month - 1, 1).getDay();
-  const totalDays = new Date(year, month, 0).getDate();
-  const leading: CalendarDay[] = Array.from({ length: firstWeekday }, () => ({ date: "", status: "off" }));
-  const days: CalendarDay[] = Array.from({ length: totalDays }, (_, i) => {
-    const d = i + 1;
-    const thisDate = new Date(year, month - 1, d);
-    const status: CalendarDay["status"] = thisDate < today ? "disabled" : d % 7 === 3 ? "zero" : "ok";
-    return { date: d, status };
-  });
-  return [...leading, ...days];
-}
-
-// 예약 가능 기간: 오늘 ~ +3개월 (packages/types의 BOOKING_WINDOW.customer.maxMonths 규칙과 동일)
-const MAX_MONTHS_AHEAD = 3;
-
-// 데모/QA용: 이 날짜를 시작일로 선택하고 예약하면 "방금 마감되었습니다" 충돌 상황을 재현한다.
-// 실제 연동 시엔 이 상수 대신 서버 응답의 실제 충돌(409 등)로만 판단하도록 교체한다.
-const CONFLICT_DEMO_DAY = 20;
-
-// 데모용 가용 수량. 실제로는 선택한 날짜·옵션 기준 재고 응답(Inventory.customerAvailable)으로 교체한다.
-const AVAILABLE_QTY_DEMO = 5;
+const api = createApiClient();
 
 function toDateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+/** YYYY-MM-DD 에 n일 더하기(달·해 넘김 포함). */
+function addDays(key: string, n: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(y!, m! - 1, d! + n));
+  return date.toISOString().slice(0, 10);
+}
+
+/** 처음 고를 옵션 — 1일권이 있으면 1일권(목록의 대표 가격·사진 기준과 같다). */
+function initialOption(product: CustomerProductDetail): RentalOptionKey | null {
+  return product.options.find((o) => o.optionType === "DAY_1")?.optionType ?? product.options[0]?.optionType ?? null;
+}
+
 export default function RentalDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { session } = useCustomerAuth();
   const { addItem } = useCart();
-  const product = findRentalProductById(params.id);
 
-  // 아래에서 "이른 return"보다 먼저 훅을 다 불러야 해서(React 훅 규칙: 조건부 호출 금지),
-  // 상품이 없을 수도 있는 상태 그대로 훅들을 선언해둔다.
-  const [option, setOption] = useState<RentalOptionKey>("DAY_1");
+  const [product, setProduct] = useState<CustomerProductDetail | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [optionType, setOptionType] = useState<RentalOptionKey | null>(null);
   const [offSiteReturn, setOffSiteReturn] = useState(false);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
-  const [range, setRange] = useState<{ start: number | null; end: number | null }>({ start: null, end: null });
+  const [availability, setAvailability] = useState<CustomerAvailability | null>(null);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  // 담기 실패(마감)·성공 뒤 달력을 다시 읽기 위한 신호
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
+
+  const [range, setRange] = useState<CalendarRange>({ start: null, end: null });
   const [qty, setQty] = useState(1);
-  const [conflictOpen, setConflictOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [addedToast, setAddedToast] = useState(false);
-  // "2일" 옵션에서 연속 이틀 예약이 불가능한 시작일을 골랐을 때 보여줄 안내 문구
-  const [multiDayNotice, setMultiDayNotice] = useState<string | null>(null);
 
-  const days = useMemo(() => buildMonthDays(viewYear, viewMonth), [viewYear, viewMonth]);
-  const hasBookableDay = days.some((d) => d.status === "ok");
-  const isDaySelectable = (status: CalendarDay["status"]) => !["off", "disabled", "zero", "holiday"].includes(status ?? "ok");
+  useEffect(() => {
+    let active = true;
+    api.customerProducts
+      .detail(params.id)
+      .then((detail) => {
+        if (!active) return;
+        setProduct(detail);
+        setOptionType(initialOption(detail));
+      })
+      .catch(() => {
+        if (active) setNotFound(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [params.id]);
 
-  // 관리자가 고객앱 표출을 꺼둔(customerVisible: false) 상품은 목록에 없더라도 주소를 직접
-  // 입력해 들어오는 경우까지 막기 위해 여기서도 확인한다.
-  if (!product || !product.customerVisible) {
+  const option = product?.options.find((o) => o.optionType === optionType) ?? null;
+  const isMultiDay = option?.daysRequired === 2;
+  const crossRegion = Boolean(option?.crossRegionReturnAvailable && offSiteReturn);
+
+  useEffect(() => {
+    if (!product || !optionType) return;
+    // 옵션·달을 빠르게 바꾸면 늦게 온 이전 응답이 달력을 덮을 수 있어 버린다.
+    let active = true;
+    setAvailability(null);
+    setAvailabilityError(null);
+    api.customerProducts
+      .availability(product.productId, {
+        optionType,
+        from: toDateKey(viewYear, viewMonth, 1),
+        to: toDateKey(viewYear, viewMonth, daysInMonth(viewYear, viewMonth)),
+        crossRegionReturn: crossRegion,
+      })
+      .then((res) => {
+        if (active) setAvailability(res);
+      })
+      .catch((err: unknown) => {
+        if (active) setAvailabilityError(err instanceof ApiError ? err.message : "예약 가능 날짜를 불러오지 못했습니다.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [product, optionType, crossRegion, viewYear, viewMonth, availabilityVersion]);
+
+  const dateInfo = useMemo(
+    () => new Map((availability?.dates ?? []).map((d) => [d.date, d])),
+    [availability],
+  );
+
+  // 서버가 준 날짜만 고를 수 있다 — 없는 날(과거·예약 가능 기간 밖)은 불가, selectable=false는 마감.
+  const days = useMemo<CalendarDay[]>(() => {
+    const leading: CalendarDay[] = Array.from({ length: new Date(viewYear, viewMonth - 1, 1).getDay() }, () => ({
+      date: "",
+      status: "off",
+    }));
+    const cells: CalendarDay[] = Array.from({ length: daysInMonth(viewYear, viewMonth) }, (_, i) => {
+      const info = dateInfo.get(toDateKey(viewYear, viewMonth, i + 1));
+      const status: DayStatus = !info ? "disabled" : info.selectable ? "ok" : "zero";
+      return { date: i + 1, status };
+    });
+    return [...leading, ...cells];
+  }, [dateInfo, viewYear, viewMonth]);
+
+  if (notFound) {
     return <ComingSoon label="존재하지 않는 상품입니다" />;
   }
+  if (!product || !option) {
+    return (
+      <main className="mx-auto max-w-2xl p-6">
+        <Text variant="sub">불러오는 중…</Text>
+      </main>
+    );
+  }
 
-  const isMultiDay = option === "DAY_2";
+  const startKey = range.start ? toDateKey(viewYear, viewMonth, range.start) : null;
+  const endKey = startKey ? addDays(startKey, option.daysRequired - 1) : null;
+  const maxQty = startKey ? (dateInfo.get(startKey)?.remaining ?? 0) : 0;
+  const hasBookableDay = (availability?.dates ?? []).some((d) => d.selectable);
+
+  const monthIndex = viewYear * 12 + viewMonth;
+  const currentMonthIndex = now.getFullYear() * 12 + now.getMonth() + 1;
+  const canPrevMonth = monthIndex > currentMonthIndex;
+  const canNextMonth = monthIndex < currentMonthIndex + BOOKING_WINDOW.customer.maxMonths;
+
+  const extraFeePerUnit = crossRegion ? (option.crossRegionReturnExtraFee ?? 0) : 0;
+  const total = (option.price + extraFeePerUnit) * qty;
+  const canSubmit = Boolean(startKey && maxQty >= 1 && !submitting);
+
+  const imageUrl = option.imageUrls?.[0] ?? product.imageUrls?.[0];
+  const subtitle = option.description || product.description || "";
+
+  const resetSelection = () => {
+    setRange({ start: null, end: null });
+    setQty(1);
+    setSubmitError(null);
+  };
 
   const handleOptionChange = (key: RentalOptionKey) => {
-    setOption(key);
-    // 타지역 반납은 2일 대여에서만 선택 가능한 옵션 — 다른 옵션으로 바꾸면 선택 해제
-    if (key !== "DAY_2") setOffSiteReturn(false);
-    // 옵션이 바뀌면 캘린더 선택 모드(단일 ↔ range)도 바뀌므로, 이미 고른 날짜는 초기화한다.
-    setRange({ start: null, end: null });
-    setMultiDayNotice(null);
+    setOptionType(key);
+    // 타지역 반납은 그 옵션이 허용할 때만 — 다른 옵션으로 바꾸면 해제한다.
+    const next = product.options.find((o) => o.optionType === key);
+    if (!next?.crossRegionReturnAvailable) setOffSiteReturn(false);
+    resetSelection();
+  };
+
+  const handleOffSiteReturnChange = (on: boolean) => {
+    setOffSiteReturn(on);
+    resetSelection();
   };
 
   /**
-   * Calendar 컴포넌트의 range 모드는 "며칠이든 자유롭게" 기간을 고를 수 있는 범용 기능이라,
-   * 시작일을 클릭한 뒤 아무 날짜나 다시 클릭하면 그게 끝날짜가 돼버린다(예: 25일→27일 선택 가능).
-   * 하지만 "2일" 옵션은 말 그대로 정확히 이틀이어야 하므로, 시작일을 고르는 즉시 끝날짜를
-   * 다음날로 자동 고정하고, 다음날이 마감·불가 상태면 그 날짜는 시작일로 선택할 수 없게 막는다.
+   * "2일"은 정확히 이틀이라, 시작일을 고르는 즉시 끝날짜를 다음날로 고정한다. 시작일로 고를 수
+   * 있는지(다음날 잔여 포함)는 서버가 이미 따져서 달력에 표시했다. 월말 시작이면 다음날은 다음 달이라
+   * 달력에는 시작일만 칠해진다.
    */
-  const handleRangeSelect = (next: { start: number | null; end: number | null }) => {
+  const handleRangeSelect = (next: CalendarRange) => {
     if (!next.start) {
-      setRange({ start: null, end: null });
-      setMultiDayNotice(null);
+      resetSelection();
       return;
     }
+    setRange({ start: next.start, end: Math.min(next.start + 1, daysInMonth(viewYear, viewMonth)) });
+    setQty(1);
+    setSubmitError(null);
+  };
 
-    const endDate = next.start + 1;
-    const endDay = days.find((d) => d.date === endDate);
+  const moveMonth = (delta: number) => {
+    const index = monthIndex - 1 + delta;
+    setViewYear(Math.floor(index / 12));
+    setViewMonth((index % 12) + 1);
+    resetSelection();
+  };
 
-    if (!endDay || !isDaySelectable(endDay.status)) {
-      setRange({ start: null, end: null });
-      setMultiDayNotice("다음날까지 연속으로 예약 가능한 날짜를 시작일로 선택해 주세요.");
+  const loginAndReturn = () => {
+    router.push(`/login?redirect=${encodeURIComponent(`/rental/${params.id}`)}`);
+  };
+
+  const handleAddToCart = async (navigateToCart: boolean) => {
+    if (!startKey || !canSubmit) return;
+    if (!session) {
+      loginAndReturn();
       return;
     }
-
-    setMultiDayNotice(null);
-    setRange({ start: next.start, end: endDate });
-  };
-
-  const monthOffset = (viewYear - now.getFullYear()) * 12 + (viewMonth - (now.getMonth() + 1));
-  const canPrevMonth = monthOffset > 0;
-  const canNextMonth = monthOffset < MAX_MONTHS_AHEAD;
-
-  const goPrevMonth = () => {
-    if (!canPrevMonth) return;
-    setRange({ start: null, end: null });
-    setMultiDayNotice(null);
-    if (viewMonth === 1) {
-      setViewYear((y) => y - 1);
-      setViewMonth(12);
-    } else {
-      setViewMonth((m) => m - 1);
-    }
-  };
-
-  const goNextMonth = () => {
-    if (!canNextMonth) return;
-    setRange({ start: null, end: null });
-    setMultiDayNotice(null);
-    if (viewMonth === 12) {
-      setViewYear((y) => y + 1);
-      setViewMonth(1);
-    } else {
-      setViewMonth((m) => m + 1);
-    }
-  };
-
-  // 설명(description)이 있으면 그걸 캡션으로 쓰고, 없으면 상품명(name)에서 타이틀을 뺀
-  // 나머지를 캡션으로 대신 쓴다(예: "전기자전거 대여(당일 오후 4시 반납)" → "대여(당일 오후 4시 반납)").
-  const subtitle =
-    product.description ??
-    (product.name.startsWith(product.title) ? product.name.slice(product.title.length).trim() : product.name);
-
-  const unitPrice = product.priceByOption[option].customerPrice;
-  const offSiteReturnFee = isMultiDay && offSiteReturn ? OFF_SITE_RETURN_FEE_KRW : 0;
-  const rentalDays = range.start && range.end ? range.end - range.start + 1 : 1;
-  const total = unitPrice * qty * rentalDays + offSiteReturnFee;
-  const canSubmit = Boolean(range.start && range.end);
-
-  const buildCartLine = () => {
-    if (!range.start || !range.end) return null;
-    return {
-      productId: product.id,
-      option,
-      useDateStart: toDateKey(viewYear, viewMonth, range.start),
-      useDateEnd: toDateKey(viewYear, viewMonth, range.end),
-      qty,
-      offSiteReturn,
-    };
-  };
-
-  const handleAddToCart = (navigateToCart: boolean) => {
-    if (!canSubmit) return;
-
-    // 캘린더에서 이미 막고 있지만, 갱신 지연 등으로 화면이 최신 상태가 아닐 수 있어
-    // 담는 시점에 한 번 더 확인한다(데모: 고정된 날짜를 선택하면 항상 충돌로 재현).
-    if (range.start === CONFLICT_DEMO_DAY) {
-      setConflictOpen(true);
-      setRange({ start: null, end: null });
-      return;
-    }
-
-    const line = buildCartLine();
-    if (!line) return;
-    addItem(line);
-
-    if (navigateToCart) {
-      router.push("/cart");
-    } else {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await addItem({
+        productId: product.productId,
+        optionType: option.optionType,
+        startDate: startKey,
+        quantity: qty,
+        crossRegionReturn: crossRegion,
+      });
+      if (navigateToCart) {
+        router.push("/cart");
+        return;
+      }
       setAddedToast(true);
+      resetSelection();
+      setAvailabilityVersion((v) => v + 1);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        loginAndReturn();
+      } else if (err instanceof ApiError && err.code === "OUT_OF_STOCK") {
+        setConflictMessage(err.message);
+        resetSelection();
+        setAvailabilityVersion((v) => v + 1);
+      } else {
+        setSubmitError(err instanceof ApiError ? err.message : "장바구니에 담지 못했습니다.");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -231,16 +281,20 @@ export default function RentalDetailPage() {
           </NextLink>
           <Stack>
             <div className="w-40 rounded-lg bg-gray-50 p-2 h-20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.image} alt={product.title} className="h-full w-full object-contain" />
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${DEFAULT_API_BASE_URL}${imageUrl}`} alt={product.name} className="h-full w-full object-contain" />
+              ) : (
+                <div className="h-full w-full rounded-md bg-gray-100" aria-hidden />
+              )}
             </div>
             <Stack direction="column" gap="sm">
-              <Title size="lg">{product.title}</Title>
-              <Text variant="sub">{subtitle || `${product.title}와 함께하는 여유로운 시간`}</Text>
+              <Title size="lg">{product.name}</Title>
+              <Text variant="sub">{subtitle || `${product.name}와 함께하는 여유로운 시간`}</Text>
             </Stack>
           </Stack>
           <div className="border-t border-line" />
-        </Stack>        
+        </Stack>
         </ScrollReveal>
 
         <ScrollReveal delay={100}>
@@ -249,23 +303,23 @@ export default function RentalDetailPage() {
             시간 옵션
           </Title>
           <Chip.List>
-            {RENTAL_OPTION_ORDER.map((key) => (
-              <Chip key={key} on={key === option} onClick={() => handleOptionChange(key)}>
-                {RENTAL_OPTION_LABEL[key]}
+            {product.options.map((o) => (
+              <Chip key={o.optionType} on={o.optionType === option.optionType} onClick={() => handleOptionChange(o.optionType)}>
+                {RENTAL_OPTION_LABEL[o.optionType]} · {o.price.toLocaleString()}원
               </Chip>
             ))}
           </Chip.List>
 
-          {isMultiDay && (
+          {option.crossRegionReturnAvailable && (
             <Card padding="sm">
               <Stack justify="between" align="center">
                 <Stack direction="column" gap="xs">
                   <Text weight="bold">타지역 반납</Text>
                   <Text variant="sub">
-                    다른 지점에서 반납할 수 있어요 (+ {OFF_SITE_RETURN_FEE_KRW.toLocaleString()}원)
+                    다른 지점에서 반납할 수 있어요 (대당 + {(option.crossRegionReturnExtraFee ?? 0).toLocaleString()}원)
                   </Text>
                 </Stack>
-                <Toggle on={offSiteReturn} onChange={setOffSiteReturn} />
+                <Toggle on={offSiteReturn} onChange={handleOffSiteReturnChange} />
               </Stack>
             </Card>
           )}
@@ -285,35 +339,43 @@ export default function RentalDetailPage() {
             days={days}
             mode={isMultiDay ? "range" : "single"}
             selected={isMultiDay ? undefined : (range.start ?? undefined)}
-            onSelect={isMultiDay ? undefined : (date) => setRange({ start: date, end: date })}
+            onSelect={
+              isMultiDay
+                ? undefined
+                : (date) => {
+                    setRange({ start: date, end: date });
+                    setQty(1);
+                    setSubmitError(null);
+                  }
+            }
             range={isMultiDay ? range : undefined}
             onRangeChange={isMultiDay ? handleRangeSelect : undefined}
-            onPrevMonth={goPrevMonth}
-            onNextMonth={goNextMonth}
+            onPrevMonth={() => canPrevMonth && moveMonth(-1)}
+            onNextMonth={() => canNextMonth && moveMonth(1)}
             canPrevMonth={canPrevMonth}
             canNextMonth={canNextMonth}
           />
           </Card>
 
-          {!hasBookableDay && (
-            <FormMessage type="helper">이 달은 예약 가능한 날짜가 없습니다. 다른 달을 확인해 주세요.</FormMessage>
-          )}
-
-          {multiDayNotice && (
+          {availabilityError && (
             <Alert status="error" icon={false}>
-              {multiDayNotice}
+              {availabilityError}
             </Alert>
           )}
 
-          {range.start &&
-            range.end &&
+          {availability && !hasBookableDay && (
+            <FormMessage type="helper">이 달은 예약 가능한 날짜가 없습니다. 다른 달을 확인해 주세요.</FormMessage>
+          )}
+
+          {startKey &&
+            endKey &&
             (isMultiDay ? (
               <Text variant="sub">
-                {viewMonth}월 {range.start}일부터 {range.end}일까지 · 총 {rentalDays}일 대여
+                {startKey}부터 {endKey}까지 · 총 2일 대여{crossRegion ? " · 타지역 반납" : ""}
               </Text>
             ) : (
               <Text variant="sub">
-                {viewMonth}월 {range.start}일 · {RENTAL_OPTION_LABEL[option]} 대여
+                {startKey} · {RENTAL_OPTION_LABEL[option.optionType]} 대여
               </Text>
             ))}
         </Stack>
@@ -325,13 +387,13 @@ export default function RentalDetailPage() {
             <Text variant="sub" as="span">
               수량
             </Text>
-            <Stepper value={qty} onChange={setQty} min={1} max={AVAILABLE_QTY_DEMO} />
+            <Stepper value={qty} onChange={setQty} min={1} max={startKey ? Math.max(maxQty, 1) : 1} />
           </Stack>
           <div className="border-t border-line" />
-          {offSiteReturn && isMultiDay && (
+          {crossRegion && (
             <Stack justify="end">
               <Text variant="sub" tone="accent">
-                타지역 반납 포함 (+ {offSiteReturnFee.toLocaleString()}원)
+                타지역 반납 포함 (+ {(extraFeePerUnit * qty).toLocaleString()}원)
               </Text>
             </Stack>
           )}
@@ -349,6 +411,12 @@ export default function RentalDetailPage() {
             ]}
           />
 
+          {submitError && (
+            <Alert status="error" icon={false}>
+              {submitError}
+            </Alert>
+          )}
+
           <Stack gap="sm">
             <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
               장바구니 담기
@@ -357,21 +425,21 @@ export default function RentalDetailPage() {
               바로 예약
             </Button>
           </Stack>
-          {!canSubmit && (
+          {!startKey && (
             <FormMessage type="helper">
-              {isMultiDay ? "대여 시작일과 종료일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
+              {isMultiDay ? "대여 시작일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
             </FormMessage>
           )}
         </Stack>
         </ScrollReveal>
       </Stack>
 
-      <Popup open={conflictOpen} onClose={() => setConflictOpen(false)} title="앗, 방금 마감되었습니다">
+      <Popup open={Boolean(conflictMessage)} onClose={() => setConflictMessage(null)} title="앗, 방금 마감되었습니다">
         <Stack direction="column" gap="md">
           <Text variant="sub">
-            다른 고객이 방금 먼저 예약해서 선택하신 날짜가 마감됐어요. 다른 날짜로 다시 선택해 주세요.
+            {conflictMessage} 다른 고객이 먼저 예약했을 수 있어요. 날짜나 수량을 다시 선택해 주세요.
           </Text>
-          <Button fullWidth onClick={() => setConflictOpen(false)}>
+          <Button fullWidth onClick={() => setConflictMessage(null)}>
             확인
           </Button>
         </Stack>

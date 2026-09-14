@@ -1,49 +1,67 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { AssetCategory } from "@chinguya/types";
-import { getCustomerExposedQty } from "@chinguya/catalog-data";
+import {
+  createApiClient,
+  ApiError,
+  DEFAULT_API_BASE_URL,
+  type CustomerProductSummary,
+} from "@chinguya/api-client";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { EmptyState } from "@chinguya/ui/empty-state";
 import { Chip } from "@chinguya/ui/chip";
 import { NoticeBox } from "@chinguya/ui/notice-box";
 import { Banner } from "@chinguya/ui/banner";
-import { rentalProducts, rentalNotice } from "@/data/rentalData";
-import { RENTAL_OPTION_LABEL } from "@chinguya/types";
+import { Alert } from "@chinguya/ui/alert";
+import { rentalNotice } from "@/data/rentalData";
 import { ScrollReveal } from "@/components/ScrollReveal";
+
+/**
+ * 상품 조회 `list`(S1-C1).
+ *
+ * Core API(GET /v1/products)에 실연동돼 있다 — 계약은 packages/api-spec/openapi/chinguya-slice1-openapi.yaml.
+ * 카드 1개 = 연결 자산 1개이고, 관리자가 '표출 ON'한 상품이 1개 이상인 자산만 서버가 내려준다.
+ * 요약가는 표출 중인 상품의 최저 고객가다.
+ */
+
+const api = createApiClient();
+
+/** 카드 수 = 자산 수라 계약상 최대 크기(100) 한 페이지로 충분하다. */
+const PAGE_SIZE = 100;
 
 // 목록 카드에 쓸 배경톤 3종을 순서대로 번갈아 적용한다(theme.css의 card-primary/secondary/tertiary).
 const CARD_BG = ["bg-card-primary", "bg-card-secondary", "bg-card-tertiary"];
 
-/** "1일 15,000원부터"처럼 목록에서 대표로 보여줄 기준 가격(1일 옵션 고정) */
-function oneDayPrice(product: (typeof rentalProducts)[number]) {
-  return product.priceByOption["DAY_1"].customerPrice;
-}
-
-// 와이어프레임(S1/S3-C1)에는 "전체" 탭이 없다 — 자전거/낚싯대 두 탭만 있고, 각 탭에는
-// 관리자가 customerVisible을 켜둔 상품만 나열된다. 기본 선택 탭은 첫 번째 카테고리(자전거),
-// 단 홈 Rental 카드처럼 ?category=FISHING_ROD 로 들어오면 그 탭이 먼저 선택된 채로 열린다.
+// 와이어프레임(S1-C1)에는 "전체" 탭이 없다 — 자전거/낚싯대 두 탭만 있다. 기본 선택 탭은
+// 첫 번째 카테고리(자전거), 단 홈 Rental 카드처럼 ?category=FISHING_ROD 로 들어오면 그 탭이
+// 먼저 선택된 채로 열린다.
 function RentalListContent() {
   const searchParams = useSearchParams();
   const initialCategory: AssetCategory = searchParams.get("category") === "FISHING_ROD" ? "FISHING_ROD" : "BICYCLE";
   const [filter, setFilter] = useState<AssetCategory>(initialCategory);
+  const [products, setProducts] = useState<CustomerProductSummary[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  /**
-   * 목록은 "상품 카탈로그 하나당 카드 1개"가 아니다 — 실제 쇼핑몰(쿠팡 등) 검색 결과처럼,
-   * 대여 가능한 물리적 단위 수만큼 카드가 반복해서 나온다. 몇 개를 보여줄지는
-   * @chinguya/catalog-data(관리자가 설정하는 "노출 수량", 세 앱이 공유하는 값)에서 가져온다.
-   * 카드가 여러 장이어도 전부 같은 상품이라 눌렀을 때 이동하는 상세 페이지는 동일하다.
-   */
-  const listings = useMemo(() => {
-    return rentalProducts
-      .filter((p) => p.customerVisible && p.category === filter)
-      .flatMap((product) => {
-        const qty = getCustomerExposedQty(product.id);
-        return Array.from({ length: qty }, (_, i) => ({ product, listingKey: `${product.id}-${i}` }));
+  useEffect(() => {
+    // 탭을 빠르게 바꾸면 늦게 온 이전 탭 응답이 목록을 덮을 수 있어 버린다.
+    let active = true;
+    setProducts(null);
+    setLoadError(null);
+    api.customerProducts
+      .list(filter, 0, PAGE_SIZE)
+      .then((page) => {
+        if (active) setProducts(page.content);
+      })
+      .catch((err: unknown) => {
+        if (active) setLoadError(err instanceof ApiError ? err.message : "상품을 불러오지 못했습니다.");
       });
+    return () => {
+      active = false;
+    };
   }, [filter]);
 
   return (
@@ -65,6 +83,18 @@ function RentalListContent() {
         </Chip>
       </Chip.List>
 
+      {loadError && (
+        <Alert status="error" className="mt-4">
+          {loadError}
+        </Alert>
+      )}
+
+      {products === null && !loadError && (
+        <Text variant="sub" className="mt-4">
+          불러오는 중…
+        </Text>
+      )}
+
       {/*
         리스트가 길어지면 페이지 전체가 계속 늘어나는 대신, 카드 목록 영역만 정해진 높이
         안에서 스크롤되게 한다(탭·이용 안내는 화면에 고정으로 보임). 모바일은 카드 3.5장
@@ -73,22 +103,26 @@ function RentalListContent() {
       */}
       <div className="mt-4 max-h-[300px] overflow-y-auto pr-1 md:max-h-[600px]">
         <div className="flex flex-col gap-3">
-          {listings.map(({ product, listingKey }, i) => (
-            <ScrollReveal key={listingKey} delay={i * 60}>
-            <NextLink href={`/rental/${product.id}`} className="block">
+          {(products ?? []).map((product, i) => (
+            <ScrollReveal key={product.productId} delay={i * 60}>
+            <NextLink href={`/rental/${product.productId}`} className="block">
               <div className={`flex items-center gap-4 rounded-lg border border-gray-0 p-3 ${CARD_BG[i % CARD_BG.length]}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={product.image}
-                  alt={product.title}
-                  className="h-14 w-14 shrink-0 rounded-md object-contain"
-                />
+                {product.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`${DEFAULT_API_BASE_URL}${product.thumbnailUrl}`}
+                    alt={product.name}
+                    className="h-14 w-14 shrink-0 rounded-md object-contain"
+                  />
+                ) : (
+                  <div className="h-14 w-14 shrink-0 rounded-md bg-gray-100" aria-hidden />
+                )}
                 <div className="min-w-0">
                   <Text  className="truncate">
                     {product.name}
                   </Text>
                   <Text variant="sub" className="mt-1">
-                    {RENTAL_OPTION_LABEL["DAY_1"]} {oneDayPrice(product).toLocaleString()}원부터
+                    {product.priceFrom.toLocaleString()}원부터
                   </Text>
                 </div>
               </div>
@@ -98,7 +132,9 @@ function RentalListContent() {
         </div>
       </div>
 
-      {listings.length === 0 && <EmptyState className="mt-6">해당 분류의 상품이 없습니다.</EmptyState>}
+      {products !== null && products.length === 0 && (
+        <EmptyState className="mt-6">해당 분류의 상품이 없습니다.</EmptyState>
+      )}
 
       <NoticeBox
         title={

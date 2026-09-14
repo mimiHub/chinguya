@@ -7,12 +7,12 @@ import type {
   AdminProductUpdate,
   Asset,
   AssetCategory,
+  RentalOptionKey,
   AssetDeletionMode,
   Agency,
   AgencyCreateResult,
   AgencyInvitationResult,
   DepositAccount,
-  RentalOptionKey,
 } from "@chinguya/types";
 
 /**
@@ -244,6 +244,129 @@ export interface AgencyReservationResult {
   createdAt: string;
 }
 
+/**
+ * 고객 상품 조회(S1-C1) 카드 1장. 계약 원본은 api-spec/openapi/chinguya-slice1-openapi.yaml 의
+ * ProductSummary.
+ *
+ * 카드 1개 = 연결 자산 1개라 productId는 **자산 id**다(관리자 상품 id와 다르다).
+ */
+export interface CustomerProductSummary {
+  productId: string;
+  /** 자산 명칭 */
+  name: string;
+  category: AssetCategory;
+  /** `/content/images/…`(프록시 경유로 읽는다). 표출 중인 상품에 이미지가 없으면 비어 있다. */
+  thumbnailUrl?: string | null;
+  /** 표출 중인 상품의 최저 고객가(원) */
+  priceFrom: number;
+}
+
+export interface CustomerProductListPage {
+  content: CustomerProductSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
+/** 상품 상세(S3-C1)의 옵션 칩 1개 = 그 자산의 '표출 ON' 상품. 계약: ProductDetail.options[]. */
+export interface CustomerRentalOption {
+  optionType: RentalOptionKey;
+  /** 고객가(원) */
+  price: number;
+  /** 선택 단위 일수 — 2일 = 2, 그 외 = 1 */
+  daysRequired: 1 | 2;
+  crossRegionReturnAvailable?: boolean;
+  /** 타지역 반납 추가요금(대당, 원). 고를 수 없는 옵션이면 비어 있다. */
+  crossRegionReturnExtraFee?: number | null;
+  description?: string | null;
+  /** `/content/images/…`. 비어 있으면 상품 레벨 imageUrls를 쓴다. */
+  imageUrls?: string[];
+}
+
+/** 상품 상세(S3-C1). productId는 목록과 같은 자산 id. */
+export interface CustomerProductDetail {
+  productId: string;
+  name: string;
+  category: AssetCategory;
+  description?: string | null;
+  imageUrls?: string[];
+  options: CustomerRentalOption[];
+}
+
+/** 가용성(S1-C2 캘린더). date는 선택 시작일, remaining은 그날 시작하면 잡을 수 있는 수량 상한. */
+export interface CustomerAvailability {
+  productId: string;
+  optionType: RentalOptionKey;
+  daysRequired: 1 | 2;
+  crossRegionReturn?: boolean;
+  /** 오늘+1(JST) */
+  bookableFrom: string;
+  /** 오늘+3개월(JST) */
+  bookableTo: string;
+  dates: { date: string; selectable: boolean; remaining: number }[];
+}
+
+/** 장바구니 담기(S1-C2) 요청 — 담는 순간 15분 임시 홀드가 걸린다. */
+export interface CustomerCartItemInput {
+  productId: string;
+  optionType: RentalOptionKey;
+  /** YYYY-MM-DD. 2일 옵션이면 다음 날까지 자동으로 잡힌다. */
+  startDate: string;
+  quantity: number;
+  crossRegionReturn?: boolean;
+}
+
+/** 장바구니 항목(S1-C3) = 임시 홀드 1건. 금액은 담은 시점 스냅샷. */
+export interface CustomerCartItem {
+  cartItemId: string;
+  productId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  /** 실제 이용일(2일 옵션이면 이틀) */
+  dates: string[];
+  quantity: number;
+  crossRegionReturn?: boolean;
+  unitPrice?: number;
+  /** 타지역 반납 추가요금 합(대당 × 수량) */
+  extraFee?: number;
+  /** 고객가 × 수량 + extraFee */
+  lineTotal: number;
+  holdExpiresAt: string;
+}
+
+export interface CustomerCart {
+  items: CustomerCartItem[];
+  totalAmount: number;
+  earliestHoldExpiresAt?: string | null;
+}
+
+/** 고객 예약 상태(계약 BookingStatus). 생성 = 입금대기 → 입금 확인 요청 = 접수 → 관리자 확인 = 완료. */
+export type CustomerBookingStatus = "AWAITING_DEPOSIT" | "RECEIVED" | "COMPLETED" | "CANCEL_REQUESTED" | "CANCELLED";
+
+/** 입금 안내(S1-C4). 입금액 = 유효 항목 합계, 기한 = 예약 생성 + 24시간. */
+export interface CustomerDepositInfo {
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  amount: number;
+  dueBy?: string | null;
+}
+
+/** 예약(S1-C3 확정 결과). 항목·취소 필드는 예약 목록·바우처(S1-C5~C7) 연동 때 넓힌다. */
+export interface CustomerBooking {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  totalAmount: number;
+  activeTotalAmount: number;
+  passportName: string;
+  /** 입금 계좌가 아직 등록되지 않았으면 비어 있다. */
+  depositInfo?: CustomerDepositInfo | null;
+  createdAt: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -288,6 +411,51 @@ export function createApiClient(opts: ApiClientOptions = {}) {
 
   return {
     request,
+    /**
+     * 고객 상품 조회(S1-C1). 고객 앱 프록시가 `/v1` 프리픽스를 붙인다 — 계약은
+     * api-spec/openapi/chinguya-slice1-openapi.yaml 의 GET /products. 비로그인도 부를 수 있다.
+     */
+    customerProducts: {
+      list: (category: AssetCategory, page = 0, size = 20) =>
+        request<CustomerProductListPage>(`/products?category=${category}&page=${page}&size=${size}`),
+      /** 상품 상세(S3-C1). 표출 ON 상품이 없는 자산이면 404(PRODUCT_NOT_FOUND). */
+      detail: (productId: string) => request<CustomerProductDetail>(`/products/${productId}`),
+      /** 가용성(S1-C2). from·to는 YYYY-MM-DD — 서버가 예약 가능 기간으로 잘라 준다. */
+      availability: (
+        productId: string,
+        params: { optionType: RentalOptionKey; from: string; to: string; crossRegionReturn?: boolean },
+      ) => {
+        const query = new URLSearchParams({
+          optionType: params.optionType,
+          from: params.from,
+          to: params.to,
+          crossRegionReturn: String(Boolean(params.crossRegionReturn)),
+        });
+        return request<CustomerAvailability>(`/products/${productId}/availability?${query}`);
+      },
+    },
+    /**
+     * 장바구니 = 임시 홀드(S1-C2 담기 / S1-C3). 고객 로그인이 필요하다(비로그인 401).
+     * 잔여가 모자라면 409(OUT_OF_STOCK), 예약 가능 기간 밖이면 400(DATE_NOT_BOOKABLE).
+     */
+    customerCart: {
+      get: () => request<CustomerCart>("/cart"),
+      addItem: (body: CustomerCartItemInput) =>
+        request<CustomerCartItem>("/cart/items", { method: "POST", body: JSON.stringify(body) }),
+      removeItem: (cartItemId: string) => request<void>(`/cart/items/${cartItemId}`, { method: "DELETE" }),
+    },
+    /**
+     * 예약 확정·입금 안내(S1-C3/C4). 고객 로그인이 필요하다(비로그인 401).
+     * 홀드가 만료됐으면 확정이 409(HOLD_EXPIRED), 입금대기가 아니면 입금 확인 요청이 409(INVALID_BOOKING_STATUS).
+     */
+    customerBookings: {
+      /** cartItemIds를 생략하면 장바구니 전체. passportName은 저장값이 있으면 생략할 수 있다. */
+      create: (body: { passportName?: string; cartItemIds?: string[] }) =>
+        request<CustomerBooking>("/bookings", { method: "POST", body: JSON.stringify(body) }),
+      depositInfo: (bookingId: string) => request<CustomerDepositInfo>(`/bookings/${bookingId}/deposit-info`),
+      requestDeposit: (bookingId: string) =>
+        request<CustomerBooking>(`/bookings/${bookingId}/deposit-request`, { method: "POST" }),
+    },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
       create: (body: Partial<CustomerReservation>) =>

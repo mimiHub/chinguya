@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CUSTOMER_SOCIAL_PROVIDER_LABEL, OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
+import { CUSTOMER_SOCIAL_PROVIDER_LABEL } from "@chinguya/types";
 import { Banner } from "@chinguya/ui/banner";
 import { Card } from "@chinguya/ui/card";
 import { Title } from "@chinguya/ui/title";
@@ -17,7 +17,7 @@ import { Alert } from "@chinguya/ui/alert";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { Toast } from "@chinguya/ui/toast";
 import { StatusBadge } from "@chinguya/ui/badge";
-import { useCart, type CartLine } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
 import { findRentalProductById } from "@/data/rentalData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
@@ -27,20 +27,6 @@ import { ScrollReveal } from "@/components/ScrollReveal";
 // 미리보기는 최근 1건만 보여준다(2건 이상 나열하지 않음) — 더 보고 싶으면 아래
 // "전체보기" 버튼으로 실제 목록/장바구니 화면으로 유도한다.
 const PREVIEW_COUNT = 1;
-
-function rentalDaysOf(line: CartLine): number {
-  const start = new Date(line.useDateStart);
-  const end = new Date(line.useDateEnd);
-  return Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-}
-
-function lineAmount(line: CartLine): number {
-  const product = findRentalProductById(line.productId);
-  if (!product) return 0;
-  const unitPrice = product.priceByOption[line.option].customerPrice;
-  const offSiteFee = line.offSiteReturn ? OFF_SITE_RETURN_FEE_KRW : 0;
-  return unitPrice * line.qty * rentalDaysOf(line) + offSiteFee;
-}
 
 /**
  * 하단 탭 "내정보" — 회원정보 수정 화면(S0-C3)에 이 앱 다른 화면(예약 목록·장바구니)의
@@ -222,26 +208,22 @@ export default function ProfilePage() {
               {cartPreview.length === 0 ? (
                 <Text tone="secondary" className="py-4 text-center">장바구니가 비어 있습니다.</Text>
               ) : (
-                cartPreview.map((line) => {
-                  const product = findRentalProductById(line.productId);
-                  if (!product) return null;
-                  return (
-                    <Stack
-                      key={line.cartLineId}
-                      direction="column"
-                      gap="xs"
-                      className="border-b border-line py-3 last:border-b-0"
-                    >
-                      <Text weight="medium">{product.name}</Text>
-                      <Text variant="sub">
-                        {RENTAL_OPTION_LABEL[line.option]} · {line.qty}{product.category === "BICYCLE" ? "대" : "개"}
-                      </Text>
-                      <Text weight="bold" className="text-right">
-                        ₩ {lineAmount(line).toLocaleString()}
-                      </Text>
-                    </Stack>
-                  );
-                })
+                cartPreview.map((item) => (
+                  <Stack
+                    key={item.cartItemId}
+                    direction="column"
+                    gap="xs"
+                    className="border-b border-line py-3 last:border-b-0"
+                  >
+                    <Text weight="medium">{item.productName}</Text>
+                    <Text variant="sub">
+                      {RENTAL_OPTION_LABEL[item.optionType]} · ×{item.quantity}
+                    </Text>
+                    <Text weight="bold" className="text-right">
+                      ₩ {item.lineTotal.toLocaleString()}
+                    </Text>
+                  </Stack>
+                ))
               )}
             </Stack>
             <div className="border-t border-line" />

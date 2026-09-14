@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.5]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.7]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,29 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.7 변경(2026-09-14 — 상품 상세·예약 캘린더·장바구니·입금 안내 S1-C2~C4 실연동):
+#   1. 상품 상세의 `productId`도 목록과 같은 **연결 자산 id**. `options[]` = 그 자산의
+#      '표출 ON' 상품.
+#   2. 가용성·점유 규칙 확정: 옵션과 무관하게 하루 단위 점유(2일 = 이틀), 야간은 재고
+#      있는 날 모두 가능, 2일 + 타지역 반납은 반납 다음 날(시작일 +2)까지 같은 수량 점유.
+#   3. 타지역 반납 추가요금은 **대당**: `extraFee = 대당 요금 × 수량`,
+#      `lineTotal = 고객가 × 수량 + extraFee`.
+#   4. `BookingCreate.passportName` 필수 표기 정정(저장값이 있으면 생략 가능). 저장값이
+#      없던 고객은 이 값이 다음 예약 기본값으로 저장된다.
+#   5. `DepositInfo`에 `bookingNumber`·`status` 추가 — 입금 안내(S1-C4)가 예약 상세
+#      조회 없이 화면을 그린다.
+#   6. S3-C1·S1-C2~C4 operation에 `x-screens` 부착, 예약 관련 에러 코드 추가.
+#
+# v0.6 변경(2026-09-14 — 상품 조회 S1-C1 실연동):
+#   1. 상품 목록의 카드 단위를 계약에 명시: **카드 1개 = 연결 자산 1개**.
+#      `ProductSummary.productId`는 자산 id이고, '표출 ON' 상품이 1개 이상인
+#      자산만 온다. `priceFrom`은 그 자산의 표출 ON 상품 중 최저 고객가.
+#   2. `ProductSummary.thumbnailUrl`: 형식을 `/content/images/{fileName}` 경로로
+#      바꾸고(uri 아님) 없으면 null. 대표 이미지 규칙을 정했다(1일권 우선).
+#   3. `GET /content/images/{fileName}` 추가 — 관리자가 올린 이미지를 고객앱이
+#      비로그인으로 읽는 경로.
+#   4. `GET /products`에 `x-screens` 부착.
 #
 # v0.5 변경(2026-09-13 — 고객 카카오 로그인 실연동):
 #   1. `auth` 태그 추가: 카카오 인가 URL·카카오 로그인·가입(아이디)·세션·로그아웃.
@@ -66,7 +89,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.5.0-draft
+  version: 0.7.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -121,9 +144,15 @@ paths:
     get:
       tags: [products]
       summary: 상품 목록 조회 (S1-C1)
+      x-screens: [S1-C1]
       description: |
         관리자가 '표출 ON'한 상품만, 카테고리별로 조회. 가격은 고객가 기준.
         비로그인 열람 허용(예약 단계부터 인증 필요).
+
+        **카드 1개 = 연결 자산 1개(v0.6).** 관리자 상품은 자산 × 대여 옵션 단위지만
+        고객앱은 자산 단위로 카드를 그리고, 옵션은 상품 상세(S3-C1)의 칩으로 보여준다.
+        그래서 `productId`는 자산 id다. '표출 ON' 상품이 1개 이상인 자산만 오며,
+        카테고리는 자산의 카테고리다. 정렬은 자산 등록순.
 
         URL 스킴(추천·확정, 하단 "추천 사항" 참고): Core API는 `category`
         쿼리 파라미터로 단일 엔드포인트를 유지한다. 프론트(Next.js)는 이를
@@ -156,7 +185,14 @@ paths:
     get:
       tags: [products]
       summary: 상품 상세 조회 (S3-C1)
+      x-screens: [S3-C1, S1-C2]
       description: |
+        **v0.7**: `productId`는 목록(S1-C1)과 같은 **연결 자산 id**이고, `options[]`는
+        그 자산의 '표출 ON' 상품이다(칩 순서 2시간 → 1일 → 2일 → 야간). 표출 ON 상품이
+        하나도 없으면 404 `PRODUCT_NOT_FOUND`. 자산에는 설명·사진이 따로 없어 상품 레벨
+        `description`은 비어 있고, `imageUrls`는 목록 썸네일과 같은 대표 옵션(1일권 우선)의
+        사진이다.
+
         선택 상품의 대여 옵션(2시간/1일/2일/야간)별 요금을 반환한다.
         2일 옵션에는 '타지역 반납(추가요금)' 가용 여부·추가요금이 포함된다.
         여기서 고른 옵션이 (같은 화면의) 예약 캘린더 날짜 선택 규칙을 결정한다.
@@ -179,6 +215,7 @@ paths:
     get:
       tags: [availability]
       summary: 가용성 조회 (S1-C2 캘린더)
+      x-screens: [S1-C2]
       description: |
         선택 옵션 기준으로 예약 가능 날짜와 날짜별 가용 수량 상한을 반환한다.
         규칙:
@@ -190,6 +227,20 @@ paths:
           **확정**: 자동 마감된 날짜도 `selectable=false`로만 표기하는
           단일 '마감' 처리다 — 마감 사유를 구분하는 별도 `reason` 필드는
           두지 않는다(결정 로그 2026-08-19).
+
+        **v0.7 확정(2026-09-14)**:
+        - 잔여 = 그날 고객 가용(S1-A3 재고 세팅: 총 보유 − 여행사 할당, 매장 휴무면 0)
+          − 예약 점유 − 만료 전 임시 홀드. 재고는 **자산 단위**라 같은 자산의 옵션끼리 공유한다.
+        - 옵션과 무관하게 **하루 단위**로 점유한다(2시간도 그날 하루). 야간은 운영일을
+          따로 두지 않고 재고가 있는 날이면 모두 가능하다.
+        - 2일 + 타지역 반납 = 이용 이틀 + **반납 다음 날(시작일 +2)까지 같은 수량 점유**.
+          위의 "익일·익익일 자동 마감"을 이렇게 구현한다.
+        - `remaining` = 그 날짜를 시작일로 잡을 때 점유하는 날들의 잔여 최솟값.
+          이용일이 예약 가능 기간을 벗어나면 `selectable=false`, `remaining=0`.
+        - `crossRegionReturn=true`는 그 옵션에서 타지역 반납을 고를 수 있을 때만 반영한다
+          (아니면 무시하고 응답의 `crossRegionReturn`은 false).
+        - 필수 파라미터 누락·`from > to`는 400 `VALIDATION_ERROR`, 없거나 표출 OFF인
+          상품·옵션은 404 `PRODUCT_NOT_FOUND`.
       security: []
       parameters:
         - $ref: '#/components/parameters/ProductIdPath'
@@ -220,11 +271,40 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /content/images/{fileName}:
+    get:
+      tags: [products]
+      summary: 관리자가 올린 이미지 읽기 (v0.6)
+      x-screens: []
+      description: |
+        `ProductSummary.thumbnailUrl` 등 `/content/images/{fileName}` 값을 고객앱이
+        읽는 경로. 비로그인 열람 허용. 파일명은 서버가 만든 UUID + 확장자(png/jpg/webp).
+      security: []
+      parameters:
+        - name: fileName
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 이미지 바이트
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /cart:
     get:
       tags: [cart]
       summary: 장바구니 조회 (S1-C3)
-      description: 담긴 항목·임시 홀드 만료시각·합계를 반환한다.
+      x-screens: [S1-C3]
+      description: |
+        담긴 항목·임시 홀드 만료시각·합계를 반환한다. 홀드가 만료된 항목은 조회할 때
+        지워지고 응답에서 빠진다(잔여 계산에서는 만료 시각에 이미 빠져 있다).
       responses:
         '200':
           description: 현재 장바구니
@@ -237,10 +317,19 @@ paths:
     post:
       tags: [cart]
       summary: 장바구니 담기 = 임시 홀드 생성 (S1-C2 '장바구니 담기')
+      x-screens: [S1-C2]
       description: |
         선택 상품·옵션·날짜·수량으로 재고에 **임시 홀드**를 걸어 중복 예약을 방지한다.
         응답의 `holdExpiresAt`까지 유효하며, 만료 시 홀드는 해제된다.
         홀드 TTL = **15분(확정)**.
+
+        **v0.7**:
+        - 금액: `unitPrice` = 고객가, `extraFee` = 타지역 반납 대당 추가요금 × 수량,
+          `lineTotal` = 고객가 × 수량 + `extraFee`(담는 시점 스냅샷).
+        - 점유·잔여 규칙은 가용성 조회와 같다. 잔여가 수량보다 적으면 409 `OUT_OF_STOCK`.
+        - 이용일이 예약 가능 기간(오늘+1 ~ +3개월, JST) 밖이면 400 `DATE_NOT_BOOKABLE`.
+        - 없거나 표출 OFF인 상품·옵션은 404 `PRODUCT_NOT_FOUND`.
+        - 타지역 반납을 고를 수 없는 옵션에 `crossRegionReturn=true`면 400 `VALIDATION_ERROR`.
       requestBody:
         required: true
         content:
@@ -254,6 +343,7 @@ paths:
               schema: { $ref: '#/components/schemas/CartItem' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: 재고 부족 등으로 홀드 불가
           content:
@@ -264,6 +354,8 @@ paths:
     delete:
       tags: [cart]
       summary: 장바구니 항목 제거(홀드 해제)
+      x-screens: [S1-C3]
+      description: 없거나 본인 항목이 아니면 404 `CART_ITEM_NOT_FOUND`.
       parameters:
         - name: cartItemId
           in: path
@@ -278,9 +370,19 @@ paths:
     post:
       tags: [bookings]
       summary: 예약 확정 (S1-C3 '예약하고 입금 안내 받기')
+      x-screens: [S1-C3]
       description: |
         장바구니(홀드)로부터 예약을 확정 생성한다.
         선행조건: 여권 영문명 필수(저장값 없으면 요청 본문으로 전달).
+
+        **v0.7**:
+        - 여권 영문명: 본문 값(앞뒤 공백 제거)을 쓰고, 비었으면 저장값을 쓴다. 둘 다 없으면
+          400 `PASSPORT_NAME_REQUIRED`. 저장값이 없던 고객은 이 값이 다음 예약 기본값으로 저장된다.
+        - 확정할 홀드가 비었거나, 없는(만료로 지워진) 항목이 섞였거나, 하나라도 만료됐으면
+          409 `HOLD_EXPIRED`. 홀드가 이미 재고를 잡고 있으므로 잔여는 다시 따지지 않는다.
+        - 예약번호 형식 `FR-{YYMM}{일련번호 4자리 이상}`(YYMM은 JST). 일련번호는 월마다
+          초기화하지 않는다.
+        - 입금 계좌가 아직 등록되지 않았으면 `depositInfo`는 null이다.
         생성 시 예약번호가 발급되고 입금 안내 정보를 함께 반환한다(S1-C4).
         **확정(Model B)**: 생성 직후 상태는 `AWAITING_DEPOSIT`(입금대기)다.
         이후 고객의 입금확인요청(`/deposit-request`)으로 `RECEIVED`(접수)로
@@ -380,6 +482,7 @@ paths:
     get:
       tags: [bookings]
       summary: 입금 안내 조회 (S1-C4)
+      x-screens: [S1-C4]
       description: |
         PG 미사용. 관리자 설정 안내 계좌 1개와 입금액·입금 기한을 반환한다.
         입금 기한(dueBy)은 24시간 내 미입금 시 관리자 강제취소 정책 기준.
@@ -395,11 +498,17 @@ paths:
               schema: { $ref: '#/components/schemas/DepositInfo' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 입금 계좌 미등록(`DEPOSIT_ACCOUNT_NOT_CONFIGURED`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /bookings/{bookingId}/deposit-request:
     post:
       tags: [bookings]
       summary: 입금 확인 요청 (S1-C4 CTA)
+      x-screens: [S1-C4]
       description: |
         고객이 무통장 입금 후 확인을 요청한다. **확정(Model B)**: 처리
         결과로 상태가 `AWAITING_DEPOSIT` → `RECEIVED`(접수)로 전이된다.
@@ -416,7 +525,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: 현재 상태에서 요청 불가(예 이미 RECEIVED/COMPLETED)
+          description: 현재 상태에서 요청 불가(`INVALID_BOOKING_STATUS` — 입금대기가 아님, 예 이미 RECEIVED/COMPLETED)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -795,21 +904,26 @@ components:
     ProductSummary:
       type: object
       required: [productId, name, category, priceFrom]
+      description: 상품 목록 카드 1장 = 연결 자산 1개(v0.6).
       properties:
-        productId: { type: string }
-        name: { type: string }
+        productId:
+          type: string
+          description: 연결 자산 id. 관리자 상품(자산 × 옵션) id가 아니다.
+        name:
+          type: string
+          description: 자산 명칭.
         category: { $ref: '#/components/schemas/ProductCategory' }
         thumbnailUrl:
-          type: string
-          format: uri
+          type: [string, 'null']
           description: |
-            목록 카드 대표 이미지. 대표 옵션(정렬 우선순위상 첫 옵션, 보통
-            1일권)의 `imageUrls[0]`을 사용하고, 없으면 상품 레벨
-            `ProductDetail.imageUrls[0]`(폴백)을 사용한다.
+            목록 카드 대표 이미지. `/content/images/{fileName}` 경로이며
+            `GET /content/images/{fileName}`으로 읽는다. 그 자산의 '표출 ON'
+            상품 중 **1일권 → 2시간 → 2일 → 야간** 순서로, 이미지가 있는 첫
+            상품의 첫 이미지(`imageUrls[0]`)를 쓴다. 이미지가 하나도 없으면 null.
         priceFrom:
           allOf:
             - $ref: '#/components/schemas/Money'
-          description: 요약 표기용 최저가(고객가).
+          description: 요약 표기용 최저가 — 그 자산의 '표출 ON' 상품 중 최저 고객가.
 
     ProductListPage:
       type: object
@@ -839,7 +953,7 @@ components:
           description: 타지역 반납 가능 여부(2일 옵션에서만 true 가능).
         crossRegionReturnExtraFee:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: 타지역 반납 추가요금(가능한 경우).
+          description: 타지역 반납 추가요금(대당, 가능한 경우).
         description:
           type: string
           description: |
@@ -943,8 +1057,10 @@ components:
         unitPrice: { $ref: '#/components/schemas/Money' }
         extraFee:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: 타지역 반납 추가요금 등.
-        lineTotal: { $ref: '#/components/schemas/Money' }
+          description: 타지역 반납 추가요금 합(대당 요금 × 수량, v0.7).
+        lineTotal:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: 고객가 × 수량 + extraFee.
         holdExpiresAt:
           type: string
           format: date-time
@@ -965,11 +1081,10 @@ components:
 
     BookingCreate:
       type: object
-      required: [passportName]
       properties:
         passportName:
           type: string
-          description: 여권 영문명(확정 선행조건). 저장값이 있으면 생략 가능.
+          description: 여권 영문명(확정 선행조건). 저장값이 있으면 생략 가능(v0.7 필수 표기 정정).
         cartItemIds:
           type: array
           items: { type: string }
@@ -1104,8 +1219,14 @@ components:
 
     DepositInfo:
       type: object
-      required: [bankName, accountNumber, accountHolder, amount]
+      required: [bookingNumber, status, bankName, accountNumber, accountHolder, amount]
       properties:
+        bookingNumber:
+          type: string
+          description: 예약번호(v0.7). 입금 안내 화면이 예약 상세 조회 없이 표시한다.
+        status:
+          allOf: [ { $ref: '#/components/schemas/BookingStatus' } ]
+          description: 예약 상태(v0.7). `AWAITING_DEPOSIT`일 때만 입금 확인 요청을 할 수 있다.
         bankName: { type: string }
         accountNumber: { type: string }
         accountHolder: { type: string }
@@ -1309,6 +1430,15 @@ components:
             - `INVALID_LOGIN_ID` — 아이디 형식 오류.
             - `DUPLICATE_LOGIN_ID` — 이미 쓰는 아이디.
             - `ALREADY_REGISTERED` — 이미 가입된 소셜 계정.
+            v0.7 예약 관련:
+            - `PRODUCT_NOT_FOUND` — 없거나 표출 OFF인 상품·옵션.
+            - `DATE_NOT_BOOKABLE` — 이용일이 예약 가능 기간 밖.
+            - `OUT_OF_STOCK` — 잔여 부족(마감 포함).
+            - `CART_ITEM_NOT_FOUND` — 없거나 본인 것이 아닌 장바구니 항목.
+            - `HOLD_EXPIRED` — 확정할 홀드가 없거나 만료됨.
+            - `BOOKING_NOT_FOUND` — 없거나 본인 것이 아닌 예약.
+            - `DEPOSIT_ACCOUNT_NOT_CONFIGURED` — 입금 계좌 미등록.
+            - `INVALID_BOOKING_STATUS` — 현재 예약 상태에서 할 수 없는 요청.
         message: { type: string }
         fieldErrors:
           type: array
