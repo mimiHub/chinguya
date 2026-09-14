@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.5]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.6]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,16 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.6 변경(2026-09-14 — 상품 조회 S1-C1 실연동):
+#   1. 상품 목록의 카드 단위를 계약에 명시: **카드 1개 = 연결 자산 1개**.
+#      `ProductSummary.productId`는 자산 id이고, '표출 ON' 상품이 1개 이상인
+#      자산만 온다. `priceFrom`은 그 자산의 표출 ON 상품 중 최저 고객가.
+#   2. `ProductSummary.thumbnailUrl`: 형식을 `/content/images/{fileName}` 경로로
+#      바꾸고(uri 아님) 없으면 null. 대표 이미지 규칙을 정했다(1일권 우선).
+#   3. `GET /content/images/{fileName}` 추가 — 관리자가 올린 이미지를 고객앱이
+#      비로그인으로 읽는 경로.
+#   4. `GET /products`에 `x-screens` 부착.
 #
 # v0.5 변경(2026-09-13 — 고객 카카오 로그인 실연동):
 #   1. `auth` 태그 추가: 카카오 인가 URL·카카오 로그인·가입(아이디)·세션·로그아웃.
@@ -66,7 +76,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.5.0-draft
+  version: 0.6.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -121,9 +131,15 @@ paths:
     get:
       tags: [products]
       summary: 상품 목록 조회 (S1-C1)
+      x-screens: [S1-C1]
       description: |
         관리자가 '표출 ON'한 상품만, 카테고리별로 조회. 가격은 고객가 기준.
         비로그인 열람 허용(예약 단계부터 인증 필요).
+
+        **카드 1개 = 연결 자산 1개(v0.6).** 관리자 상품은 자산 × 대여 옵션 단위지만
+        고객앱은 자산 단위로 카드를 그리고, 옵션은 상품 상세(S3-C1)의 칩으로 보여준다.
+        그래서 `productId`는 자산 id다. '표출 ON' 상품이 1개 이상인 자산만 오며,
+        카테고리는 자산의 카테고리다. 정렬은 자산 등록순.
 
         URL 스킴(추천·확정, 하단 "추천 사항" 참고): Core API는 `category`
         쿼리 파라미터로 단일 엔드포인트를 유지한다. 프론트(Next.js)는 이를
@@ -218,6 +234,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Availability' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /content/images/{fileName}:
+    get:
+      tags: [products]
+      summary: 관리자가 올린 이미지 읽기 (v0.6)
+      x-screens: []
+      description: |
+        `ProductSummary.thumbnailUrl` 등 `/content/images/{fileName}` 값을 고객앱이
+        읽는 경로. 비로그인 열람 허용. 파일명은 서버가 만든 UUID + 확장자(png/jpg/webp).
+      security: []
+      parameters:
+        - name: fileName
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 이미지 바이트
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /cart:
@@ -795,21 +837,26 @@ components:
     ProductSummary:
       type: object
       required: [productId, name, category, priceFrom]
+      description: 상품 목록 카드 1장 = 연결 자산 1개(v0.6).
       properties:
-        productId: { type: string }
-        name: { type: string }
+        productId:
+          type: string
+          description: 연결 자산 id. 관리자 상품(자산 × 옵션) id가 아니다.
+        name:
+          type: string
+          description: 자산 명칭.
         category: { $ref: '#/components/schemas/ProductCategory' }
         thumbnailUrl:
-          type: string
-          format: uri
+          type: [string, 'null']
           description: |
-            목록 카드 대표 이미지. 대표 옵션(정렬 우선순위상 첫 옵션, 보통
-            1일권)의 `imageUrls[0]`을 사용하고, 없으면 상품 레벨
-            `ProductDetail.imageUrls[0]`(폴백)을 사용한다.
+            목록 카드 대표 이미지. `/content/images/{fileName}` 경로이며
+            `GET /content/images/{fileName}`으로 읽는다. 그 자산의 '표출 ON'
+            상품 중 **1일권 → 2시간 → 2일 → 야간** 순서로, 이미지가 있는 첫
+            상품의 첫 이미지(`imageUrls[0]`)를 쓴다. 이미지가 하나도 없으면 null.
         priceFrom:
           allOf:
             - $ref: '#/components/schemas/Money'
-          description: 요약 표기용 최저가(고객가).
+          description: 요약 표기용 최저가 — 그 자산의 '표출 ON' 상품 중 최저 고객가.
 
     ProductListPage:
       type: object

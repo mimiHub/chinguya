@@ -35,13 +35,6 @@ export function getProductStock(productId: string): ProductStock | undefined {
   return productStocks.find((s) => s.productId === productId);
 }
 
-/** 고객앱 상품 조회 목록에 이 상품을 몇 장의 카드로 반복해서 보여줄지 (= 총 보유 − 여행사 할당) */
-export function getCustomerExposedQty(productId: string): number {
-  const stock = getProductStock(productId);
-  if (!stock) return 0;
-  return Math.max(stock.totalCount - stock.agencyAllocated, 0);
-}
-
 /** 여행사앱 예약 화면에서 이 상품의 가용(할당) 수량 */
 export function getAgencyExposedQty(productId: string): number {
   return getProductStock(productId)?.agencyAllocated ?? 0;

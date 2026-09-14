@@ -197,6 +197,30 @@ export interface HeroBanner {
   mobileImageUrl: string;
 }
 
+/**
+ * 고객 상품 조회(S1-C1) 카드 1장. 계약 원본은 api-spec/openapi/chinguya-slice1-openapi.yaml 의
+ * ProductSummary.
+ *
+ * 카드 1개 = 연결 자산 1개라 productId는 **자산 id**다(관리자 상품 id와 다르다).
+ */
+export interface CustomerProductSummary {
+  productId: string;
+  /** 자산 명칭 */
+  name: string;
+  category: AssetCategory;
+  /** `/content/images/…`(프록시 경유로 읽는다). 표출 중인 상품에 이미지가 없으면 비어 있다. */
+  thumbnailUrl?: string | null;
+  /** 표출 중인 상품의 최저 고객가(원) */
+  priceFrom: number;
+}
+
+export interface CustomerProductListPage {
+  content: CustomerProductSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -241,6 +265,14 @@ export function createApiClient(opts: ApiClientOptions = {}) {
 
   return {
     request,
+    /**
+     * 고객 상품 조회(S1-C1). 고객 앱 프록시가 `/v1` 프리픽스를 붙인다 — 계약은
+     * api-spec/openapi/chinguya-slice1-openapi.yaml 의 GET /products. 비로그인도 부를 수 있다.
+     */
+    customerProducts: {
+      list: (category: AssetCategory, page = 0, size = 20) =>
+        request<CustomerProductListPage>(`/products?category=${category}&page=${page}&size=${size}`),
+    },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
       create: (body: Partial<CustomerReservation>) =>
