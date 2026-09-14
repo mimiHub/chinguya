@@ -2,15 +2,18 @@
 
 import type { ButtonHTMLAttributes } from "react";
 
-type Size = "sm" | "md" | "lg";
+type Size = "xs" | "sm" | "md" | "lg";
 
 const sizeClass: Record<Size, string> = {
+  // 상품 이미지 갤러리 썸네일처럼 아주 작은 카드 모서리에 얹는 삭제 버튼용(약 15px).
+  xs: "h-[15px] w-[15px]",
   sm: "h-5 w-5",
   md: "h-6 w-6",
   lg: "h-7 w-7",
 };
 
 const barSizeClass: Record<Size, string> = {
+  xs: "w-2",
   sm: "w-2.5",
   md: "w-3",
   lg: "w-4",

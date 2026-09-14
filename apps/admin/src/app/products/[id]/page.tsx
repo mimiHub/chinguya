@@ -20,7 +20,9 @@ import { Toast } from "@chinguya/ui/toast";
 import { Alert } from "@chinguya/ui/alert";
 import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
-import { createApiClient, ApiError } from "@chinguya/api-client";
+import { IconX } from "@chinguya/ui/icon-x";
+import { HelpTooltip } from "@chinguya/ui/help-tooltip";
+import { createApiClient, ApiError, DEFAULT_API_BASE_URL } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
@@ -41,8 +43,32 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 
 const api = createApiClient();
 
+/** 서버 한도(10MB)와 같다. 넘는 파일은 올리기 전에 막는다 — content 페이지 배너 이미지와 동일한 기준. */
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+/** 상품 이미지 최대 장수. 업로드 칸에 "N/10"으로 같이 표시된다. */
+const MAX_PRODUCT_IMAGES = 10;
+
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
+}
+
+/**
+ * 관리자가 올린 이미지(`/content/images/…`)만 Core 프록시로 미리 볼 수 있다 — content 페이지의
+ * 동명 헬퍼와 같은 이유(초기값이 없는 상품은 항상 이 경로라 분기할 일이 없다).
+ */
+function uploadedImageSrc(path: string): string {
+  return `${DEFAULT_API_BASE_URL}${path}`;
+}
+
+/**
+ * 상품 이미지 한 장 — 기존에 이미 올라간 이미지는 `file`이 없고 `url`이 서버 경로다.
+ * 새로 고른 파일은 `file`이 있고 `url`은 브라우저 메모리 미리보기(blob:) 주소다. 저장할 때
+ * `file`이 있는 것만 실제로 업로드하고, 그 결과 주소로 바꿔 최종 imageUrls를 만든다.
+ */
+interface ProductImageItem {
+  key: string;
+  file: File | null;
+  url: string;
 }
 
 export default function AdminProductEditPage() {
@@ -64,6 +90,8 @@ export default function AdminProductEditPage() {
   const [description, setDescription] = useState("");
   const [customerVisible, setCustomerVisible] = useState(true);
   const [agencyVisible, setAgencyVisible] = useState(true);
+  const [images, setImages] = useState<ProductImageItem[]>([]);
+  const [imageAddError, setImageAddError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -89,6 +117,7 @@ export default function AdminProductEditPage() {
         setDescription(product.description ?? "");
         setCustomerVisible(product.customerVisible);
         setAgencyVisible(product.agencyVisible);
+        setImages(product.imageUrls.map((url, i) => ({ key: `existing-${i}-${url}`, file: null, url })));
       } else if (assetList.length > 0) {
         setAssetId(assetList[0]!.assetId);
       }
@@ -122,11 +151,77 @@ export default function AdminProductEditPage() {
     }
   };
 
+  /** 여러 장을 한 번에 골라도 순서대로 뒤에 붙인다. 10MB 넘는 파일과, 최대 장수(10장)를
+   *  넘는 만큼은 걸러내고 나머지만 추가한다. */
+  const addImageFiles = (files: FileList) => {
+    setImageAddError(null);
+    const remainingSlots = Math.max(MAX_PRODUCT_IMAGES - images.length, 0);
+    const incoming = Array.from(files);
+    const overflow = incoming.length > remainingSlots;
+    const toProcess = incoming.slice(0, remainingSlots);
+
+    const accepted: ProductImageItem[] = [];
+    let tooLarge = false;
+    toProcess.forEach((file) => {
+      if (file.size > IMAGE_MAX_BYTES) {
+        tooLarge = true;
+        return;
+      }
+      accepted.push({
+        key: `new-${Date.now()}-${Math.random()}`,
+        file,
+        url: URL.createObjectURL(file),
+      });
+    });
+
+    const errors: string[] = [];
+    if (tooLarge) errors.push("이미지는 장당 10MB까지 올릴 수 있습니다.");
+    if (overflow) errors.push(`최대 ${MAX_PRODUCT_IMAGES}장까지만 올릴 수 있습니다.`);
+    if (errors.length > 0) setImageAddError(`${errors.join(" ")} 넘는 파일은 제외했습니다.`);
+    if (accepted.length > 0) setImages((prev) => [...prev, ...accepted]);
+  };
+
+  const removeImage = (key: string) => {
+    setImages((prev) => {
+      const target = prev.find((item) => item.key === key);
+      if (target?.file) URL.revokeObjectURL(target.url);
+      return prev.filter((item) => item.key !== key);
+    });
+  };
+
+  // 언마운트 시 아직 업로드 안 한 미리보기(blob:)만 정리한다 — 이미 올라간 이미지의
+  // 서버 경로는 URL.revokeObjectURL 대상이 아니다.
+  useEffect(() => {
+    return () => {
+      images.forEach((item) => {
+        if (item.file) URL.revokeObjectURL(item.url);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
     try {
+      // 새로 고른 파일만 실제로 업로드하고, 기존 이미지는 주소를 그대로 쓴다. 순서가 곧
+      // 표시 순서(0번 = 대표)라 Promise.all이 아니라 순서대로 하나씩 올린다.
+      const finalImageUrls: string[] = [];
+      for (const item of images) {
+        if (item.file) {
+          const uploaded = await api.content.uploadImage(item.file);
+          finalImageUrls.push(uploaded.imageUrl);
+        } else {
+          finalImageUrls.push(item.url);
+        }
+      }
+
       // 타지역 반납 추가요금은 2일 상품에만 보낸다 — 그 외 옵션에 값을 주면 서버가 400이다.
+      // imageUrls는 등록·수정 모두 빈 배열을 보내면 400이다("imageUrls는 비어있는 배열일
+      // 수 없습니다" — 직접 테스트로 확인). 이미지가 없으면 등록이든 수정이든 필드 자체를
+      // 빼야 한다. 수정에서 필드를 빼면 기존 이미지가 전부 지워지는 것으로 처리되므로,
+      // 이미지를 하나도 없는 상태로 만들고 싶을 때(전부 삭제 후 저장)만 그 효과를 노려
+      // 필드를 뺀다 — 이미지가 하나라도 있으면 항상 현재 목록을 명시해서 보낸다.
       const common = {
         customerPrice,
         agencyPrice,
@@ -134,6 +229,7 @@ export default function AdminProductEditPage() {
         agencyVisible,
         crossRegionReturnExtraFee: isMultiDay && crossRegionFee > 0 ? crossRegionFee : null,
         description: description.trim() || null,
+        ...(finalImageUrls.length > 0 ? { imageUrls: finalImageUrls } : {}),
       };
       if (isNew) {
         await api.products.create({ assetId, optionType: option, ...common });
@@ -200,10 +296,16 @@ export default function AdminProductEditPage() {
         <Stack direction="column" gap="md" className="mt-4">
           {isNew ? (
             <>
-              <LabeledBox
-                label="연결 자산"
+              <Card>
+                <LabeledBox
+                label={
+                  <>
+                    연결 자산
+                    <HelpTooltip>활성 자산만 고를 수 있고, 등록 후에는 바꿀 수 없습니다.</HelpTooltip>
+                  </>
+                }
                 required
-                helper="활성 자산만 고를 수 있고, 등록 후에는 바꿀 수 없습니다."
+                badge
               >
                 <Dropdown
                   value={assetId || null}
@@ -214,8 +316,19 @@ export default function AdminProductEditPage() {
                   }))}
                 />
               </LabeledBox>
+              </Card>
 
-              <LabeledBox label="대여 옵션" required helper="연결 자산의 카테고리가 허용하는 옵션만 나옵니다.">
+              <Card>
+                <LabeledBox
+                label={
+                  <>
+                    대여 옵션
+                    <HelpTooltip>연결 자산의 카테고리가 허용하는 옵션만 나옵니다.</HelpTooltip>
+                  </>
+                }
+                required
+                badge
+              >
                 <Chip.List>
                   {availableOptions.map((key) => (
                     <Chip key={key} on={key === option} onClick={() => setOption(key)}>
@@ -224,16 +337,114 @@ export default function AdminProductEditPage() {
                   ))}
                 </Chip.List>
               </LabeledBox>
+              </Card>
             </>
           ) : (
-            <LabeledBox label="연결 자산 · 대여 옵션" helper="등록 때 정한 값이라 수정할 수 없습니다.">
+            <Card>
+              <LabeledBox label="연결 자산 · 대여 옵션" badge helper="등록 때 정한 값이라 수정할 수 없습니다.">
               <Text>
                 {existing?.assetName} · {RENTAL_OPTION_LABEL[option]}
               </Text>
             </LabeledBox>
+            </Card>
           )}
 
-          <Stack justify="between" align="center">
+          <Card>
+            <LabeledBox
+            label={
+              <>
+                상품 이미지
+                <HelpTooltip>
+                  여러 장을 한번에 고를 수 있고, 나열된 순서가 화면 표시 순서예요. 첫 번째가 대표
+                  이미지입니다. PNG·JPG·WEBP, 장당 10MB까지.
+                </HelpTooltip>
+              </>
+            }
+            badge
+          >
+            <Stack direction="column" gap="sm">
+              {/* 업로드 칸(카메라 아이콘 + N/10)을 목록 맨 앞에 두고, 전체를 한 줄 가로
+                  스크롤로 — 태그 캡슐 선택기(Chip.List scrollArrows)와 같은 좌우 화살표
+                  패턴을 재사용한다. 칩이 아니어도 이 컴포넌트는 그냥 가로 스크롤 컨테이너라
+                  썸네일을 넣어도 그대로 동작한다. */}
+              <Chip.List scrollArrows>
+                <input
+                  id="product-image-input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  disabled={images.length >= MAX_PRODUCT_IMAGES}
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) addImageFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <label
+                  htmlFor="product-image-input"
+                  className={[
+                    "flex h-[60px] w-[60px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-line transition-colors",
+                    images.length >= MAX_PRODUCT_IMAGES
+                      ? "cursor-not-allowed opacity-40"
+                      : "cursor-pointer text-muted hover:border-primary-500 hover:text-ink",
+                  ].join(" ")}
+                >
+                  {/* 카메라 아이콘 — 별도 아이콘 라이브러리가 없어(icon-x·icon-hamburger와
+                      같은 방식으로) 인라인 SVG로 그린다. */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 8a2 2 0 0 1 2-2h1.17a1 1 0 0 0 .83-.45l.7-1.1A1 1 0 0 1 9.53 4h4.94a1 1 0 0 1 .83.45l.7 1.1a1 1 0 0 0 .83.45H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"
+                    />
+                    <circle cx="12" cy="13" r="3.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-[10px] leading-none">
+                    <span className={images.length >= MAX_PRODUCT_IMAGES ? "text-muted" : "font-bold text-warning"}>
+                      {images.length}
+                    </span>
+                    <span className="text-muted">/{MAX_PRODUCT_IMAGES}</span>
+                  </span>
+                </label>
+                {images.map((item, index) => (
+                  // overflow-hidden을 이 래퍼에 두면 아래 X 버튼처럼 모서리 밖으로 나가는
+                  // 요소까지 같이 잘려나간다 — 라운드 처리는 래퍼가 아니라 img 자신에게 주고,
+                  // 래퍼는 테두리만 그린다(잘림 없이 X가 모서리 밖으로 나갈 수 있게).
+                  <div key={item.key} className="relative h-[60px] w-[60px] shrink-0 rounded-xl border border-line">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.file ? item.url : uploadedImageSrc(item.url)}
+                      alt=""
+                      className="h-full w-full rounded-xl object-cover"
+                    />
+                    {index === 0 && (
+                      <span className="absolute inset-x-0 bottom-0 rounded-b-xl bg-black/70 py-0.5 text-center text-[9px] font-bold leading-tight text-white">
+                        대표사진
+                      </span>
+                    )}
+                    {/* IconX 자체가 relative를 이미 갖고 있어(같은 position 속성 충돌 —
+                        input.tsx의 border-line/border-error와 같은 케이스) absolute를
+                        IconX의 className으로 넘기지 않고 감싸는 래퍼에 둔다. 원 모양이 썸네일
+                        모서리에 반쯤 걸치도록 음수 오프셋을 쓴다(60px 크기에 맞춰 lg보다
+                        작은 sm 크기 + 더 좁은 오프셋). */}
+                    <div className="absolute -right-1.5 -top-1.5">
+                      <IconX
+                        size="xs"
+                        aria-label="이미지 삭제"
+                        className="bg-white text-ink shadow-md hover:bg-white"
+                        onClick={() => removeImage(item.key)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </Chip.List>
+              {imageAddError && <Alert status="error">{imageAddError}</Alert>}
+            </Stack>
+          </LabeledBox>
+          </Card>
+
+          <Card>
+            <Stack justify="between" align="center">
             <Text variant="sub" as="span">
               고객가 (KRW)
             </Text>
@@ -247,8 +458,10 @@ export default function AdminProductEditPage() {
               onChange={(e) => setCustomerPrice(Number(e.target.value))}
             />
           </Stack>
+          </Card>
 
-          <Stack justify="between" align="center">
+          <Card>
+            <Stack justify="between" align="center">
             <Text variant="sub" as="span">
               여행사가 (KRW)
             </Text>
@@ -262,16 +475,20 @@ export default function AdminProductEditPage() {
               onChange={(e) => setAgencyPrice(Number(e.target.value))}
             />
           </Stack>
+          </Card>
 
-          <Kv
+          <Card>
+            <Kv
             items={[
               { key: "고객앱 표출", value: <Toggle on={customerVisible} onChange={setCustomerVisible} /> },
               { key: "여행사앱 표출", value: <Toggle on={agencyVisible} onChange={setAgencyVisible} /> },
             ]}
           />
+          </Card>
 
           {isMultiDay && (
-            <Stack justify="between" align="center">
+            <Card>
+              <Stack justify="between" align="center">
               <Text variant="sub" as="span">
                 타지역 반납 추가요금
               </Text>
@@ -285,15 +502,26 @@ export default function AdminProductEditPage() {
                 onChange={(e) => setCrossRegionFee(Number(e.target.value))}
               />
             </Stack>
+            </Card>
           )}
 
-          <LabeledBox label="상품 설명">
+         <Card>
+          <Stack direction="column">
+             <LabeledBox
+             label={
+               <>
+                 상품 설명
+                 <HelpTooltip>
+                   여행사가 컬럼은 항상 보유(고객앱 미노출). 타지역 반납은 2일 상품에만 표시됩니다.
+                 </HelpTooltip>
+               </>
+             }
+             badge
+           >
             <Input as="textarea" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
           </LabeledBox>
-
-          <Text variant="sub">
-            여행사가 컬럼은 항상 보유(고객앱 미노출). 타지역 반납은 2일 상품에만 표시됩니다.
-          </Text>
+          </Stack>
+         </Card>
 
           {saveError && <Alert status="error">{saveError}</Alert>}
 

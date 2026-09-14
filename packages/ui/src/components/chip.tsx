@@ -55,10 +55,15 @@ Chip.List = function ChipList({ className = "", children, scrollArrows = false }
       >
         ‹
       </button>
-      {/* 스크롤바를 숨기고(3대 브라우저 각각 다른 방식 필요) 화살표로만 넘기게 한다 */}
+      {/* 스크롤바를 숨기고(3대 브라우저 각각 다른 방식 필요) 화살표로만 넘기게 한다.
+          overflow-x만 auto로 주면 CSS 스펙상 overflow-y도 visible이 아니라 auto로
+          계산돼서(둘 중 하나가 visible이 아니면 나머지도 auto가 된다) 세로로 살짝 튀어나온
+          자식(예: 이미지 모서리에 반쯤 걸치는 삭제 버튼)의 튀어나온 부분이 잘려나간다.
+          그래서 위아래에 여유 패딩을 둬서 그 여유분 안에서는 안 잘리게 한다(상품 이미지
+          갤러리에서 X 버튼이 잘려 보이던 문제로 발견됨). */}
       <div
         ref={scrollRef}
-        className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto scroll-smooth"
+        className="scrollbar-hide flex flex-1 gap-2 overflow-x-auto scroll-smooth py-2"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {children}
