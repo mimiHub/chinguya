@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { OFF_SITE_RETURN_FEE_KRW } from "@chinguya/types";
+import { createApiClient, ApiError, type CustomerCartItem } from "@chinguya/api-client";
+import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { Title } from "@chinguya/ui/title";
 import { Text } from "@chinguya/ui/text";
 import { Stack } from "@chinguya/ui/stack";
@@ -17,25 +18,25 @@ import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
 import { FormMessage } from "@chinguya/ui/form-message";
 import { Alert } from "@chinguya/ui/alert";
 import { Banner } from "@chinguya/ui/banner";
-import { useCart, type CartLine } from "@/context/CartContext";
-import { findRentalProductById } from "@/data/rentalData";
-import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { createReservation } from "@/data/reservationData";
+import { useCart } from "@/context/CartContext";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
-function rentalDaysOf(line: CartLine): number {
-  const start = new Date(line.useDateStart);
-  const end = new Date(line.useDateEnd);
-  return Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-}
+/**
+ * 장바구니 · 예약 확인 `cart`(S1-C3). 담긴 항목(= 임시 홀드)을 고르고 여권 영문명을 확인한 뒤
+ * "예약하고 입금 안내 받기"로 예약을 확정한다. 수량 변경은 여기서 안 되고(상품 상세·예약에서만) 삭제만 된다.
+ *
+ * Core API 실연동: GET /v1/cart, DELETE /v1/cart/items/{id}, POST /v1/bookings.
+ * 계약은 packages/api-spec/openapi/chinguya-slice1-openapi.yaml.
+ *
+ * - 선택한 항목들이 **예약번호 하나**로 묶인다(1 예약번호 = N 항목). 선택하지 않은 항목은 장바구니에 남는다.
+ * - 임시 홀드는 항목마다 담은 뒤 15분이다. 가장 이른 만료까지 남은 시간을 보여 주고, 만료되면 장바구니를
+ *   다시 읽는다(서버가 만료 항목을 뺀다).
+ * - 여권 영문명은 저장값이 있으면 채워 두고, 없으면 필수로 입력받는다. 처음 입력한 값은 다음 예약의
+ *   기본값으로 저장된다(서버).
+ */
 
-function lineAmount(line: CartLine): number {
-  const product = findRentalProductById(line.productId);
-  if (!product) return 0;
-  const unitPrice = product.priceByOption[line.option].customerPrice;
-  const offSiteFee = line.offSiteReturn ? OFF_SITE_RETURN_FEE_KRW : 0;
-  return unitPrice * line.qty * rentalDaysOf(line) + offSiteFee;
-}
+const api = createApiClient();
 
 function formatCountdown(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -44,46 +45,49 @@ function formatCountdown(ms: number): string {
   return `${mm}:${ss}`;
 }
 
-/**
- * S1-C3 장바구니 · 예약 확인. 여러 항목을 한 번에 담아 여권 영문명 확인 후 "예약하고 입금 안내
- * 받기"로 넘어간다 — 이 화면에서 수량 변경은 안 되고(예약 화면 S1-C2에서만), 삭제만 가능하다.
- *
- * 실제 쇼핑몰(쿠팡 등)처럼 항목별 체크박스 + 전체 선택을 지원한다 — 합계·"예약하고 입금 안내
- * 받기"는 항상 "선택된 항목"만 대상으로 계산/처리된다. 선택 안 한 항목은 결제 후에도 장바구니에
- * 그대로 남는다.
- *
- * 실제로는 담긴 항목들이 하나의 주문(order)으로 묶여야 하지만, packages/types의
- * CustomerReservation은 항목 하나당 레코드 하나라서, 여기서는 선택된 항목 개수만큼
- * CustomerReservation을 만들고 그 id들을 입금 안내 화면(/deposit?ids=...)에 함께 넘겨서
- * "한 번의 입금 안내"로 묶어 보여준다.
- */
+function datesLabel(item: CustomerCartItem): string {
+  const first = item.dates[0] ?? "";
+  const last = item.dates[item.dates.length - 1] ?? first;
+  return first === last ? first : `${first} ~ ${last}`;
+}
+
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, removeItems, holdExpiresAt, clear } = useCart();
+  const { session, loading: authLoading } = useCustomerAuth();
+  const { cart, items, loadError, reload, removeItem } = useCart();
   const [passportName, setPassportName] = useState("");
-  const [removeTarget, setRemoveTarget] = useState<CartLine | null>(null);
+  const [passportTouched, setPassportTouched] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<CustomerCartItem | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [now, setNow] = useState(() => Date.now());
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // 저장된 여권 영문명으로 채운다 — 사용자가 이미 고치고 있으면 덮어쓰지 않는다.
+  useEffect(() => {
+    if (!passportTouched && session?.passportName) setPassportName(session.passportName);
+  }, [session?.passportName, passportTouched]);
+
+  const earliestExpiry = cart?.earliestHoldExpiresAt ? new Date(cart.earliestHoldExpiresAt).getTime() : null;
+  const remainingMs = earliestExpiry ? earliestExpiry - now : 0;
+  const holdExpired = Boolean(earliestExpiry) && remainingMs <= 0;
 
   useEffect(() => {
-    if (!holdExpiresAt) return;
+    if (!earliestExpiry) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [holdExpiresAt]);
+  }, [earliestExpiry]);
 
-  const remainingMs = holdExpiresAt ? holdExpiresAt - now : 0;
-  const holdExpired = Boolean(holdExpiresAt) && remainingMs <= 0;
-
+  // 가장 이른 홀드가 끝나면 서버에서 다시 읽는다 — 만료 항목이 빠지고 다음 만료 시각으로 타이머가 이어진다.
   useEffect(() => {
-    if (holdExpired) clear();
-  }, [holdExpired, clear]);
+    if (holdExpired) void reload();
+  }, [holdExpired, reload]);
 
-  // 담긴 항목이 바뀔 때마다 선택 목록을 맞춘다 — 새로 담긴 항목은 기본으로 선택된 상태로
-  // 시작하고(실제 쇼핑몰과 동일한 동작), 삭제된 항목은 선택 목록에서도 같이 빠진다.
+  // 담긴 항목이 바뀔 때마다 선택 목록을 맞춘다 — 새 항목은 선택된 채로 시작하고, 빠진 항목은 선택에서도 뺀다.
   useEffect(() => {
     setSelectedIds((prev) => {
-      const itemIds = new Set(items.map((item) => item.cartLineId));
+      const itemIds = new Set(items.map((item) => item.cartItemId));
       let changed = false;
       const next = new Set<string>();
       prev.forEach((id) => {
@@ -101,47 +105,206 @@ export default function CartPage() {
   }, [items]);
 
   const selectedItems = useMemo(
-    () => items.filter((item) => selectedIds.has(item.cartLineId)),
+    () => items.filter((item) => selectedIds.has(item.cartItemId)),
     [items, selectedIds],
   );
   const allSelected = items.length > 0 && selectedItems.length === items.length;
+  const total = selectedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const canSubmit = selectedItems.length > 0 && passportName.trim().length > 0 && !submitting;
 
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => item.cartLineId)));
+    setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => item.cartItemId)));
   };
 
-  const toggleSelect = (cartLineId: string) => {
+  const toggleSelect = (cartItemId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(cartLineId)) next.delete(cartLineId);
-      else next.add(cartLineId);
+      if (next.has(cartItemId)) next.delete(cartItemId);
+      else next.add(cartItemId);
       return next;
     });
   };
 
-  const total = selectedItems.reduce((sum, line) => sum + lineAmount(line), 0);
-  const canSubmit = selectedItems.length > 0 && passportName.trim().length > 0 && !holdExpired;
-
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-
-    const created = selectedItems.map((line) =>
-      createReservation({
-        productId: line.productId,
-        rentalOption: line.option,
-        passportName: passportName.trim(),
-        useDate: line.useDateStart,
-        useDateEnd: line.useDateStart === line.useDateEnd ? undefined : line.useDateEnd,
-        quantity: line.qty,
-        offSiteReturn: line.offSiteReturn,
-        amountKrw: lineAmount(line),
-      }),
-    );
-
-    // 선택하지 않은 항목은 장바구니에 그대로 두고, 예약(결제)한 선택 항목만 지운다.
-    removeItems(selectedItems.map((line) => line.cartLineId));
-    router.push(`/deposit?ids=${created.map((r) => r.id).join(",")}`);
+  const removeItems = async (targets: CustomerCartItem[]) => {
+    setActionError(null);
+    try {
+      for (const item of targets) {
+        await removeItem(item.cartItemId);
+      }
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "항목을 삭제하지 못했습니다.");
+      await reload();
+    }
   };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      const booking = await api.customerBookings.create({
+        passportName: passportName.trim(),
+        cartItemIds: selectedItems.map((item) => item.cartItemId),
+      });
+      router.push(`/deposit?bookingId=${booking.bookingId}`);
+      void reload();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "HOLD_EXPIRED") {
+        setActionError("임시 홀드 시간이 지난 항목이 있어 예약하지 못했습니다. 장바구니를 확인한 뒤 다시 시도해 주세요.");
+        await reload();
+      } else {
+        setActionError(err instanceof ApiError ? err.message : "예약하지 못했습니다.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const content = (() => {
+    if (authLoading || (session && cart === null && !loadError)) {
+      return (
+        <Text variant="sub" className="mt-6">
+          불러오는 중…
+        </Text>
+      );
+    }
+    if (!session) {
+      return (
+        <Stack direction="column" gap="md" className="mt-8 items-center text-center">
+          <Card className="w-full">
+            <Text tone="secondary">장바구니는 로그인 후 이용할 수 있습니다.</Text>
+          </Card>
+          <Button href={`/login?redirect=${encodeURIComponent("/cart")}`}>로그인</Button>
+        </Stack>
+      );
+    }
+    if (loadError) {
+      return (
+        <Alert status="error" className="mt-6">
+          {loadError}
+        </Alert>
+      );
+    }
+    if (items.length === 0) {
+      return (
+        <Stack direction="column" gap="md" className="mt-8 items-center text-center">
+          <Card className="w-full">
+            <Text tone="secondary">장바구니가 비어 있습니다.</Text>
+          </Card>
+          <div className="w-full border-t border-line" />
+          <NextLink href="/rental">
+            <Button>상품 보러가기</Button>
+          </NextLink>
+        </Stack>
+      );
+    }
+    return (
+      <>
+        <Stack justify="between" align="center" className="mt-4">
+          <Stack gap="sm" align="center">
+            <Checkbox checked={allSelected} onChange={toggleSelectAll} aria-label="전체 선택" />
+            <Text weight="medium" as="span">
+              전체 선택 <span className="text-sm text-muted">({selectedItems.length}/{items.length})</span>
+            </Text>
+          </Stack>
+          <button
+            type="button"
+            disabled={selectedItems.length === 0}
+            onClick={() => setBulkDeleteOpen(true)}
+            className="text-sm text-muted"
+          >
+            선택 삭제
+          </button>
+        </Stack>
+
+        {/* 담긴 항목이 많아지면 카드 목록만 이 영역 안에서 스크롤되게 한다(제목·버튼은 고정) */}
+        <div className="mt-2 max-h-[300px] overflow-y-auto pr-1">
+        <Stack direction="column" gap="sm">
+          {items.map((item) => (
+            <ScrollReveal key={item.cartItemId}>
+            <Card padding="sm">
+              <Stack gap="sm" align="start">
+                <Checkbox
+                  checked={selectedIds.has(item.cartItemId)}
+                  onChange={() => toggleSelect(item.cartItemId)}
+                  aria-label={`${item.productName} 선택`}
+                  className="mt-1"
+                />
+                <Stack direction="column" className="min-w-0 flex-1" gap="xs">
+                  <Stack direction="row" justify="between" gap="xs">
+                    <Text weight="bold">{item.productName}</Text>
+                    <IconX aria-label={`${item.productName} 삭제`} onClick={() => setRemoveTarget(item)} />
+                  </Stack>
+                  <Stack gap="xs" direction="column">
+                    <Text variant="sub">
+                      {RENTAL_OPTION_LABEL[item.optionType]} · {datesLabel(item)}
+                    </Text>
+                    {item.crossRegionReturn && (
+                      <Text variant="sub" tone="accent" as="span">
+                        타지역 반납 포함 (+ {(item.extraFee ?? 0).toLocaleString()}원)
+                      </Text>
+                    )}
+                    <Text variant="sub" tone="ink" as="span">
+                      ×{item.quantity} / <b>{item.lineTotal.toLocaleString()}</b>원
+                    </Text>
+                  </Stack>
+                </Stack>
+              </Stack>
+            </Card>
+            </ScrollReveal>
+          ))}
+        </Stack>
+        </div>
+
+        {earliestExpiry && !holdExpired && (
+          <ScrollReveal>
+          <Alert status="warning" className="mt-4" icon={false}>
+            ⏱ [임시 홀드 중] 남은 시간 {formatCountdown(remainingMs)} — 중복 예약 방지를 위해
+            시간 내에 예약을 완료해 주세요. 시간이 지난 항목은 장바구니에서 빠집니다.
+          </Alert>
+          </ScrollReveal>
+        )}
+
+        {actionError && (
+          <Alert status="error" className="mt-4" icon={false}>
+            {actionError}
+          </Alert>
+        )}
+
+        <ScrollReveal>
+        <Stack direction="column" gap="sm" className="mt-6">
+          <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary">
+            여권 영문명
+          </Title>
+          <Input
+            id="passport-name"
+            value={passportName}
+            onChange={(e) => {
+              setPassportTouched(true);
+              setPassportName(e.target.value);
+            }}
+            placeholder="GILDONG HONG"
+          />
+          <FormMessage type="helper">예약 확정 전 필수 입력입니다.</FormMessage>
+        </Stack>
+        </ScrollReveal>
+
+        {/*
+          모바일에서는 하단 탭바(BottomNav, h-16) 바로 위에 합계·버튼을 고정해서 스크롤 없이도
+          항상 보이게 한다(쿠팡 등 실제 쇼핑몰 장바구니와 동일한 패턴). md 이상(데스크톱 확인용)
+          에서는 굳이 고정할 필요가 없어 원래 위치(폼 아래)에 자연스럽게 놓이도록 되돌린다.
+        */}
+        <div className="fixed inset-x-0 bottom-16 z-[90] border-t border-line bg-white p-4 md:static md:z-auto md:mt-6 md:border-0 md:bg-transparent md:p-0">
+          <div className="mx-auto max-w-2xl">
+            <Kv items={[{ key: "합계", value: `₩ ${total.toLocaleString()}` }]} />
+            <Button fullWidth className="mt-3" disabled={!canSubmit} onClick={handleSubmit}>
+              예약하고 입금 안내 받기 · {selectedItems.length}건
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  })();
 
   return (
     <main>
@@ -150,11 +313,7 @@ export default function CartPage() {
 
       <div className={`mx-auto max-w-2xl p-6 ${items.length > 0 ? "pb-56 md:pb-10" : "pb-10"}`}>
       <Stack direction="column" gap="sm">
-        {/*
-          예전엔 href="/rental"로 고정돼 있어서, 예약(캘린더) 화면에서 "바로 예약"으로 들어왔든
-          하단 탭으로 곧장 들어왔든 항상 상품조회로 돌아가 버렸다. router.back()으로 바꿔서
-          실제로 들어온 화면(캘린더 화면 등)으로 되돌아가게 한다.
-        */}
+        {/* 실제로 들어온 화면(상품 상세 등)으로 되돌아가게 router.back()을 쓴다. */}
         <button
           type="button"
           onClick={() => router.back()}
@@ -165,144 +324,13 @@ export default function CartPage() {
         <Title size="lg">장바구니</Title>
       </Stack>
 
-      {items.length === 0 ? (
-        <Stack direction="column" gap="md" className="mt-8 items-center text-center">
-          <Card className="w-full">
-            <Text tone="secondary">장바구니가 비어 있습니다.</Text>
-          </Card>
-          <div className="w-full border-t border-line" />
-          <NextLink href="/rental">
-            <Button>상품 보러가기</Button>
-          </NextLink>
-        </Stack>
-      ) : (
-        <>
-          <Stack justify="between" align="center" className="mt-4">
-            <Stack gap="sm" align="center">
-              <Checkbox checked={allSelected} onChange={toggleSelectAll} aria-label="전체 선택" />
-              <Text weight="medium" as="span">
-                전체 선택 <span className="text-sm text-muted">({selectedItems.length}/{items.length})</span>
-              </Text>
-            </Stack>
-            <button
-              type="button"
-              disabled={selectedItems.length === 0}
-              onClick={() => setBulkDeleteOpen(true)}
-              className="text-sm text-muted"
-            >
-              선택 삭제
-            </button>
-          </Stack>
-
-          {/* 담긴 항목이 많아지면 카드 목록만 이 영역 안에서 스크롤되게 한다(제목·버튼은 고정) */}
-          <div className="mt-2 max-h-[300px] overflow-y-auto pr-1">
-          <Stack direction="column" gap="sm">
-            {items.map((line) => {
-              const product = findRentalProductById(line.productId);
-              if (!product) return null;
-              return (
-                <ScrollReveal key={line.cartLineId}>
-                <Card padding="sm">
-                  <Stack gap="sm" align="start">
-                    
-                      <Checkbox
-                      checked={selectedIds.has(line.cartLineId)}
-                      onChange={() => toggleSelect(line.cartLineId)}
-                      aria-label={`${product.title} 선택`}
-                      className="mt-1"
-                    />
-                    
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-50 p-2">
-                      <img
-                        src={product.image}
-                        alt={product.title}
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                    
-                    <Stack direction="column" className="min-w-0 flex-1" gap="xs">
-                      <Stack direction="row" justify="between" gap="xs">
-                        <Text weight="bold">{product.title}</Text>
-                        <IconX aria-label={`${product.title} 삭제`} onClick={() => setRemoveTarget(line)} />
-                      </Stack>
-                      <Stack gap="xs" direction="column">
-                        <Text variant="sub">
-                          {RENTAL_OPTION_LABEL[line.option]} · {line.useDateStart}
-                          {line.useDateStart !== line.useDateEnd ? ` ~ ${line.useDateEnd}` : ""}
-                        </Text>
-                        {line.offSiteReturn && (
-                          <Text variant="sub" tone="accent" as="span">
-                            타지역 반납 포함 (+ {OFF_SITE_RETURN_FEE_KRW.toLocaleString()}원)
-                          </Text>
-                        )}
-                        <Text variant="sub" tone="ink" as="span">
-                          {line.qty}
-                          {product.category === "BICYCLE" ? "대" : "개"} / <b>{lineAmount(line).toLocaleString()}</b>원
-                        </Text>
-                        
-                      </Stack>
-                    </Stack>
-                  </Stack>
-                </Card>
-                </ScrollReveal>
-              );
-            })}            
-          </Stack>
-          </div>
-
-          {holdExpiresAt && !holdExpired && (
-            <ScrollReveal>
-            <Alert status="warning" className="mt-4" icon={false}>
-              ⏱ [임시 홀드 중] 남은 시간 {formatCountdown(remainingMs)} — 중복 예약 방지를 위해
-              시간 내에 예약을 완료해 주세요.
-            </Alert>
-            </ScrollReveal>
-          )}
-
-          {holdExpired && (
-            <ScrollReveal>
-            <Alert status="error" className="mt-4" icon={false}>
-              임시 홀드 시간이 지나 장바구니가 비워졌습니다. 다시 담아 주세요.
-            </Alert>
-            </ScrollReveal>
-          )}
-
-          <ScrollReveal>
-          <Stack direction="column" gap="sm" className="mt-6">
-            <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary">
-              여권 영문명
-            </Title>
-            <Input
-              id="passport-name"
-              value={passportName}
-              onChange={(e) => setPassportName(e.target.value)}
-              placeholder="GILDONG HONG"
-            />
-            <FormMessage type="helper">예약 확정 전 필수 입력입니다.</FormMessage>
-          </Stack>
-          </ScrollReveal>
-
-          {/*
-            모바일에서는 하단 탭바(BottomNav, h-16) 바로 위에 합계·버튼을 고정해서 스크롤 없이도
-            항상 보이게 한다(쿠팡 등 실제 쇼핑몰 장바구니와 동일한 패턴). md 이상(데스크톱 확인용)
-            에서는 굳이 고정할 필요가 없어 원래 위치(폼 아래)에 자연스럽게 놓이도록 되돌린다.
-          */}
-          <div className="fixed inset-x-0 bottom-16 z-[90] border-t border-line bg-white p-4 md:static md:z-auto md:mt-6 md:border-0 md:bg-transparent md:p-0">
-            <div className="mx-auto max-w-2xl">
-              <Kv items={[{ key: "합계", value: `₩ ${total.toLocaleString()}` }]} />
-              <Button fullWidth className="mt-3" disabled={!canSubmit} onClick={handleSubmit}>
-                예약하고 입금 안내 받기 · {selectedItems.length}건
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
+      {content}
 
       <ConfirmPopup
         open={Boolean(removeTarget)}
         message="장바구니에서 이 항목을 삭제할까요?"
         onConfirm={() => {
-          if (removeTarget) removeItem(removeTarget.cartLineId);
+          if (removeTarget) void removeItems([removeTarget]);
           setRemoveTarget(null);
         }}
         onClose={() => setRemoveTarget(null)}
@@ -312,7 +340,7 @@ export default function CartPage() {
         open={bulkDeleteOpen}
         message={`선택한 ${selectedItems.length}개 항목을 삭제할까요?`}
         onConfirm={() => {
-          removeItems(selectedItems.map((line) => line.cartLineId));
+          void removeItems(selectedItems);
           setBulkDeleteOpen(false);
         }}
         onClose={() => setBulkDeleteOpen(false)}

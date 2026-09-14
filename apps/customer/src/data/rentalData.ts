@@ -1,4 +1,4 @@
-import type { Product, RentalOptionKey } from "@chinguya/types";
+import type { Product } from "@chinguya/types";
 
 /**
  * 렌탈 상품 목업 데이터.
@@ -98,9 +98,6 @@ export const rentalNotice = [
  * (카테고리 라벨만은 세 앱이 공유하므로 packages/types의 ASSET_CATEGORY_LABEL을 쓴다.)
  */
 
-
-/** 옵션 칩을 순서대로 그릴 때 쓰는 고정 순서 목록 */
-export const RENTAL_OPTION_ORDER: RentalOptionKey[] = ["HOURS_2", "DAY_1", "DAY_2", "NIGHT"];
 
 /** id로 상품 하나 찾기. 상세 페이지(/rental/[id])에서 사용. */
 export function findRentalProductById(id: string): Product | undefined {

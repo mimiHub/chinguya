@@ -8,8 +8,8 @@ import type { CustomerReservation, CustomerReservationStatus } from "@chinguya/t
 /**
  * 화면 확인용 임의 데이터 — 실제로는 로그인한 사용자가 예약을 만들어야 채워지는데, 상태별
  * 배지 색(접수/완료/취소요청/취소)을 한 번에 눈으로 확인하려고 4가지 상태를 하나씩 미리
- * 채워뒀다. 아래 seqByYearMonth 초기화로 이 목업들과 실제로 새로 만드는 예약의 ID가
- * 겹치지 않게 해뒀다.
+ * 채워뒀다. 새 예약은 이제 Core API(POST /v1/bookings, S1-C3)가 만들고 이 목업에는 쌓이지 않는다 —
+ * 예약 목록·바우처(S1-C5~C7)가 실연동되면 이 파일은 사라진다.
  */
 const reservations: CustomerReservation[] = [
   {
@@ -60,56 +60,8 @@ const reservations: CustomerReservation[] = [
   },
 ];
 
-const seqByYearMonth = new Map<string, number>([["2608", 4]]);
-
-function generateReservationId(now: Date = new Date()): string {
-  const yy = String(now.getFullYear()).slice(2);
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const key = `${yy}${mm}`;
-  const next = (seqByYearMonth.get(key) ?? 0) + 1;
-  seqByYearMonth.set(key, next);
-  return `FR-${key}${String(next).padStart(4, "0")}`;
-}
-
-export interface CreateReservationInput {
-  productId: string;
-  rentalOption: CustomerReservation["rentalOption"];
-  passportName: string;
-  useDate: string;
-  useDateEnd?: string;
-  quantity: number;
-  offSiteReturn?: boolean;
-  amountKrw: number;
-}
-
-/**
- * 예약 하나를 만들어 저장한다. 상태는 바로 "received"(접수)로 시작한다 — 문서 규칙상 "접수"는
- * 예약이 생성된 상태를 뜻하고, 이후 관리자가 입금을 확인하면 "completed"(완료)로 바뀐다.
- */
-export function createReservation(input: CreateReservationInput): CustomerReservation {
-  const reservation: CustomerReservation = {
-    id: generateReservationId(),
-    productId: input.productId,
-    rentalOption: input.rentalOption,
-    status: "received",
-    passportName: input.passportName,
-    useDate: input.useDate,
-    useDateEnd: input.useDateEnd,
-    quantity: input.quantity,
-    offSiteReturn: input.offSiteReturn,
-    amountKrw: input.amountKrw,
-    createdAt: new Date().toISOString(),
-  };
-  reservations.unshift(reservation);
-  return reservation;
-}
-
 export function findReservationById(id: string): CustomerReservation | undefined {
   return reservations.find((r) => r.id === id);
-}
-
-export function findReservationsByIds(ids: string[]): CustomerReservation[] {
-  return ids.map((id) => findReservationById(id)).filter((r): r is CustomerReservation => Boolean(r));
 }
 
 /** 최신순으로 전체 예약 목록 */

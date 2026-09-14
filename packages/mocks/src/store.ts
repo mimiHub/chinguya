@@ -159,6 +159,8 @@ export function createBooking(dto: S["BookingCreate"]): S["Booking"] | null {
     passportName: dto.passportName ?? "",
     cancellable: true,
     depositInfo: {
+      bookingNumber: `CG${now.getFullYear()}${String(seq).padStart(4, "0")}`,
+      status: "AWAITING_DEPOSIT",
       ...depositAccountBase,
       amount: total,
       dueBy: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(), // 생성+24h
@@ -176,7 +178,9 @@ export function getBooking(id: string): S["Booking"] | null {
 }
 
 export function getDepositInfo(id: string): S["DepositInfo"] | null {
-  return bookings.get(id)?.depositInfo ?? null;
+  const b = bookings.get(id);
+  // 상태는 입금 확인 요청으로 바뀌므로 예약에서 다시 읽는다.
+  return b?.depositInfo ? { ...b.depositInfo, bookingNumber: b.bookingNumber, status: b.status } : null;
 }
 
 export function requestDeposit(id: string): S["Booking"] | null {
