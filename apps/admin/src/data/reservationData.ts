@@ -9,16 +9,47 @@ import type { CustomerReservationStatus } from "@chinguya/types";
  * 관리자 화면의 예약 상태가 같은 값이어야 하기 때문에, 두 곳에서 각자 다른 문자열을 쓰면
  * 나중에 어긋나기 쉽다.
  */
+/** 예약 항목(1 예약번호 = N 항목) 하나의 유효/취소 여부. 별도 상태값 없이 이 값으로만
+ * "부분취소" 뱃지를 계산한다 — packages/mocks의 BookingItemStatus와 같은 개념. */
+export type ReservationItemStatus = "active" | "cancelled";
+
+/** 예약 항목 하나 — 항목마다 상품·옵션·이용일·수량·금액이 다를 수 있다(관리자_상세설명.md S1-A7/A8). */
+export interface AdminReservationItem {
+  id: string;
+  productName: string;
+  /** 대여 옵션 표기(예: "1일", "2시간") — 상품명과 붙여 "상품 · 옵션"으로 보여준다. */
+  optionLabel: string;
+  useDate: string;
+  quantity: number;
+  amountKrw: number;
+  status: ReservationItemStatus;
+}
+
 export interface AdminReservationRow {
   id: string;
   customer: string;
   passportName: string;
+  /** 대표 상품명 · 이용일 · 결제액(예약 목록 카드 표기용) — 항목 리스트는 items 참고. */
   product: string;
   useDate: string;
   amountKrw: number;
   status: CustomerReservationStatus;
   /** 접수(예약 생성) 시각 — "미입금" 경과 시간 계산의 기준 */
   createdAt: string;
+  /** 예약 항목 리스트(취소된 항목도 포함). 1 예약번호 = N 항목. */
+  items: AdminReservationItem[];
+}
+
+/** 유효 항목(status="active") 금액 합계 — 예약 상세의 "입금액(유효 항목)". */
+export function activeItemsTotal(row: AdminReservationRow): number {
+  return row.items.filter((it) => it.status === "active").reduce((sum, it) => sum + it.amountKrw, 0);
+}
+
+/** 일부 항목만 취소된 예약인지 — true면 "부분취소" 뱃지(별도 상태값 없음). */
+export function isPartiallyCancelled(row: AdminReservationRow): boolean {
+  const hasActive = row.items.some((it) => it.status === "active");
+  const hasCancelled = row.items.some((it) => it.status === "cancelled");
+  return hasActive && hasCancelled;
 }
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
@@ -46,6 +77,11 @@ export const adminReservations: AdminReservationRow[] = [
     amountKrw: 30000,
     status: "received",
     createdAt: hoursAgo(2), // 방금 접수 — 아직 미입금 아님
+    // 항목 2건 데모(관리자_상세설명.md 예시) — 같은 상품·이용일이라도 항목은 나뉠 수 있다.
+    items: [
+      { id: "FR-27070001-1", productName: "전기자전거", optionLabel: "1일", useDate: "2027-07-07", quantity: 1, amountKrw: 15000, status: "active" },
+      { id: "FR-27070001-2", productName: "전기자전거", optionLabel: "1일", useDate: "2027-07-07", quantity: 1, amountKrw: 15000, status: "active" },
+    ],
   },
   {
     id: "FR-27060777",
@@ -56,6 +92,9 @@ export const adminReservations: AdminReservationRow[] = [
     amountKrw: 3000,
     status: "received",
     createdAt: hoursAgo(30), // 24시간 지남 — "미입금" 탭에 노출
+    items: [
+      { id: "FR-27060777-1", productName: "일반자전거", optionLabel: "2시간", useDate: "2027-07-10", quantity: 1, amountKrw: 3000, status: "active" },
+    ],
   },
   {
     id: "FR-27070002",
@@ -66,6 +105,9 @@ export const adminReservations: AdminReservationRow[] = [
     amountKrw: 8000,
     status: "completed",
     createdAt: hoursAgo(20),
+    items: [
+      { id: "FR-27070002-1", productName: "일반자전거", optionLabel: "1일", useDate: "2027-07-08", quantity: 1, amountKrw: 8000, status: "active" },
+    ],
   },
   {
     id: "FR-27060999",
@@ -76,6 +118,9 @@ export const adminReservations: AdminReservationRow[] = [
     amountKrw: 27000,
     status: "cancel_requested",
     createdAt: hoursAgo(40),
+    items: [
+      { id: "FR-27060999-1", productName: "전기자전거", optionLabel: "2일", useDate: daysFromNow(5), quantity: 1, amountKrw: 27000, status: "active" },
+    ],
   },
   {
     id: "FR-27060888",
@@ -86,6 +131,10 @@ export const adminReservations: AdminReservationRow[] = [
     amountKrw: 5000,
     status: "cancelled",
     createdAt: hoursAgo(200),
+    // 예약 전체 취소 — 항목도 전부 취소 상태로 남긴다(바우처에서 회색·취소 뱃지로 표시하는 것과 동일한 원칙).
+    items: [
+      { id: "FR-27060888-1", productName: "릴낚시대", optionLabel: "2시간", useDate: "2027-06-25", quantity: 1, amountKrw: 5000, status: "cancelled" },
+    ],
   },
 ];
 

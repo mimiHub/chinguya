@@ -7,11 +7,18 @@ import { Title } from "@chinguya/ui/title";
 import { Kv } from "@chinguya/ui/kv";
 import { StatusBadge, Badge } from "@chinguya/ui/badge";
 import { Button } from "@chinguya/ui/button";
+import { Card } from "@chinguya/ui/card";
 import { ComingSoon } from "@chinguya/ui/coming-soon";
 import { Text } from "@chinguya/ui/text";
 import { Toast } from "@chinguya/ui/toast";
 import { FormMessage } from "@chinguya/ui/form-message";
-import { findAdminReservationById, getElapsedHours, UNPAID_AFTER_HOURS } from "@/data/reservationData";
+import {
+  findAdminReservationById,
+  getElapsedHours,
+  activeItemsTotal,
+  isPartiallyCancelled,
+  UNPAID_AFTER_HOURS,
+} from "@/data/reservationData";
 import { cancellationFeeRules, daysBeforeUse, resolveCancellationFeeRate } from "@/data/settingsData";
 import { Stack } from "@chinguya/ui/stack";
 
@@ -43,8 +50,10 @@ export default function AdminReservationDetailPage() {
   // 읽는다 — /settings 화면이 Core API에 저장한 실제 요율표는 여기 반영되지 않는다.
   const daysLeft = daysBeforeUse(reservation.useDate);
   const cancelFeeRate = resolveCancellationFeeRate(cancellationFeeRules, daysLeft);
-  const cancelFee = Math.round(reservation.amountKrw * cancelFeeRate);
-  const refundAmount = reservation.amountKrw - cancelFee;
+  const depositAmount = activeItemsTotal(reservation); // 입금액은 유효 항목 합계 기준
+  const cancelFee = Math.round(depositAmount * cancelFeeRate);
+  const refundAmount = depositAmount - cancelFee;
+  const partiallyCancelled = isPartiallyCancelled(reservation);
 
   const elapsedHours = getElapsedHours(reservation.createdAt);
   const isUnpaidNow = status === "received" && elapsedHours >= UNPAID_AFTER_HOURS;
@@ -73,18 +82,39 @@ export default function AdminReservationDetailPage() {
       <Title size="md" subtitle={reservation.id}>
         <span className="inline-flex items-center gap-2">
           예약 상세 {isUnpaidNow ? <Badge variant="warning">미입금</Badge> : <StatusBadge status={status} />}
+          {partiallyCancelled && <Badge variant="gray">부분취소</Badge>}
         </span>
       </Title>
 
       <Kv
         className="mt-4"
-        items={[
-          { key: "고객 / 여권명", value: `${reservation.customer} / ${reservation.passportName}` },
-          { key: "상품 · 수량", value: reservation.product },
-          { key: "이용일", value: reservation.useDate },
-          { key: "결제액", value: priceText(reservation.amountKrw) },
-        ]}
+        items={[{ key: "고객 / 여권명", value: `${reservation.customer} / ${reservation.passportName}` }]}
       />
+
+      <Stack direction="column" gap="sm" className="mt-4">
+        <Text weight="bold">예약 항목 ({reservation.items.length}건)</Text>
+        {reservation.items.map((item) => (
+          <Card key={item.id} padding="sm">
+            <Stack direction="column" gap="xs">
+              <Stack justify="between" align="center">
+                <Text weight="bold">
+                  {item.productName} · {item.optionLabel}
+                </Text>
+                <Badge variant={item.status === "active" ? "success" : "gray"}>
+                  {item.status === "active" ? "유효" : "취소"}
+                </Badge>
+              </Stack>
+              <Stack justify="between" align="center">
+                <Text variant="sub">
+                  {item.useDate} · {item.quantity}개
+                </Text>
+                {priceText(item.amountKrw)}
+              </Stack>
+            </Stack>
+          </Card>
+        ))}
+        <Kv items={[{ key: "입금액(유효 항목)", value: priceText(depositAmount) }]} />
+      </Stack>
 
       {status === "received" && (
         <Stack  direction="column" gap="sm">
@@ -113,7 +143,7 @@ export default function AdminReservationDetailPage() {
           <Kv
             className="mt-2"
             items={[
-              { key: "결제액", value: priceText(reservation.amountKrw) },
+              { key: "입금액(유효 항목)", value: priceText(depositAmount) },
               { key: "취소 수수료(차등)", value: priceText(cancelFee, "− ") },
               { key: "환불 예정액", value: priceText(refundAmount) },
               { key: "고객 환불계좌", value: "○○ 000-000" },
