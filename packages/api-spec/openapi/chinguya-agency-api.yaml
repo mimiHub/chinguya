@@ -3,9 +3,13 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 여행사(G) 대상 Core API 명세 [v0.1]
 #
-# 범위: 계정 등록(초대 링크 수락, S2-G1), 로그인·로그아웃·세션 조회(S2-G2).
-#       여행사 대시보드·상품 예약·예약 목록·인보이스(S2-G3~G7)는 아직 없다 —
-#       구현되는 대로 이어 붙인다.
+# 범위: 계정 등록(초대 링크 수락, S2-G1), 로그인·로그아웃·세션 조회(S2-G2),
+#       상품 조회·예약(S2-G4/G5). 대시보드·예약 목록·인보이스(S2-G3, S2-G6, S2-G7)는
+#       아직 없다 — 구현되는 대로 이어 붙인다.
+#
+# x-screens: 각 operation에 그 엔드포인트를 쓰는 화면코드를 단다(관리자 문서 헤더와 같은 규약).
+#            노션 「페이지 정의서」의 `API 상태` 를 어느 행에 찍을지 이 값으로만 판단한다.
+#            S2-G4/G5 부터 달았다 — 그 이전 operation(S2-G1/G2)에는 아직 없다.
 #
 # 왜 별도 문서인가: chinguya-slice1-openapi.yaml 은 헤더에서 스스로를 '고객 대상'
 #       으로, chinguya-admin-api.yaml 은 '관리자 대상'으로 한정한다. 여행사는 세 번째
@@ -30,13 +34,23 @@ openapi: 3.1.0
 #   3. 로그인 실패 횟수 제한·계정 잠금 정책 없음(관리자와 같은 상태).
 #   4. 여행사 1곳 = 계정 1개(1:1)로 확정. 담당자가 여러 명인 여행사가 나오면
 #      agency_account 의 UNIQUE(agency_id) 를 떼고 초대를 계정 단위로 바꿔야 한다.
+#   5. **여권 영문명을 받지 않는다**(S2-G4/G5). 대시보드(S2-G3) 오늘 이용자 명단에는
+#      여권명 칸이 있지만 예약 화면에는 입력칸이 없다. 이용자마다(수량만큼) 받을지,
+#      예약마다 대표자 1명만 받을지 기획 결정이 필요하다.
+#   6. 예약 목록·취소(S2-G6)가 아직 없어 예약 `status` 는 지금 항상 `COMPLETED` 다.
+#   7. 매장 휴무는 **이용일(시작일)만** 본다. 2일(DAY_2) 상품의 둘째 날이 휴무여도 막지 않는다.
+#   8. 예약번호는 `AG-{생성 연월 YYMM}{일련번호 4자리 이상}` 이다. 일련번호는 월마다
+#      초기화되지 않고 계속 올라간다.
+#   9. '오늘'(예약 가능 기간의 기준)은 **서버 날짜**다 — 재고 세팅(S1-A3)의 D-3 반환 규칙과
+#      같은 기준이다. 규칙상 '오늘'은 일본 기준이므로 서버 타임존이 JST 가 아니면 어긋난다.
 # =============================================================================
 
 info:
   title: 친구야 여행사 Core API
   version: 0.1.0
   description: |
-    여행사(G) 앱이 쓰는 Core API 계약. 현재는 계정 등록(S2-G1)과 로그인(S2-G2)을 정의한다.
+    여행사(G) 앱이 쓰는 Core API 계약. 현재는 계정 등록(S2-G1)·로그인(S2-G2)과
+    상품 조회·예약(S2-G4/G5)을 정의한다.
 
     **계정의 생애주기** — 관리자와 여행사가 나눠 가진다:
 
@@ -56,6 +70,15 @@ info:
     - 관리자가 자기 쿠키로 여행사 API를 부르면 403이다(롤이 다르다).
     - 관리자가 여행사를 **사용 불가**로 바꾸면(S2-A1 토글) 로그인이 막히고, 이미
       로그인한 세션도 `GET /v1/agency/auth/me` 에서 403 이 되어 화면 이동 시 튕긴다.
+      상품 조회·예약 API도 부를 때마다 같은 검사를 한다(403 `AGENCY_INACTIVE`).
+
+    **여행사 예약 규칙**(S2-G4/G5):
+    - 예약 가능 기간은 이용일 기준 **오늘 +3일 ~ +3개월**(양 끝 포함).
+    - 가용 = 그날 **이 여행사의 연결 자산 할당**(관리자 S1-A3) − 이 여행사가 그 자산으로
+      이미 잡은 예약 수량. 할당은 자산 단위라 **같은 자산의 상품끼리 나눠 쓴다**.
+    - 2일(`DAY_2`) 상품은 이용일과 다음 날, 이틀의 할당을 쓴다.
+    - 매장 휴무일에는 예약할 수 없다.
+    - 예약은 **즉시 완료**다(입금 흐름 없음). 금액은 예약 시점의 여행사가로 서버가 계산한다.
 
 servers:
   - url: https://api.chinguya.co.kr/v1
@@ -68,6 +91,8 @@ tags:
     description: 초대 링크 검증·계정 등록 (S2-G1)
   - name: agency-auth
     description: 여행사 로그인·로그아웃·세션 조회 (S2-G2)
+  - name: agency-booking
+    description: 이용 날짜별 상품 조회·예약(즉시 완료) (S2-G4/G5)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -230,6 +255,110 @@ paths:
         '403':
           $ref: '#/components/responses/AgencyInactive'
 
+  /agency/products:
+    get:
+      tags: [agency-booking]
+      x-screens: [S2-G4]
+      summary: 이용 날짜별 예약 가능 상품 조회 (S2-G4)
+      description: |
+        이용 날짜를 바꿀 때마다 호출해 상품 표(여행사가·가용)를 그린다.
+
+        **대상 상품** — 삭제되지 않았고 여행사앱 표출(관리자 S1-A4 토글)이 켜진 상품 전부.
+        순서는 관리자 상품 목록과 같다(카테고리 → 자산 등록순 → 옵션순). 고객가는 내려주지 않는다.
+
+        **가용(`available`)** = 그날 이 여행사의 연결 자산 할당 − 이 여행사가 그 자산으로
+        이미 잡은 예약 수량(완료 상태), 0 미만이면 0.
+        - 할당은 자산 단위라 **같은 자산의 상품끼리 나눠 쓴다.** 전기자전거·1일로 2대를
+          예약하면 전기자전거·2시간의 가용도 2 줄어든다.
+        - 2일(`DAY_2`) 상품은 이용일과 다음 날 중 **작은 쪽**이다.
+        - 매장 휴무일이면 `closed = true` 이고 모든 가용이 0이다.
+
+        `available` 은 줄마다 따로 계산한 값이라, 같은 자산의 줄을 여러 개 담으면 합계가
+        가용을 넘을 수 있다. 화면은 같은 `assetId` 줄들의 선택 수량을 빼서 스테퍼 상한을
+        정하고, 최종 판정은 예약 API가 한다(409).
+      parameters:
+        - name: useDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: 이용 날짜. 오늘 +3일 ~ +3개월(양 끝 포함).
+      responses:
+        '200':
+          description: 그 날짜의 예약 가능 상품
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyProductList' }
+        '400':
+          description: |
+            `useDate` 누락·형식 오류(`VALIDATION_ERROR`) 또는 예약 가능 기간 밖(`USE_DATE_OUT_OF_RANGE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: USE_DATE_OUT_OF_RANGE
+                message: 여행사 예약은 이용일 기준 오늘 +3일부터 +3개월까지 가능합니다.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
+
+  /agency/reservations:
+    post:
+      tags: [agency-booking]
+      x-screens: [S2-G5]
+      summary: 예약 — 즉시 완료 (S2-G5)
+      description: |
+        상품 조회(S2-G4)에서 고른 상품·수량을 한 번에 예약한다. 여행사 예약은 입금 흐름이
+        없으므로 **만들어지는 즉시 `COMPLETED`** 다.
+
+        - **상품 1줄 = 예약 1건**이다. 줄마다 예약번호가 따로 붙는다(예약 목록 S2-G6 의
+          표도 줄 단위다). 응답 배열은 요청 `items` 순서와 같다.
+        - **전부 성공하거나 전부 실패한다.** 한 줄이라도 가용을 넘으면 아무것도 저장하지 않는다.
+        - 금액은 서버가 **지금의 여행사가**로 계산해 예약에 복사해 둔다(요청에 금액이 없다).
+          나중에 관리자가 가격을 바꿔도 이미 잡은 예약의 금액은 그대로다.
+        - 가용 판정은 조회 API와 같은 식이고, 같은 자산의 줄들은 **날짜별로 수량을 합쳐서** 본다.
+          동시에 들어온 예약끼리 할당을 넘지 않도록 자산 단위로 잠근 뒤 판정한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyReservationCreateRequest' }
+      responses:
+        '201':
+          description: 예약 완료 — 요청 줄마다 1건
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AgencyReservation' }
+        '400':
+          description: |
+            입력값 오류(`VALIDATION_ERROR` — 빈 목록·수량 1 미만·같은 상품 중복·날짜 누락)
+            또는 예약 가능 기간 밖(`USE_DATE_OUT_OF_RANGE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
+        '404':
+          description: 없거나 삭제됐거나 여행사앱 표출이 꺼진 상품
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: PRODUCT_NOT_FOUND
+                message: 상품을 찾을 수 없습니다.
+        '409':
+          description: 매장 휴무일(`STORE_CLOSED`)이거나 가용보다 많이 담았다(`ALLOCATION_EXCEEDED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: ALLOCATION_EXCEEDED
+                message: 전기자전거의 예약 가능 수량을 넘었습니다(2026-09-20 남은 수량 1대).
+
 # -----------------------------------------------------------------------------
 components:
 
@@ -373,6 +502,97 @@ components:
           format: date-time
           description: 액세스 토큰 만료 시각(UTC). 발급 시점 +4시간.
 
+    AgencyProductList:
+      type: object
+      required: [useDate, closed, products]
+      properties:
+        useDate: { type: string, format: date }
+        closed:
+          type: boolean
+          description: 매장 휴무일이면 true. 이때 모든 상품의 `available` 은 0이다.
+        products:
+          type: array
+          items: { $ref: '#/components/schemas/AgencyProduct' }
+
+    AgencyProduct:
+      type: object
+      required: [productId, assetId, assetName, category, optionType, agencyPrice, available]
+      description: 상품 표 한 줄. 화면의 상품명은 `assetName · 옵션 라벨`(예 "전기자전거 · 1일")이다.
+      properties:
+        productId: { type: string }
+        assetId:
+          type: string
+          description: 연결 자산. 같은 값을 가진 줄끼리 할당을 나눠 쓴다.
+        assetName: { type: string }
+        category:
+          type: string
+          enum: [BICYCLE, FISHING_ROD]
+        optionType:
+          type: string
+          enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+        agencyPrice:
+          type: integer
+          minimum: 0
+          description: 여행사가(KRW, 1대 기준).
+        available:
+          type: integer
+          minimum: 0
+          description: 이 줄만 담는다고 할 때 예약할 수 있는 최대 수량. 계산식은 `GET /agency/products` 설명 참고.
+
+    AgencyReservationCreateRequest:
+      type: object
+      required: [useDate, items]
+      properties:
+        useDate:
+          type: string
+          format: date
+          description: 이용 날짜. 오늘 +3일 ~ +3개월(양 끝 포함).
+        items:
+          type: array
+          minItems: 1
+          description: 같은 `productId` 가 두 번 나오면 400 이다.
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId: { type: string }
+              quantity:
+                type: integer
+                minimum: 1
+
+    AgencyReservation:
+      type: object
+      required: [reservationId, reservationNumber, useDate, productId, assetName, optionType,
+                 quantity, unitPrice, amount, status, createdAt]
+      properties:
+        reservationId: { type: string }
+        reservationNumber:
+          type: string
+          example: AG-26090001
+          description: 사람이 보는 예약번호. 형식은 헤더 TODO 8.
+        useDate: { type: string, format: date }
+        productId: { type: string }
+        assetName: { type: string }
+        optionType:
+          type: string
+          enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: integer
+          minimum: 0
+          description: 예약 시점의 여행사가(KRW).
+        amount:
+          type: integer
+          minimum: 0
+          description: unitPrice × quantity.
+        status:
+          type: string
+          enum: [COMPLETED, CANCELLED]
+          description: 여행사 예약은 만들어지는 즉시 COMPLETED. 취소(S2-G6)는 아직 없다.
+        createdAt: { type: string, format: date-time }
+
     Error:
       type: object
       required: [code, message]
@@ -396,6 +616,13 @@ components:
             인증(S2-G2):
             - `INVALID_CREDENTIALS` — 아이디 없음·비밀번호 불일치·삭제된 여행사.
             - `AGENCY_INACTIVE` — 관리자가 사용 불가로 전환했다.
+
+            상품 조회·예약(S2-G4/G5):
+            - `VALIDATION_ERROR` — 형식 오류(날짜 누락·빈 목록·수량 1 미만·같은 상품 중복).
+            - `USE_DATE_OUT_OF_RANGE` — 이용 날짜가 오늘 +3일 ~ +3개월 밖이다.
+            - `PRODUCT_NOT_FOUND` — 없거나 삭제됐거나 여행사앱 표출이 꺼진 상품이다.
+            - `STORE_CLOSED` — 이용 날짜가 매장 휴무일이다.
+            - `ALLOCATION_EXCEEDED` — 가용보다 많이 담았다. 메시지에 자산명·날짜·남은 수량이 있다.
         message: { type: string }
         fieldErrors:
           type: array
