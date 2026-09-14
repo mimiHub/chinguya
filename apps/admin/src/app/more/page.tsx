@@ -17,7 +17,6 @@ const MENU_ITEMS: { label: string; href: string; description: string }[] = [
   { label: "예약 관리", href: "/reservations", description: "예약 목록 조회 · 상태 변경 · 미입금 강제 취소" },
   { label: "자산 관리", href: "/assets", description: "보유 자산(자전거/낚싯대) 종류 등록·수정·삭제" },
   { label: "재고 세팅", href: "/inventory", description: "기준 보유량 · 날짜별 재고 조정 · 여행사 할당 · 고객 가용 수량 · 휴무 설정" },
-  { label: "할당 세팅", href: "/allocations", description: "여행사 할당 수량을 여행사별로 나눠서 세팅" },
   { label: "상품 관리", href: "/products", description: "상품별 가격 · 고객앱/여행사앱 표출 설정" },
   { label: "계좌 · 정책 설정", href: "/settings", description: "입금 계좌 정보, 취소 수수료율 등 정책값 관리" },
   { label: "관리자 관리", href: "/admins", description: "관리자 계정 추가/삭제, 슈퍼어드민 권한 관리" },

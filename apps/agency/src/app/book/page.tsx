@@ -93,7 +93,7 @@ export default function AgencyBookPage() {
   const [qtyByRow, setQtyByRow] = useState<Record<string, number>>({});
   const [toastOpen, setToastOpen] = useState(false);
 
-  // 날짜 필드를 누르면 브라우저 기본 달력 대신, 관리자 앱 재고 할당 화면(allocations/page.tsx)과
+  // 날짜 필드를 누르면 브라우저 기본 달력 대신, 관리자 앱 재고 세팅 화면(inventory/page.tsx)과
   // 같은 방식 — 버튼 + CalendarIcon을 누르면 Popup(제목+닫기 X 기본 제공) 안에 Calendar를
   // 띄운다 — 으로 통일한다.
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -174,7 +174,7 @@ export default function AgencyBookPage() {
                 <Title as="label" htmlFor="use-date" size="sm" leaf tone="secondary">
                 이용 날짜
               </Title>
-              {/* 관리자 앱 재고 할당 화면(allocations/page.tsx)의 날짜 선택 버튼과 같은 모양 —
+              {/* 관리자 앱 재고 세팅 화면(inventory/page.tsx)의 날짜 선택 버튼과 같은 모양 —
                   알약형 버튼에 날짜 + CalendarIcon을 두고, 누르면 Popup(제목 + 기본 제공되는
                   닫기 X) 안에 Calendar를 띄운다. */}
               <button
