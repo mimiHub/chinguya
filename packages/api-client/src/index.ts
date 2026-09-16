@@ -399,6 +399,43 @@ export interface CustomerBooking {
   createdAt: string;
 }
 
+/** 취소 견적 항목 1줄(계약 CancellationQuoteItem). 요율은 항목 시작일까지 남은 일수로 정해진다. */
+export interface CustomerCancellationQuoteItem {
+  bookingItemId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  /** 요율 기준 이용일(YYYY-MM-DD) */
+  useDate: string;
+  /** 이용일까지 남은 일수(당일 0) */
+  daysToUse: number;
+  /** 0~1 */
+  feeRate: number;
+  lineAmount: number;
+  cancellationFee: number;
+  refundAmount: number;
+}
+
+/** 취소 견적(S1-C7). 계약: CancellationQuote. 합계는 항목별 값을 더한 것이다. */
+export interface CustomerCancellationQuote {
+  bookingId: string;
+  /** FULL = 유효 항목 전부 */
+  scope: "FULL" | "PARTIAL";
+  items: CustomerCancellationQuoteItem[];
+  /** 예약 원 결제액 */
+  paidAmount: number;
+  /** 대상 항목 결제액 합계 */
+  selectedAmount: number;
+  cancellationFee: number;
+  refundAmount: number;
+}
+
+/** 취소 요청(S1-C7). itemIds를 생략하면 취소 가능한 항목 전부. 계좌 값은 각각 50자 이하. */
+export interface CustomerCancelRequestInput {
+  itemIds?: string[];
+  refundAccount: { bankName: string; accountNumber: string; accountHolder: string };
+  reason?: string;
+}
+
 /** 내 예약 목록(S1-C5) 탭. 입금대기·취소요청은 탭 없이 '전체' 안에서 상태 태그로만 보인다. */
 export type CustomerBookingListStatus = "ALL" | "RECEIVED" | "COMPLETED" | "CANCELLED";
 
@@ -584,6 +621,20 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** S1-C5 내 예약 목록(최근 예약 먼저). */
       list: (status: CustomerBookingListStatus = "ALL", page = 0, size = 20) =>
         request<CustomerBookingListPage>(`/bookings?status=${status}&page=${page}&size=${size}`),
+      /**
+       * S1-C7 취소 견적. itemIds를 생략하면 취소 가능한 항목 전부.
+       * 취소할 수 없는 예약이면 409(INVALID_BOOKING_STATUS), 입금 전 일부 선택이면 409(PARTIAL_CANCEL_NOT_ALLOWED).
+       */
+      cancellationQuote: (bookingId: string, itemIds?: string[]) =>
+        request<CustomerCancellationQuote>(
+          `/bookings/${bookingId}/cancellation-quote${itemIds?.length ? `?itemIds=${itemIds.join(",")}` : ""}`,
+        ),
+      /** S1-C7 취소 요청. 갱신된 예약을 돌려준다(유효 항목 전부면 상태 = CANCEL_REQUESTED). */
+      requestCancel: (bookingId: string, body: CustomerCancelRequestInput) =>
+        request<CustomerBooking>(`/bookings/${bookingId}/cancel-request`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
     },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),

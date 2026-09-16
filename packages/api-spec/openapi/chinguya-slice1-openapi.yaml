@@ -12,6 +12,19 @@ openapi: 3.1.0
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
 #
+# v0.10 변경(2026-09-16 — 취소 요청 S1-C7 실연동):
+#   1. `GET /bookings/{bookingId}/cancellation-quote`·`POST /bookings/{bookingId}/cancel-request`에
+#      `x-screens: [S1-C7]` 부착.
+#   2. 대상 항목 규칙 확정: `itemIds` 생략 = **지금 취소 가능한 항목 전부**(v0.9 항목 `cancellable`).
+#      지정한 항목은 모두 취소 가능해야 한다.
+#      - 예약에 없는 항목 id → 400 `INVALID_BOOKING_ITEM`
+#      - 취소 불가 항목(이미 취소·취소요청, 이용일 지남) → 견적 400 / 요청 409 `ITEM_NOT_CANCELLABLE`
+#      - 예약 상태가 취소 불가(취소요청·취소)거나 취소 가능한 항목이 없음 → 409 `INVALID_BOOKING_STATUS`
+#   3. `FULL` = 대상이 **유효 항목 전부**. 요청이 `FULL`이면 예약 상태도 `CANCEL_REQUESTED`.
+#      `FULL_ONLY`(입금대기·접수)에서 `FULL`이 아니면 409 `PARTIAL_CANCEL_NOT_ALLOWED`.
+#   4. 항목 수수료 = 결제액 × 요율을 **원 단위 반올림(0.5 올림)**. `daysToUse` = 시작일 − 오늘(JST).
+#   5. `RefundAccount` 각 값은 공백 불가·50자 이하 — 위반 시 400 `VALIDATION_ERROR`.
+#
 # v0.9 변경(2026-09-16 — 예약 상세·바우처 S1-C6 실연동):
 #   1. `GET /bookings/{bookingId}`에 `x-screens` 부착. 남의 예약·없는 예약은 404 `BOOKING_NOT_FOUND`.
 #   2. 취소 가능 판정 확정:
@@ -105,7 +118,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.9.0-draft
+  version: 0.10.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -556,6 +569,7 @@ paths:
   /bookings/{bookingId}/cancellation-quote:
     get:
       tags: [cancellation]
+      x-screens: [S1-C7]
       summary: 취소 견적 조회 (S1-C7 진입·항목 선택 변경 시)
       description: |
         선택한 항목들의 결제액·취소 수수료·환불 예정액을 반환한다.
@@ -583,9 +597,9 @@ paths:
             type: array
             items: { type: string }
           description: |
-            견적 대상 `bookingItemId` 목록(쉼표 구분). 생략 시 유효 항목 전체.
-            이미 취소됐거나 취소요청 중인 항목을 지정하면 400
-            `ITEM_NOT_CANCELLABLE`.
+            견적 대상 `bookingItemId` 목록(쉼표 구분). 생략 시 **취소 가능한 항목 전체**.
+            예약에 없는 항목이면 400 `INVALID_BOOKING_ITEM`, 취소 불가 항목(이미
+            취소·취소요청 중, 이용일 지남)이면 400 `ITEM_NOT_CANCELLABLE`.
       responses:
         '200':
           description: 취소 견적(항목별 내역 + 합산)
@@ -597,8 +611,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: |
-            취소 불가 상태. `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기에서 부분
-            취소 시도) 포함.
+            취소 불가 상태. `INVALID_BOOKING_STATUS`(취소요청·취소 상태거나 취소
+            가능한 항목이 없음), `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기·접수에서
+            부분 취소 시도).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -606,12 +621,13 @@ paths:
   /bookings/{bookingId}/cancel-request:
     post:
       tags: [cancellation]
+      x-screens: [S1-C7]
       summary: 취소 요청 제출 (S1-C7 '선택 항목 취소 요청')
       description: |
         환불 계좌와 **취소할 항목**을 입력받아 취소를 요청한다.
 
         **v0.4 변경(항목 단위)**:
-        - `itemIds` 생략 = 예약 전체 취소. 지정 = 부분취소.
+        - `itemIds` 생략 = 취소 가능한 항목 전체(v0.10). 지정 = 그 항목만.
         - 지정된 항목의 상태가 `ACTIVE` → `CANCEL_REQUESTED`로 전이한다.
         - **전체 항목**이 요청되면 예약 상태도 `CANCEL_REQUESTED`로 전이한다.
           **일부만** 요청되면 예약 상태는 **유효 항목 기준으로 유지**하고
@@ -642,9 +658,10 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: |
-            취소 불가 상태. `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기에서 부분
-            취소 시도), `ITEM_NOT_CANCELLABLE`(이미 취소·취소요청 중인 항목)
-            포함.
+            취소 불가 상태. `INVALID_BOOKING_STATUS`(취소요청·취소 상태거나 취소
+            가능한 항목이 없음), `PARTIAL_CANCEL_NOT_ALLOWED`(입금대기·접수에서
+            부분 취소 시도), `ITEM_NOT_CANCELLABLE`(이미 취소·취소요청 중이거나
+            이용일이 지난 항목).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1298,7 +1315,7 @@ components:
           description: 이 항목의 결제액(BookingItem.lineTotal).
         cancellationFee:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: 이 항목의 취소 수수료(lineAmount × feeRate, 원 단위 반올림 규칙은 구현 확정).
+          description: 이 항목의 취소 수수료(lineAmount × feeRate, 원 단위 반올림 — 0.5는 올림).
         refundAmount:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
           description: 이 항목의 환불 예정액(lineAmount − cancellationFee).
@@ -1340,10 +1357,11 @@ components:
     RefundAccount:
       type: object
       required: [bankName, accountNumber, accountHolder]
+      description: 환불 받을 계좌. 각 값은 공백 불가·50자 이하.
       properties:
-        bankName: { type: string }
-        accountNumber: { type: string }
-        accountHolder: { type: string }
+        bankName: { type: string, maxLength: 50 }
+        accountNumber: { type: string, maxLength: 50 }
+        accountHolder: { type: string, maxLength: 50 }
 
     CancelRequest:
       type: object
@@ -1353,7 +1371,7 @@ components:
           type: array
           items: { type: string }
           description: |
-            **v0.4 신규.** 취소할 `bookingItemId` 목록. 생략 시 예약 전체 취소.
+            **v0.4 신규.** 취소할 `bookingItemId` 목록. 생략 시 취소 가능한 항목 전체(v0.10).
             `AWAITING_DEPOSIT`(입금대기)에서는 일부 지정이 불가하며(전체
             취소만) 위반 시 409 `PARTIAL_CANCEL_NOT_ALLOWED`.
         refundAccount: { $ref: '#/components/schemas/RefundAccount' }
