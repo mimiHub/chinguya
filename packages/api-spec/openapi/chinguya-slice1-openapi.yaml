@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.8]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.9]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,16 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.9 변경(2026-09-16 — 예약 상세·바우처 S1-C6 실연동):
+#   1. `GET /bookings/{bookingId}`에 `x-screens` 부착. 남의 예약·없는 예약은 404 `BOOKING_NOT_FOUND`.
+#   2. 취소 가능 판정 확정:
+#      - 항목 `cancellable` = 항목이 `ACTIVE` + 예약이 입금대기·접수·완료 + **첫 이용일이 오늘(JST)
+#        이후**(당일 포함 — 당일 취소도 요율표의 '당일' 구간으로 받는다).
+#      - 예약 `cancellable` = 취소 가능한 항목이 하나라도 있다.
+#      - `cancellationScope` = 완료면 `ITEM_SELECTABLE`, 입금대기·접수면 `FULL_ONLY`
+#        (접수 = 고객 입금 신고만 된 상태라 입금대기와 같이 본다). 취소 불가면 null.
+#   3. `BookingItem.refundAmount`·`cancelledAt`은 관리자 취소 확정(S1-A9)이 붙을 때 채운다 — 지금은 null.
 #
 # v0.8 변경(2026-09-16 — 내 예약 목록 S1-C5 실연동):
 #   1. `GET /bookings` 정렬을 **최근 예약 먼저**(생성 시각 내림차순)로 명시하고 `x-screens` 부착.
@@ -95,7 +105,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.8.0-draft
+  version: 0.9.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -464,6 +474,7 @@ paths:
     get:
       tags: [bookings]
       summary: 예약 상세·바우처 조회 (S1-C6)
+      x-screens: [S1-C6]
       description: |
         예약번호(현장 이용 증빙), 여권명, 상태와 **항목 리스트**를 반환한다.
 
@@ -476,6 +487,9 @@ paths:
         - `cancellable`은 상태·기간 조건 충족 시 true(취소 버튼 노출 판단),
           `cancellationScope`는 이번 취소가 **전체만 가능한지 항목 선택이
           가능한지**를 알려준다(S1-C7 진입 시 UI 분기).
+        - **v0.9 취소 가능 판정**: 항목은 `ACTIVE` + 예약이 입금대기·접수·완료 + 첫 이용일 ≥
+          오늘(JST). 예약은 그런 항목이 하나라도 있으면 `cancellable`. 범위는 완료면
+          `ITEM_SELECTABLE`, 입금대기·접수면 `FULL_ONLY`.
       parameters:
         - $ref: '#/components/parameters/BookingIdPath'
       responses:

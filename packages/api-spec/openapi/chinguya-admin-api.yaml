@@ -4,9 +4,9 @@ openapi: 3.1.0
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
 # 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
-#       여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3), 예약 관리 목록(S1-A6).
-#       나머지 관리자 운영 API(예약 상세·입금확인·취소 처리·인보이스)는 아직 이 문서에
-#       없다 — 구현되는 대로 이어 붙인다.
+#       여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3), 예약 관리 목록·상세·
+#       입금확인·미입금 강제취소(S1-A6/A7/A8). 나머지 관리자 운영 API(취소요청 처리 S1-A9·
+#       인보이스)는 아직 이 문서에 없다 — 구현되는 대로 이어 붙인다.
 #
 #       여행사 **대상** 계약(여행사 담당자가 쓰는 초대 수락·로그인, S2-G1/G2)은
 #       chinguya-agency-api.yaml 에 따로 있다. 이 문서는 관리자가 부르는 것만 담는다.
@@ -102,7 +102,7 @@ tags:
   - name: admin-agency
     description: 여행사(거래처) 목록·등록(초대)·상세·사용 가능/불가 (S2-A1/A2/A3)
   - name: admin-booking
-    description: 고객 예약 관리 — 목록·검색 (S1-A6)
+    description: 고객 예약 관리 — 목록·검색·상세·입금확인·미입금 강제취소 (S1-A6/A7/A8)
   - name: admin-faq
     description: FAQ 등록·수정·삭제·노출 순서 (S4-A1)
   - name: admin-content
@@ -1066,6 +1066,83 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /admin/bookings/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingIdPath'
+    get:
+      tags: [admin-booking]
+      x-screens: [S1-A7]
+      summary: 예약 상세 (S1-A7)
+      description: |
+        예약번호·고객·여권명과 **항목 리스트**(취소 항목 포함)를 반환한다. 조회 전용이며
+        상태 변경은 입금확인(S1-A8) 엔드포인트로 한다. 화면은 `depositConfirmable`·
+        `forceCancellable`로 버튼 노출을 가른다.
+      responses:
+        '200':
+          description: 예약 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBookingDetail' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/BookingNotFound'
+
+  /admin/bookings/{bookingId}/deposit-confirm:
+    parameters:
+      - $ref: '#/components/parameters/BookingIdPath'
+    post:
+      tags: [admin-booking]
+      x-screens: [S1-A8]
+      summary: 입금 확인 → 완료 처리 (S1-A8)
+      description: |
+        입금대기(`AWAITING_DEPOSIT`) 또는 접수(`RECEIVED`) 예약을 **완료(`COMPLETED`)**로 바꾼다.
+        고객이 '입금 확인 요청'을 누르기 전에 입금이 들어온 경우, 입금 기한이 지나
+        '미입금'으로 표시된 뒤 늦게 입금된 경우에도 완료 처리할 수 있다.
+        그 외 상태면 409 `INVALID_BOOKING_STATUS`. 슈퍼어드민 전용.
+      responses:
+        '200':
+          description: 완료 처리된 예약
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBookingDetail' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BookingNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidBookingStatus'
+
+  /admin/bookings/{bookingId}/force-cancel:
+    parameters:
+      - $ref: '#/components/parameters/BookingIdPath'
+    post:
+      tags: [admin-booking]
+      x-screens: [S1-A8]
+      summary: 미입금 강제 취소 (S1-A8)
+      description: |
+        **미입금** 예약(입금대기·접수인데 입금 기한 = 생성+24시간이 지남)을 **예약 전체 단위**로
+        취소한다. 입금 전이므로 부분취소는 없다.
+        - 예약 상태 → `CANCELLED`, 유효 항목 → `CANCELLED`.
+        - 그 항목들의 날짜별 점유를 지워 **재고를 즉시 복원**한다.
+        미입금이 아니면 409 `INVALID_BOOKING_STATUS`. 슈퍼어드민 전용.
+      responses:
+        '200':
+          description: 강제 취소된 예약
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBookingDetail' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BookingNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidBookingStatus'
+
   /admin/agencies:
     get:
       tags: [admin-agency]
@@ -1632,6 +1709,13 @@ components:
         고객은 `access_token`(30분), 관리자는 `admin_access_token`(4시간).
         미들웨어·BFF가 쿠키 이름을 혼동하면 인증이 조용히 어긋난다.
 
+  parameters:
+    BookingIdPath:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: string }
+
   responses:
     Unauthorized:
       description: 인증 필요/만료 — 쿠키가 없거나 토큰이 유효하지 않다.
@@ -1648,6 +1732,16 @@ components:
             message: 아이디 또는 비밀번호가 올바르지 않습니다.
     Forbidden:
       description: 권한 부족 — STAFF가 쓰기 메서드를 시도한 경우.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BookingNotFound:
+      description: 존재하지 않는 예약(`BOOKING_NOT_FOUND`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InvalidBookingStatus:
+      description: 지금 상태에서는 할 수 없는 처리(`INVALID_BOOKING_STATUS`).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -2359,6 +2453,58 @@ components:
         size: { type: integer }
         totalElements: { type: integer }
 
+    BookingItemStatus:
+      type: string
+      enum: [ACTIVE, CANCEL_REQUESTED, CANCELLED]
+      description: 예약 항목 상태(유효 / 취소요청 / 취소). 고객 문서의 `BookingItemStatus`와 같다.
+
+    AdminBookingItem:
+      type: object
+      required: [bookingItemId, productName, optionType, dates, quantity, crossRegionReturn, lineTotal, status]
+      properties:
+        bookingItemId: { type: string }
+        productName: { type: string, description: 예약 시점 상품명(연결 자산 명칭) }
+        optionType: { $ref: '#/components/schemas/RentalOptionType' }
+        dates:
+          type: array
+          items: { type: string, format: date }
+          description: 실제 이용일(2일 옵션이면 연속 2일).
+        quantity: { type: integer }
+        crossRegionReturn: { type: boolean }
+        lineTotal: { type: integer, description: 항목 금액(KRW) }
+        status: { $ref: '#/components/schemas/BookingItemStatus' }
+
+    AdminBookingDetail:
+      type: object
+      required: [bookingId, bookingNumber, status, unpaid, customerLoginId, passportName, items, totalAmount,
+                 activeTotalAmount, partiallyCancelled, depositConfirmable, forceCancellable, createdAt]
+      properties:
+        bookingId: { type: string }
+        bookingNumber: { type: string }
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        unpaid:
+          type: boolean
+          description: 입금대기·접수인데 입금 기한이 지났다('미입금' 표시).
+        customerLoginId: { type: string }
+        passportName: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AdminBookingItem' }
+          description: 항목 전체(취소 항목 포함, 담은 순).
+        totalAmount: { type: integer, description: 원 결제액(KRW) }
+        activeTotalAmount: { type: integer, description: 유효 항목 합계 = 입금액(KRW) }
+        partiallyCancelled: { type: boolean }
+        depositConfirmable:
+          type: boolean
+          description: 입금 확인 → 완료 처리를 할 수 있다(입금대기·접수).
+        forceCancellable:
+          type: boolean
+          description: 미입금 강제 취소를 할 수 있다(= unpaid).
+        depositDueBy:
+          type: [string, 'null']
+          format: date-time
+        createdAt: { type: string, format: date-time }
+
     Faq:
       type: object
       required: [faqId, question, answer, displayOrder]
@@ -2489,6 +2635,10 @@ components:
             - `AGENCY_DELETED` — 삭제된 여행사는 수정·상태변경·재발송할 수 없다.
             - `AGENCY_ALREADY_DELETED` — 이미 삭제된 여행사를 또 삭제하려 했다.
             - `AGENCY_ACCOUNT_ALREADY_EXISTS` — 이미 계정이 등록돼 재발송할 수 없다.
+
+            예약 관리(S1-A6~A8):
+            - `BOOKING_NOT_FOUND` — 존재하지 않는 예약.
+            - `INVALID_BOOKING_STATUS` — 입금확인은 입금대기·접수에서만, 강제 취소는 미입금에서만 된다.
 
             FAQ·콘텐츠 관리(S4-A1/A3):
             - `FAQ_NOT_FOUND` — 존재하지 않는 FAQ.
