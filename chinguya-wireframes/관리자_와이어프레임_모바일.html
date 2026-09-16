@@ -107,6 +107,11 @@
   .md .mdb .txt{font-size:11px;line-height:1.55;margin:2px 0 6px}
   .md .mdf{display:flex;gap:8px;padding:8px 11px 11px}
   .md .mdf .btn{flex:1;margin:0}
+  .cfm{position:fixed;inset:0;z-index:50;background:rgba(32,36,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+  .cfm[hidden]{display:none}
+  .cfm .md{width:100%;max-width:320px}
+  .cfm input{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 10px;font-size:12px;margin:4px 0 8px;font-family:var(--sans)}
+  .btn.off{opacity:.4;pointer-events:none}
   .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:10px;overflow:auto}
   .tabs span{flex:1;white-space:nowrap;text-align:center;font-size:10.5px;padding:8px 6px;color:var(--muted)}
   .tabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--accent)}
@@ -537,16 +542,16 @@
         <div class="kv"><span class="k">환불 예정액</span><span class="v">₩ 20,800</span></div>
         <div class="kv"><span class="k">고객 환불계좌</span><span class="v">○○ 000-000</span></div>
         <div class="note">수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 계산해 <b>합산</b>(한 예약 안에서도 항목마다 요율이 다르다). 환불 이체는 <b>수동</b>. 이체 후 '취소' 처리 → <b>해당 항목·날짜의 재고만</b> 즉시 복원.<br><b>부분취소</b>면 남은 유효 항목은 그대로 두고 예약에 <b>'부분취소' 뱃지</b>를 붙인다(예약 상태는 유효 항목 기준 유지). <b>전체 항목</b>이 요청됐으면 예약 상태를 <b>취소</b>로 전이.</div>
-        <a class="btn pri">선택 항목 취소 확정(환불완료)</a>
+        <a class="btn pri" id="cancel-open" style="cursor:pointer">선택 항목 취소 확정(환불완료)</a>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
           <dt>목적</dt><dd>고객 <b>취소요청</b>을 <b>항목 단위</b>로 검토해 환불·취소 확정</dd>
           <dt>진입</dt><dd>예약 관리(취소요청 탭)의 예약 카드</dd>
-          <dt>주요 요소</dt><dd>예약번호, <b>취소 요청 항목 리스트</b>(항목별 이용일·수량·금액·수수료율, 유지 항목은 흐리게), 요청 항목 결제액·수수료 합산·환불 예정액·고객 환불계좌, 취소 확정 CTA</dd>
+          <dt>주요 요소</dt><dd>예약번호, <b>취소 요청 항목 리스트</b>(항목별 이용일·수량·금액·수수료율, 유지 항목은 흐리게), 요청 항목 결제액·수수료 합산·환불 예정액·고객 환불계좌, 취소 확정 CTA → <b>확인 창</b>('고객에게 환불을 완료하셨나요?' + <b>'환불 처리 했음'</b> 입력란, 문구가 일치해야 <b>완료</b> 활성)</dd>
           <dt>규칙·로직</dt><dd>수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 산정 후 <b>합산</b>, 환불 이체는 <b>수동</b>, 이체 후 '취소' 처리 → <b>해당 항목·날짜 재고만</b> 즉시 복원. <b>부분취소</b>면 남은 유효 항목 유지 + 예약에 <b>'부분취소' 뱃지</b>(별도 상태값 없음), <b>전체 항목</b> 요청이면 예약 상태를 <b>취소</b>로 전이</dd>
-          <dt>화면 이동</dt><dd>취소 확정 → 예약 상태 반영(전체: 취소 / 부분: 유효 항목 기준 유지 + 부분취소 뱃지)</dd>
+          <dt>화면 이동</dt><dd>취소 확정 → 확인 창에서 완료 → 예약 상태 반영(전체: 취소 / 부분: 유효 항목 기준 유지 + 부분취소 뱃지)</dd>
         </dl>
       </div>
     </div>
@@ -773,6 +778,37 @@
     </div>
 
   </div>
+
+  <div class="cfm" id="cancel-cfm" hidden>
+    <div class="md">
+      <div class="mdh"><span class="mdt">취소 확정</span><span class="mdc">S1-A9</span></div>
+      <div class="mdb">
+        <div class="txt">고객에게 환불을 완료하셨나요?</div>
+        <div class="lbl">확인을 위해 <b>환불 처리 했음</b> 을 입력하세요</div>
+        <input id="cancel-input" placeholder="환불 처리 했음" autocomplete="off">
+      </div>
+      <div class="mdf">
+        <a class="btn sec" id="cancel-close" style="cursor:pointer">닫기</a>
+        <a class="btn pri off" id="cancel-done" style="cursor:pointer">완료</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      var cfm=document.getElementById('cancel-cfm'),inp=document.getElementById('cancel-input'),
+          done=document.getElementById('cancel-done'),open=document.getElementById('cancel-open');
+      function close(){cfm.hidden=true;inp.value='';done.classList.add('off')}
+      open.onclick=function(){if(open.classList.contains('off'))return;cfm.hidden=false;inp.focus()};
+      document.getElementById('cancel-close').onclick=close;
+      inp.oninput=function(){done.classList.toggle('off',inp.value.trim()!=='환불 처리 했음')};
+      done.onclick=function(){
+        // 요청 항목 태그를 '취소'로 바꾸고 CTA 비활성화
+        document.querySelectorAll('#a-cancel .tag.b').forEach(function(t){t.className='tag r';t.textContent='취소'});
+        open.textContent='취소 처리 완료';open.classList.add('off');
+        close();
+      };
+    })();
+  </script>
 
   <div class="legendbar">
     <b>범례</b> &nbsp; 🟧 규칙·로직 &nbsp;·&nbsp; 🟦 확정 대기·연동 &nbsp;·&nbsp; 토글=ON/OFF · 빗금=이미지 · 회색 라인=텍스트 자리<br>
