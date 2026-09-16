@@ -367,6 +367,65 @@ export interface CustomerBooking {
   createdAt: string;
 }
 
+/** 내 예약 목록(S1-C5) 탭. 입금대기·취소요청은 탭 없이 '전체' 안에서 상태 태그로만 보인다. */
+export type CustomerBookingListStatus = "ALL" | "RECEIVED" | "COMPLETED" | "CANCELLED";
+
+/** 내 예약 목록(S1-C5) 카드 1장. 계약: BookingSummary. */
+export interface CustomerBookingSummary {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  /** 대표 상품명 — 카드 제목은 "상품명 외 (itemCount - 1)건" */
+  productName: string;
+  /** 총 항목 수(취소 항목 포함) */
+  itemCount: number;
+  /** 일부 항목만 취소됨 — '부분취소' 뱃지 */
+  partiallyCancelled: boolean;
+  /** 항목별 이용일의 합집합(오름차순, YYYY-MM-DD) */
+  useDates: string[];
+  /** 원 결제액 */
+  totalAmount: number;
+  /** 유효 항목 합계 */
+  activeTotalAmount: number;
+  createdAt: string;
+}
+
+export interface CustomerBookingListPage {
+  content: CustomerBookingSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
+/** 예약 관리 목록(S1-A6) 탭. UNPAID(미입금)는 '입금대기·접수 + 입금 기한 경과' 계산값이다. */
+export type AdminBookingTab = "RECEIVED" | "COMPLETED" | "UNPAID" | "CANCEL_REQUESTED" | "CANCELLED";
+
+/** 예약 관리 목록(S1-A6) 카드 1장. 계약: chinguya-admin-api.yaml AdminBookingSummary. */
+export interface AdminBookingSummary {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  /** 입금 기한이 지난 입금대기·접수 — '미입금' 표시 */
+  unpaid: boolean;
+  customerLoginId: string;
+  passportName: string;
+  productName: string;
+  itemCount: number;
+  partiallyCancelled: boolean;
+  useDates: string[];
+  /** 유효 항목 합계(입금액) */
+  activeTotalAmount: number;
+  depositDueBy?: string | null;
+  createdAt: string;
+}
+
+export interface AdminBookingListPage {
+  content: AdminBookingSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -455,6 +514,9 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       depositInfo: (bookingId: string) => request<CustomerDepositInfo>(`/bookings/${bookingId}/deposit-info`),
       requestDeposit: (bookingId: string) =>
         request<CustomerBooking>(`/bookings/${bookingId}/deposit-request`, { method: "POST" }),
+      /** S1-C5 내 예약 목록(최근 예약 먼저). */
+      list: (status: CustomerBookingListStatus = "ALL", page = 0, size = 20) =>
+        request<CustomerBookingListPage>(`/bookings?status=${status}&page=${page}&size=${size}`),
     },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
@@ -573,6 +635,22 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** 새 토큰을 끊어 다시 보낸다. 이전 링크는 이 순간 무효가 된다. */
       resendInvitation: (agencyId: string) =>
         request<AgencyInvitationResult>(`/agencies/${agencyId}/invitations`, { method: "POST" }),
+    },
+    /**
+     * 관리자 예약 관리(S1-A6 목록). 관리자 앱 프록시가 `/admin` 프리픽스를 붙인다.
+     * 고객 예약만 다룬다(여행사 예약 제외). 목록은 관리자 API 중 유일하게 페이지네이션한다.
+     */
+    bookings: {
+      /** keyword는 예약번호·여권 영문명 부분 일치(대소문자 무시). */
+      list: (params: { tab: AdminBookingTab; keyword?: string; page?: number; size?: number }) => {
+        const query = new URLSearchParams({
+          tab: params.tab,
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.keyword?.trim()) query.set("keyword", params.keyword.trim());
+        return request<AdminBookingListPage>(`/bookings?${query.toString()}`);
+      },
     },
     /**
      * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.
