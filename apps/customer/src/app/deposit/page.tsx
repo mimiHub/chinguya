@@ -4,15 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createApiClient, ApiError, type CustomerDepositInfo } from "@chinguya/api-client";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { Card } from "@chinguya/ui/card";
-import { Kv } from "@chinguya/ui/kv";
-import { Button } from "@chinguya/ui/button";
-import { Alert } from "@chinguya/ui/alert";
-import { Toast } from "@chinguya/ui/toast";
-import { Banner } from "@chinguya/ui/banner";
+import { Title, Text, Stack, Card, Kv, Button, Alert, Toast, Banner } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 

@@ -3,11 +3,7 @@
 import { Suspense } from "react";
 import NextLink from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Banner } from "@chinguya/ui/banner";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { Alert } from "@chinguya/ui/alert";
+import { Banner, Title, Text, Stack, Alert } from "@chinguya/ui";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 import { ScrollReveal } from "@/components/ScrollReveal";
 

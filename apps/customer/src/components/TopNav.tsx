@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { IconHamburger } from "@chinguya/ui/icon-hamburger";
-import { IconX } from "@chinguya/ui/icon-x";
+import { IconHamburger, IconX } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 // 대메뉴 목록 — PC·모바일 구분 없이 항상 햄버거 버튼을 눌러 여는 드로어 메뉴에 쓰인다

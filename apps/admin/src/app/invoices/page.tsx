@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Badge } from "@chinguya/ui/badge";
-import { Chip } from "@chinguya/ui/chip";
-import { NoticeBox } from "@chinguya/ui/notice-box";
+import { Title, Text, EmptyState, Card, Stack, Badge, Chip, NoticeBox } from "@chinguya/ui";
 import { agencies } from "@/data/agencyData";
 import { invoices, getCurrentPeriod, getPendingUsage } from "@/data/invoiceData";
 

@@ -2,13 +2,7 @@
 
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Input } from "@chinguya/ui/input";
-import { Button } from "@chinguya/ui/button";
-import { Alert } from "@chinguya/ui/alert";
+import { Title, Text, Stack, LabeledBox, Input, Button, Alert } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";

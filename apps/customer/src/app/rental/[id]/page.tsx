@@ -11,22 +11,7 @@ import {
   type CustomerAvailability,
   type CustomerProductDetail,
 } from "@chinguya/api-client";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Chip } from "@chinguya/ui/chip";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Toggle } from "@chinguya/ui/toggle";
-import { Calendar, type CalendarDay, type CalendarRange, type DayStatus } from "@chinguya/ui/calendar";
-import { Stepper } from "@chinguya/ui/stepper";
-import { Kv } from "@chinguya/ui/kv";
-import { Button } from "@chinguya/ui/button";
-import { FormMessage } from "@chinguya/ui/form-message";
-import { Alert } from "@chinguya/ui/alert";
-import { Popup } from "@chinguya/ui/popup";
-import { Toast } from "@chinguya/ui/toast";
-import { ComingSoon } from "@chinguya/ui/coming-soon";
-import { Banner } from "@chinguya/ui/banner";
+import { Title, Text, Chip, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, Popup, Toast, ComingSoon, Banner } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";

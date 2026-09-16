@@ -1,23 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Chip } from "@chinguya/ui/chip";
-import { Badge } from "@chinguya/ui/badge";
-import { Kv } from "@chinguya/ui/kv";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
-import { Toggle } from "@chinguya/ui/toggle";
-import { Input } from "@chinguya/ui/input";
-import { Button } from "@chinguya/ui/button";
-import { Popup } from "@chinguya/ui/popup";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Dropdown } from "@chinguya/ui/dropdown";
-import { Toast } from "@chinguya/ui/toast";
-import { Alert } from "@chinguya/ui/alert";
-import { HelpTooltip } from "@chinguya/ui/help-tooltip";
+import { Title, Text, Chip, Badge, Kv, Card, Stack, Calendar, type CalendarDay, Toggle, Input, Button, Popup, LabeledBox, Dropdown, Toast, Alert, HelpTooltip } from "@chinguya/ui";
 import {
   createApiClient,
   ApiError,

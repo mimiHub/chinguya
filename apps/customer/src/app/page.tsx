@@ -1,10 +1,7 @@
 import NextLink from "next/link";
 import type { AssetCategory } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Card } from "@chinguya/ui/card";
-import { Button } from "@chinguya/ui/button";
+import { Title, Text, Card, Button } from "@chinguya/ui";
 import { HomeCarousel } from "@/components/HomeCarousel";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { rentalProducts } from "@/data/rentalData";

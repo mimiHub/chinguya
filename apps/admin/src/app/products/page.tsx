@@ -1,17 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Tab } from "@chinguya/ui/tab";
-import { Toggle } from "@chinguya/ui/toggle";
-import { Link } from "@chinguya/ui/link";
-import { Button } from "@chinguya/ui/button";
-import { Alert } from "@chinguya/ui/alert";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Toast } from "@chinguya/ui/toast";
+import { Title, Text, Card, Stack, Tab, Toggle, Link, Button, Alert, EmptyState, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import type { AdminProduct, AssetCategory } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL, RENTAL_OPTION_LABEL } from "@chinguya/types";

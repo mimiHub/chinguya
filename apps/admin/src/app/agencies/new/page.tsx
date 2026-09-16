@@ -3,14 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Input } from "@chinguya/ui/input";
-import { Button } from "@chinguya/ui/button";
-import { Alert } from "@chinguya/ui/alert";
-import { Toast } from "@chinguya/ui/toast";
+import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 
 /**

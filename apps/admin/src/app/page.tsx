@@ -1,10 +1,5 @@
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Stat } from "@chinguya/ui/stat";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Text } from "@chinguya/ui/text";
-import { StatusBadge, Badge } from "@chinguya/ui/badge";
+import { Title, Stat, Card, Stack, Text, StatusBadge, Badge } from "@chinguya/ui";
 import { adminReservations, getAdminTab } from "@/data/reservationData";
 import { InventoryOverCapacityAlert } from "@/components/InventoryOverCapacityAlert";
 

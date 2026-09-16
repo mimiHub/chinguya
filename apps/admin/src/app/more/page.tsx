@@ -1,11 +1,7 @@
 "use client";
 
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Text } from "@chinguya/ui/text";
-import { Button } from "@chinguya/ui/button";
+import { Title, Card, Stack, Text, Button } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**

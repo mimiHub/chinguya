@@ -2,20 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Badge } from "@chinguya/ui/badge";
-import { Button } from "@chinguya/ui/button";
-import { Popup } from "@chinguya/ui/popup";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Input } from "@chinguya/ui/input";
-import { Dropdown } from "@chinguya/ui/dropdown";
-import { Toast } from "@chinguya/ui/toast";
-import { Alert } from "@chinguya/ui/alert";
+import { Title, Text, EmptyState, Card, Stack, Badge, Button, Popup, ConfirmPopup, LabeledBox, Input, Dropdown, Toast, Alert } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import type { Asset, AssetCategory } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL } from "@chinguya/types";

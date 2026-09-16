@@ -3,15 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import type { CustomerReservationStatus } from "@chinguya/types";
-import { Title } from "@chinguya/ui/title";
-import { Kv } from "@chinguya/ui/kv";
-import { StatusBadge, Badge } from "@chinguya/ui/badge";
-import { Button } from "@chinguya/ui/button";
-import { Card } from "@chinguya/ui/card";
-import { ComingSoon } from "@chinguya/ui/coming-soon";
-import { Text } from "@chinguya/ui/text";
-import { Toast } from "@chinguya/ui/toast";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Title, Kv, StatusBadge, Badge, Button, Card, ComingSoon, Text, Toast, FormMessage, Stack } from "@chinguya/ui";
 import {
   findAdminReservationById,
   getElapsedHours,
@@ -20,7 +12,6 @@ import {
   UNPAID_AFTER_HOURS,
 } from "@/data/reservationData";
 import { cancellationFeeRules, daysBeforeUse, resolveCancellationFeeRate } from "@/data/settingsData";
-import { Stack } from "@chinguya/ui/stack";
 
 /** 금액 표시(전용 Price 컴포넌트 제거 후 Kv 안에서 직접 포맷). sign은 취소 수수료처럼
  * 마이너스 금액 앞에 "− " 등을 붙이고 싶을 때만 넘긴다. */

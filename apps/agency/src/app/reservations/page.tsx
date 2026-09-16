@@ -1,15 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Table } from "@chinguya/ui/table";
-import { StatusBadge } from "@chinguya/ui/badge";
-import { Button } from "@chinguya/ui/button";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
+import { Title, Text, EmptyState, Table, StatusBadge, Button, Card, Stack, ConfirmPopup } from "@chinguya/ui";
 import { findRentalProductById } from "@/data/rentalData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { listReservations, updateReservationStatus } from "@/data/reservationData";

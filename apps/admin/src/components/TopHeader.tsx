@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { IconHamburger } from "@chinguya/ui/icon-hamburger";
-import { IconX } from "@chinguya/ui/icon-x";
+import { IconHamburger, IconX } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // BottomNav.tsx와 같은 4개 탭 — PC 고정폭 레이아웃이라 모바일 기기 실제 화면(좁은 뷰포트)에서

@@ -3,17 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { useParams } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Badge } from "@chinguya/ui/badge";
-import { Kv } from "@chinguya/ui/kv";
-import { Button } from "@chinguya/ui/button";
-import { ComingSoon } from "@chinguya/ui/coming-soon";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { Toast } from "@chinguya/ui/toast";
+import { Title, Text, EmptyState, Card, Stack, Badge, Kv, Button, ComingSoon, ConfirmPopup, Toast } from "@chinguya/ui";
 import { agencies } from "@/data/agencyData";
 import { findInvoiceById, getInvoiceLineItems, setInvoiceSettled } from "@/data/invoiceData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";

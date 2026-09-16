@@ -1,5 +1,4 @@
-import { Stack } from "@chinguya/ui/stack";
-import { Text } from "@chinguya/ui/text";
+import { Stack, Text } from "@chinguya/ui";
 
 interface InfoLine {
   label: string;

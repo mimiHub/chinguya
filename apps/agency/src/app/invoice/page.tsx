@@ -1,9 +1,4 @@
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Table } from "@chinguya/ui/table";
-import { Stack } from "@chinguya/ui/stack";
-import { Card } from "@chinguya/ui/card";
+import { Title, Text, EmptyState, Table, Stack, Card } from "@chinguya/ui";
 import { findRentalProductById } from "@/data/rentalData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { listReservations } from "@/data/reservationData";

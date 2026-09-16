@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Alert } from "@chinguya/ui/alert";
+import { Alert } from "@chinguya/ui";
 import { createApiClient } from "@chinguya/api-client";
 
 const api = createApiClient();

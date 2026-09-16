@@ -2,21 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Card } from "@chinguya/ui/card";
-import { Tab } from "@chinguya/ui/tab";
-import { Stack } from "@chinguya/ui/stack";
-import { Button } from "@chinguya/ui/button";
-import { Input } from "@chinguya/ui/input";
-import { IconX } from "@chinguya/ui/icon-x";
-import { Popup } from "@chinguya/ui/popup";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Alert } from "@chinguya/ui/alert";
-import { Tooltip } from "@chinguya/ui/tooltip";
-import { Toast } from "@chinguya/ui/toast";
+import { Title, Text, EmptyState, Card, Tab, Stack, Button, Input, IconX, Popup, ConfirmPopup, LabeledBox, Alert, Tooltip, Toast } from "@chinguya/ui";
 import {
   createApiClient,
   ApiError,

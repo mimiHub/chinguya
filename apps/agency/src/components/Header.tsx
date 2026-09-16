@@ -1,7 +1,6 @@
 "use client";
 
-import { IconHamburger } from "@chinguya/ui/icon-hamburger";
-import { Button } from "@chinguya/ui/button";
+import { IconHamburger, Button } from "@chinguya/ui";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 
 /**
@@ -22,12 +21,22 @@ import { useAgencyAuth } from "@/context/AgencyAuthContext";
  * 만료된 직후에만 보인다(계정 등록은 관리자 초대 링크로만 들어가는 화면이라 바로가기를 두지
  * 않는다). 세션 조회 중에는 비워 둔다 — 로그인 버튼이 잠깐 번쩍이지 않게. 로그아웃은 사이드바
  * 하단 링크에서 한다(여기는 정보 표시만).
+ *
+ * 이 아이디 캡슐은 md(768px) 이상, 즉 PC·태블릿에서만 보이고 모바일에서는 숨긴다
+ * (hidden md:flex) — 모바일은 폭이 좁아 로고·햄버거와 함께 두면 답답해 보인다는 요청.
+ * 세션이 없을 때 뜨는 "로그인" 버튼은 화면 크기와 무관하게 항상 보인다(어느 기기에서든
+ * 로그인은 할 수 있어야 하므로).
+ *
+ * z-[130] — 모바일·태블릿(lg 미만)에서는 사이드바가 fixed inset-y-0(화면 맨 위부터)로 뜨는
+ * 오버레이라, 헤더보다 쌓임 순서가 낮으면 열렸을 때 이 헤더 전체가 사이드바 뒤로 가려져서
+ * 햄버거가 바뀐 닫기(X) 버튼조차 눌러 닫을 방법이 없어진다. 사이드바(z-[120])·딤
+ * 배경(z-[110], AgencyShell.tsx)보다 항상 위에 오도록 헤더에 더 높은 z-index를 준다.
  */
 export function Header({ open, onMenuClick }: { open: boolean; onMenuClick: () => void }) {
   const { session, loading } = useAgencyAuth();
 
   return (
-    <header className="relative flex items-center justify-center border-b border-line bg-white px-6 py-4">
+    <header className="relative z-[130] flex items-center justify-center border-b border-line bg-white px-6 py-4">
       {/* eslint-disable-next-line @next/next/no-img-element -- 고정 로고 이미지, next/image 최적화가 필요 없는 크기 */}
       <img src="/logo-pc.png" alt="Cafe Chinguya" className="h-7 w-auto" />
       {/* 공용 컴포넌트(IconHamburger)는 고객 앱도 같이 쓰므로 크기를 직접 고치지 않고,
@@ -39,7 +48,7 @@ export function Header({ open, onMenuClick }: { open: boolean; onMenuClick: () =
 
       <div className="absolute right-6 flex items-center gap-2">
         {loading ? null : session ? (
-          <span className="flex items-center gap-1.5 rounded-full bg-bg-light px-3 py-1.5 text-sm text-ink">
+          <span className="hidden items-center gap-1.5 rounded-full bg-bg-light px-3 py-1.5 text-sm text-ink md:flex">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-mb.png"

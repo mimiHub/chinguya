@@ -3,16 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import type { InquiryEntry } from "@chinguya/types";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Badge } from "@chinguya/ui/badge";
-import { Input } from "@chinguya/ui/input";
-import { Button } from "@chinguya/ui/button";
-import { Toast } from "@chinguya/ui/toast";
-import { NoticeBox } from "@chinguya/ui/notice-box";
+import { Title, Text, EmptyState, Card, Stack, Badge, Input, Button, Toast, NoticeBox } from "@chinguya/ui";
 import { initialInquiries } from "@/data/inquiryData";
 
 /**

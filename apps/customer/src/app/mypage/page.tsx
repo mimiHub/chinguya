@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Stack } from "@chinguya/ui/stack";
-import { Tab } from "@chinguya/ui/tab";
-import { StatusBadge } from "@chinguya/ui/badge";
-import { Banner } from "@chinguya/ui/banner";
+import { Title, Text, EmptyState, Stack, Tab, StatusBadge, Banner, Card } from "@chinguya/ui";
 import { findRentalProductById } from "@/data/rentalData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import {
@@ -17,7 +11,6 @@ import {
   MY_RESERVATION_TAB_LABEL,
   type MyReservationTab,
 } from "@/data/reservationData";
-import { Card } from "@chinguya/ui/card";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**

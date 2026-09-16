@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Stack } from "@chinguya/ui/stack";
-import { Alert } from "@chinguya/ui/alert";
+import { Stack, Alert } from "@chinguya/ui";
 
 /** 화면에 그리는 소셜 버튼 종류(표시 이름). */
 type SocialProvider = "카카오" | "네이버" | "구글";

@@ -40,6 +40,10 @@
   --color-secondary-800: #7a6236;
   --color-secondary-900: #4a3b20;
 
+  /* 여행사 앱 사이드바 "선택된(활성) 메뉴" 배경 전용 토큰 — secondary-800(#7a6236, hover 등
+     다른 곳에도 쓰이는 색)과 별개로 분리해서 활성 항목 배경만 독립적으로 바꿀 수 있게 했다. */
+  --color-secondary-active: #604d2b;
+
   /* Accent — 로고 세이지 그린 포인트 컬러 */
   --color-accent-100: #f2f5f1;
   --color-accent-200: #e2e9e0;

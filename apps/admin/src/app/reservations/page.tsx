@@ -3,14 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
-import { Title } from "@chinguya/ui/title";
-import { Chip } from "@chinguya/ui/chip";
-import { Input } from "@chinguya/ui/input";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { StatusBadge, Badge } from "@chinguya/ui/badge";
+import { Title, Chip, Input, Card, Stack, Text, EmptyState, StatusBadge, Badge } from "@chinguya/ui";
 import {
   adminReservations,
   ADMIN_TAB_LABEL,

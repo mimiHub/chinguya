@@ -1,21 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banner } from "@chinguya/ui/banner";
-import { NoticeBox } from "@chinguya/ui/notice-box";
-import { Tab } from "@chinguya/ui/tab";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { Card } from "@chinguya/ui/card";
-import { Button } from "@chinguya/ui/button";
-import { Input } from "@chinguya/ui/input";
-import { Toggle } from "@chinguya/ui/toggle";
-import { Popup } from "@chinguya/ui/popup";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { Badge } from "@chinguya/ui/badge";
-import { IconX } from "@chinguya/ui/icon-x";
-import { FormMessage } from "@chinguya/ui/form-message";
+import { Banner, NoticeBox, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
 import type { InquiryEntry } from "@chinguya/types";
 import { faqEntries } from "@/data/faqData";
 import { initialInquiries } from "@/data/inquiryData";

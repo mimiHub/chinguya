@@ -2,15 +2,7 @@
 
 import NextLink from "next/link";
 import { useParams } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { Card } from "@chinguya/ui/card";
-import { Kv } from "@chinguya/ui/kv";
-import { StatusBadge } from "@chinguya/ui/badge";
-import { Button } from "@chinguya/ui/button";
-import { ComingSoon } from "@chinguya/ui/coming-soon";
-import { Banner } from "@chinguya/ui/banner";
+import { Title, Text, Stack, Card, Kv, StatusBadge, Button, ComingSoon, Banner } from "@chinguya/ui";
 import { findRentalProductById } from "@/data/rentalData";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { findReservationById } from "@/data/reservationData";

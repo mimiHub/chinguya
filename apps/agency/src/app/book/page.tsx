@@ -2,22 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Table } from "@chinguya/ui/table";
-import { Stepper } from "@chinguya/ui/stepper";
-import { Kv } from "@chinguya/ui/kv";
-import { Button } from "@chinguya/ui/button";
-import { Stack } from "@chinguya/ui/stack";
-import { Card } from "@chinguya/ui/card";
-import { Toast } from "@chinguya/ui/toast";
-import { Calendar, type CalendarDay } from "@chinguya/ui/calendar";
-import { CalendarIcon } from "@chinguya/ui/calendar-icon";
-import { Popup } from "@chinguya/ui/popup";
+import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { createApiClient, ApiError, type AgencyProduct, type AgencyProductList } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { Alert } from "@chinguya/ui/alert";
 
 const api = createApiClient();
 

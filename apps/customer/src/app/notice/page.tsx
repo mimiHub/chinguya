@@ -1,15 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Banner } from "@chinguya/ui/banner";
-import { Tab } from "@chinguya/ui/tab";
-import { Card } from "@chinguya/ui/card";
-import { Badge } from "@chinguya/ui/badge";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Stack } from "@chinguya/ui/stack";
-import { Button } from "@chinguya/ui/button";
+import { Banner, Tab, Card, Badge, Title, Text, EmptyState, Stack, Button } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 type NoticeCategory = "notice" | "event";

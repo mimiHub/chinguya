@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Input } from "@chinguya/ui/input";
-import { Button } from "@chinguya/ui/button";
-import { Alert } from "@chinguya/ui/alert";
+import { Title, Text, Card, Stack, LabeledBox, Input, Button, Alert } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**

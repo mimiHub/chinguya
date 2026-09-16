@@ -3,19 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import type { AdminRole } from "@chinguya/types";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Card } from "@chinguya/ui/card";
-import { Stack } from "@chinguya/ui/stack";
-import { Badge } from "@chinguya/ui/badge";
-import { Chip } from "@chinguya/ui/chip";
-import { Button } from "@chinguya/ui/button";
-import { IconX } from "@chinguya/ui/icon-x";
-import { LabeledBox } from "@chinguya/ui/labeled-box";
-import { Input } from "@chinguya/ui/input";
-import { Popup } from "@chinguya/ui/popup";
-import { ConfirmPopup } from "@chinguya/ui/confirm-popup";
-import { Alert } from "@chinguya/ui/alert";
+import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Alert } from "@chinguya/ui";
 import { adminAccounts, type AdminAccount } from "@/data/authData";
 
 const ROLE_LABEL: Record<AdminRole, string> = {

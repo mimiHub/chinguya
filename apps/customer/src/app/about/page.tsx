@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Banner } from "@chinguya/ui/banner";
-import { Card } from "@chinguya/ui/card";
-import { Kv } from "@chinguya/ui/kv";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { Stack } from "@chinguya/ui/stack";
-import { Tab } from "@chinguya/ui/tab";
+import { Banner, Card, Kv, Title, Text, Stack, Tab } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 type AboutTab = "store" | "brand";

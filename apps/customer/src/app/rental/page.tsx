@@ -10,13 +10,7 @@ import {
   DEFAULT_API_BASE_URL,
   type CustomerProductSummary,
 } from "@chinguya/api-client";
-import { Title } from "@chinguya/ui/title";
-import { Text } from "@chinguya/ui/text";
-import { EmptyState } from "@chinguya/ui/empty-state";
-import { Chip } from "@chinguya/ui/chip";
-import { NoticeBox } from "@chinguya/ui/notice-box";
-import { Banner } from "@chinguya/ui/banner";
-import { Alert } from "@chinguya/ui/alert";
+import { Title, Text, EmptyState, Chip, NoticeBox, Banner, Alert } from "@chinguya/ui";
 import { rentalNotice } from "@/data/rentalData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
