@@ -68,6 +68,13 @@ export default function ProfilePage() {
     }
   };
 
+  // 저장 중(savingPassport)일 때만 막던 걸, "저장된 값이랑 똑같을 때"도 막도록 넓혔다 — 안 그러면
+  // 저장 직후에도 버튼이 계속 눌려서 바뀐 것도 없는데 저장 API를 또 호출하게 된다. 빈 값도 어차피
+  // handleSavePassportName이 에러로 막긴 하지만, 누를 수조차 없게 하는 게 더 명확하다.
+  const trimmedPassportName = passportName.trim();
+  const canSavePassportName =
+    trimmedPassportName.length > 0 && trimmedPassportName !== (session?.passportName ?? "").trim() && !savingPassport;
+
   const handleLogout = async () => {
     await logout();
     setToastMessage("로그아웃되었습니다");
@@ -137,7 +144,14 @@ export default function ProfilePage() {
                   예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.
                 </Alert>
               )}
-              <Button onClick={handleSavePassportName} disabled={savingPassport} className="mt-4" fullWidth>
+              <Button
+                onClick={handleSavePassportName}
+                disabled={!canSavePassportName}
+                loading={savingPassport}
+                loadingText="저장 중…"
+                className="mt-4"
+                fullWidth
+              >
                 저장
               </Button>
             </Stack>

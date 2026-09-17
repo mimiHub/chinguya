@@ -49,6 +49,14 @@ interface CommonProps {
   padding?: Padding;
   className?: string;
   children?: ReactNode;
+  /**
+   * 저장/제출 중임을 나타낸다 — true면 disabled도 같이 켜진다(따로 disabled={submitting}을
+   * 또 안 넘겨도 됨). 여러 화면에서 `disabled={saving}` + `{saving ? "저장 중…" : "저장"}`처럼
+   * 매번 손으로 두 번 반복하던 걸 버튼 하나로 합쳤다 — loadingText를 주면 로딩 중엔 children
+   * 대신 그 텍스트를 보여주고, 안 주면 children은 그대로 둔 채 disabled만 켠다.
+   */
+  loading?: boolean;
+  loadingText?: ReactNode;
 }
 
 export type ButtonProps = CommonProps &
@@ -90,17 +98,33 @@ export function Button({
   padding,
   className,
   disabled = false,
+  loading = false,
+  loadingText,
   type = "button",
   href,
   children,
   ...rest
 }: ButtonProps) {
   const classNames = buildClassName({ variant, size, fullWidth, align, padding, className });
+  const isDisabled = disabled || loading;
+  const content = loading && loadingText !== undefined ? loadingText : children;
 
   if (href) {
     return (
-      <NextLink href={href} className={classNames} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
-        {children}
+      <NextLink
+        href={href}
+        className={classNames}
+        aria-disabled={isDisabled || undefined}
+        {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}
+        onClick={(e) => {
+          if (isDisabled) {
+            e.preventDefault();
+            return;
+          }
+          (rest as AnchorHTMLAttributes<HTMLAnchorElement>).onClick?.(e);
+        }}
+      >
+        {content}
       </NextLink>
     );
   }
@@ -109,10 +133,10 @@ export function Button({
     <button
       type={type}
       className={classNames}
-      disabled={disabled}
+      disabled={isDisabled}
       {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)}
     >
-      {children}
+      {content}
     </button>
   );
 }
