@@ -21,6 +21,7 @@ export * from "./components/kv";
 export * from "./components/labeled-box";
 export * from "./components/link";
 export * from "./components/notice-box";
+export * from "./components/radio";
 export * from "./components/popup";
 export * from "./components/section";
 export * from "./components/skeleton";
