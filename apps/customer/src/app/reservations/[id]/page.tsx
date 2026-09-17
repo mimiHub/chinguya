@@ -12,7 +12,7 @@ import {
   type CustomerBookingStatus,
 } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL, type CustomerReservationStatus } from "@chinguya/types";
-import { Title, Text, Stack, Card, Kv, StatusBadge, Badge, Button, Banner, Alert } from "@chinguya/ui";
+import { Title, Text, Stack, Card, Kv, StatusBadge, Badge, Button, Banner, Alert, ComingSoon } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -81,6 +81,7 @@ export default function ReservationDetailPage() {
   const { session, loading: authLoading } = useCustomerAuth();
   const [booking, setBooking] = useState<CustomerBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (authLoading || !session) return;
@@ -91,7 +92,12 @@ export default function ReservationDetailPage() {
         if (active) setBooking(res);
       })
       .catch((err: unknown) => {
-        if (active) setError(err instanceof ApiError ? err.message : "예약 정보를 불러오지 못했습니다.");
+        if (!active) return;
+        if (err instanceof ApiError && err.status === 404) {
+          setNotFound(true);
+        } else {
+          setError(err instanceof ApiError ? err.message : "예약 정보를 불러오지 못했습니다.");
+        }
       });
     return () => {
       active = false;
@@ -168,6 +174,26 @@ export default function ReservationDetailPage() {
       </>
     );
   })();
+
+  // 존재하지 않는 예약은 /menu(splash 첫 사례)와 같은 이유로 페이지 전체를 이 화면으로
+  // 채운다 — 짙은 배경의 랜딩 화면 위에 밝은 소메뉴 배너·"이전 페이지로 이동" 링크가 겹치면
+  // 어색해서, Banner도 본문 wrapper(max-w-2xl)도 없이 통째로 반환한다.
+  if (notFound) {
+    return (
+      <ComingSoon
+        variant="splash"
+        image="/reservation-not-found-bg.jpg"
+        title="예약을 찾을 수 없어요"
+        label={
+          <>
+            현재 예약이 존재하지 않습니다.
+            <br />
+            예약번호나 링크를 다시 확인해 주세요.
+          </>
+        }
+      />
+    );
+  }
 
   return (
     <main>
