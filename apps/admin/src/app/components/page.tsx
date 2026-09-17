@@ -28,6 +28,7 @@ import {
   Link,
   NoticeBox,
   Popup,
+  Radio,
   Section,
   Skeleton,
   Stack,
@@ -46,7 +47,7 @@ import {
 /**
  * 컴포넌트 가이드 (내부 전용).
  *
- * @chinguya/ui의 37개 공통 컴포넌트를 한 화면에서 실제로 렌더링해서 모아 보여준다 —
+ * @chinguya/ui의 38개 공통 컴포넌트를 한 화면에서 실제로 렌더링해서 모아 보여준다 —
  * 새 화면을 만들 때 "이미 있는 컴포넌트인지, 어떻게 쓰는지"를 코드를 뒤지지 않고 바로
  * 확인할 수 있게 하는 게 목적이다. 로그인 미들웨어가 이미 이 경로도 보호하므로 별도
  * 접근 제어는 없다. 실제 화면이 아니라 카탈로그라 다른 페이지들(max-w-2xl)보다 넓게
@@ -66,7 +67,7 @@ const GROUPS: { title: string; items: string[] }[] = [
   { title: "레이아웃", items: ["Stack", "Card", "Section", "Title", "Text"] },
   {
     title: "폼 · 입력",
-    items: ["Input", "Checkbox", "Toggle", "Stepper", "Dropdown", "Chip", "LabeledBox", "Calendar"],
+    items: ["Input", "Checkbox", "Radio", "Toggle", "Stepper", "Dropdown", "Chip", "LabeledBox", "Calendar"],
   },
   {
     title: "피드백 · 상태",
@@ -132,6 +133,7 @@ export default function ComponentsGuidePage() {
         <TextDemo />
         <InputDemo />
         <CheckboxDemo />
+        <RadioDemo />
         <ToggleDemo />
         <StepperDemo />
         <DropdownDemo />
@@ -280,13 +282,41 @@ function CheckboxDemo() {
   );
 }
 
+function RadioDemo() {
+  const [value, setValue] = useState<"a" | "b" | "c">("a");
+  const options: { key: "a" | "b" | "c"; label: string }[] = [
+    { key: "a", label: "옵션 A" },
+    { key: "b", label: "옵션 B" },
+    { key: "c", label: "옵션 C" },
+  ];
+  return (
+    <Demo id="c-Radio" name="Radio" desc="controlled 전용 — 같은 name으로 묶어서 단일 선택 그룹으로 쓴다">
+      <Stack gap="md" align="center">
+        {options.map((opt) => (
+          <label key={opt.key} className="flex cursor-pointer items-center gap-1.5">
+            <Radio name="radio-demo" checked={value === opt.key} onChange={() => setValue(opt.key)} />
+            <Text variant="sub">{opt.label}</Text>
+          </label>
+        ))}
+      </Stack>
+    </Demo>
+  );
+}
+
 function ToggleDemo() {
   const [on, setOn] = useState(false);
   return (
-    <Demo id="c-Toggle" name="Toggle" desc="관리자 노출 여부 등에 쓰는 on/off 스위치">
-      <Stack gap="sm" align="center">
-        <Toggle on={on} onChange={setOn} />
-        <Text variant="sub">{on ? "ON" : "OFF"}</Text>
+    <Demo
+      id="c-Toggle"
+      name="Toggle"
+      desc="관리자 노출 여부 등에 쓰는 on/off 스위치 — label을 주면 텍스트를 클릭해도 함께 토글된다"
+    >
+      <Stack direction="column" gap="md">
+        <Toggle on={on} onChange={setOn} label="공개로 등록" />
+        <Stack gap="sm" align="center">
+          <Toggle on={on} onChange={setOn} />
+          <Text variant="sub">label 없이 스위치만(기존 방식) — {on ? "ON" : "OFF"}</Text>
+        </Stack>
       </Stack>
     </Demo>
   );
@@ -493,6 +523,24 @@ function ComingSoonDemo() {
         <Text variant="sub">variant=&quot;splash&quot;</Text>
         <div className="overflow-hidden rounded-xl">
           <ComingSoon variant="splash" />
+        </div>
+        <Text variant="sub">
+          variant=&quot;splash&quot; + title/image/label 커스텀 (예: 존재하지 않는 예약 —
+          /reservations/[id] 404)
+        </Text>
+        <div className="overflow-hidden rounded-xl">
+          <ComingSoon
+            variant="splash"
+            image="/reservation-not-found-bg.jpg"
+            title="예약을 찾을 수 없어요"
+            label={
+              <>
+                현재 예약이 존재하지 않습니다.
+                <br />
+                예약번호나 링크를 다시 확인해 주세요.
+              </>
+            }
+          />
         </div>
       </Stack>
     </Demo>
@@ -702,7 +750,11 @@ function BannerDemo() {
 
 function ButtonDemo() {
   return (
-    <Demo id="c-Button" name="Button" desc="variant 7종 · size 3종 · href를 주면 next/link로 렌더">
+    <Demo
+      id="c-Button"
+      name="Button"
+      desc="variant 7종 · size 3종 · href를 주면 next/link로 렌더 · disabled/loading"
+    >
       <Stack gap="sm" wrap>
         <Button variant="primary">primary</Button>
         <Button variant="secondary">secondary</Button>
@@ -711,6 +763,17 @@ function ButtonDemo() {
         <Button variant="danger">danger</Button>
         <Button variant="ghost">ghost</Button>
         <Button variant="subtle">subtle</Button>
+      </Stack>
+      {/* disabled/loading — 저장 중일 때 disabled={saving} + "저장 중…" 텍스트 교체를 매번
+          손으로 반복하던 걸 loading/loadingText prop 두 개로 합쳤다(2026-09). */}
+      <Stack gap="sm" wrap className="mt-3">
+        <Button disabled>disabled</Button>
+        <Button loading loadingText="저장 중…">
+          저장
+        </Button>
+        <Button variant="outline" loading>
+          로딩만(loadingText 없음)
+        </Button>
       </Stack>
     </Demo>
   );
