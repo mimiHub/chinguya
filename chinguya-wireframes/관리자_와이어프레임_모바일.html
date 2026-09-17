@@ -127,7 +127,7 @@
     <a href="#a-prod">상품 목록</a><a href="#a-prodedit">상품 등록</a><a href="#a-res">예약 목록</a><a href="#a-resdetail">예약 상세·입금</a>
     <a href="#a-cancel">취소 처리</a><a href="#a-set">계좌·정책</a><a href="#a-admins">관리자 관리</a>
     <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅(통합됨)</a><a href="#a-invoice">인보이스</a><a href="#a-invoicedetail">인보이스 상세</a>
-    <a href="#a-qna">문의 관리</a><a href="#a-cms">FAQ·콘텐츠</a>
+    <a href="#a-qnalist">문의 목록</a><a href="#a-qna">문의 상세·답변</a><a href="#a-cms">FAQ·콘텐츠</a>
   </nav>
 </header>
 
@@ -537,16 +537,28 @@
         <div class="kv"><span class="k">환불 예정액</span><span class="v">₩ 20,800</span></div>
         <div class="kv"><span class="k">고객 환불계좌</span><span class="v">○○ 000-000</span></div>
         <div class="note">수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 계산해 <b>합산</b>(한 예약 안에서도 항목마다 요율이 다르다). 환불 이체는 <b>수동</b>. 이체 후 '취소' 처리 → <b>해당 항목·날짜의 재고만</b> 즉시 복원.<br><b>부분취소</b>면 남은 유효 항목은 그대로 두고 예약에 <b>'부분취소' 뱃지</b>를 붙인다(예약 상태는 유효 항목 기준 유지). <b>전체 항목</b>이 요청됐으면 예약 상태를 <b>취소</b>로 전이.</div>
-        <a class="btn pri">선택 항목 취소 확정(환불완료)</a>
+        <a class="btn pri">요청 항목 취소 확정(환불완료)</a>
       </div></div>
+
+      <div class="mdstack">
+        <div class="mdscrim"><div class="md">
+          <div class="mdh"><span class="mdt">취소 확정</span><span class="mdc">A9-M1</span></div>
+          <div class="mdb">
+            <div class="txt">고객에게 <b>환불을 완료하셨나요?</b></div>
+            <div class="lbl">확인 문구 <span class="tag k">필수</span></div><div class="field">환불 처리 했음</div>
+            <div class="note" style="margin:8px 0 0">입력값이 <b>'환불 처리 했음'</b>과 일치해야 <b>완료 활성</b>. 완료 → 고객이 요청한 항목만 <b>취소 처리</b>(해당 항목·날짜 재고 복원).</div>
+          </div>
+          <div class="mdf"><span class="btn sec">닫기</span><span class="btn pri">완료</span></div>
+        </div></div>
+      </div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
           <dt>목적</dt><dd>고객 <b>취소요청</b>을 <b>항목 단위</b>로 검토해 환불·취소 확정</dd>
           <dt>진입</dt><dd>예약 관리(취소요청 탭)의 예약 카드</dd>
-          <dt>주요 요소</dt><dd>예약번호, <b>취소 요청 항목 리스트</b>(항목별 이용일·수량·금액·수수료율, 유지 항목은 흐리게), 요청 항목 결제액·수수료 합산·환불 예정액·고객 환불계좌, 취소 확정 CTA</dd>
+          <dt>주요 요소</dt><dd>예약번호, <b>취소 요청 항목 리스트</b>(항목별 이용일·수량·금액·수수료율, 유지 항목은 흐리게), 요청 항목 결제액·수수료 합산·환불 예정액·고객 환불계좌, 취소 확정 CTA · 모달 <b>A9-M1 취소 확정</b>('고객에게 환불을 완료하셨나요?' + <b>'환불 처리 했음'</b> 입력란, 문구가 일치해야 <b>완료</b> 활성)</dd>
           <dt>규칙·로직</dt><dd>수수료는 <b>항목별 이용일 기준 차등</b>으로 각각 산정 후 <b>합산</b>, 환불 이체는 <b>수동</b>, 이체 후 '취소' 처리 → <b>해당 항목·날짜 재고만</b> 즉시 복원. <b>부분취소</b>면 남은 유효 항목 유지 + 예약에 <b>'부분취소' 뱃지</b>(별도 상태값 없음), <b>전체 항목</b> 요청이면 예약 상태를 <b>취소</b>로 전이</dd>
-          <dt>화면 이동</dt><dd>취소 확정 → 예약 상태 반영(전체: 취소 / 부분: 유효 항목 기준 유지 + 부분취소 뱃지)</dd>
+          <dt>화면 이동</dt><dd>취소 확정 → A9-M1에서 완료 → 예약 상태 반영(전체: 취소 / 부분: 유효 항목 기준 유지 + 부분취소 뱃지)</dd>
         </dl>
       </div>
     </div>
@@ -702,8 +714,30 @@
       </div>
     </div>
 
+    <div class="screen" id="a-qnalist">
+      <div class="cap"><span class="id">S4-A2-1</span><span class="nm">문의 관리 목록</span><span class="dsc">답변 상태</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>Q&A ADMIN</span></div><div class="vp">
+        <div class="abar"><span class="mn">←</span><span class="ti">문의 관리</span></div>
+        <div class="note" style="margin-top:0">총 3건 · 답변완료 1 · 대기 2</div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">대기</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">대기</span></div></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">답변완료</span></div></div>
+        <div class="note blue">카드 = 문의 제목 · 본문 미리보기 · 답변 상태(<b>대기/답변완료</b>). 비공개 글도 관리자는 잠금 없이 열람.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>고객 1:1 문의(S4-C4)를 <b>목록</b>으로 보고 답변할 문의 선택</dd>
+          <dt>진입</dt><dd>메뉴 → 문의 관리, 대시보드/알림</dd>
+          <dt>주요 요소</dt><dd>건수 요약(총·답변완료·대기), 문의 카드(제목 · 본문 미리보기 · <b>대기/답변완료</b>)</dd>
+          <dt>규칙·로직</dt><dd>답변이 없으면 <b>대기</b>, 있으면 <b>답변완료</b>. 고객앱 비공개(PIN) 잠금은 관리자에게 적용하지 않음. 문의 없으면 '접수된 문의가 없습니다.'</dd>
+          <dt>화면 이동</dt><dd>카드 → 문의 상세·답변(<b>S4-A2-2</b>)</dd>
+        </dl>
+      </div>
+    </div>
+
     <div class="screen" id="a-qna">
-      <div class="cap"><span class="id">S4-A2</span><span class="nm">문의 관리</span><span class="dsc">답변</span></div>
+      <div class="cap"><span class="id">S4-A2-2</span><span class="nm">문의 상세 · 답변</span><span class="dsc">답변</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>Q&A ADMIN</span></div><div class="vp">
         <div class="abar"><span class="mn">←</span><span class="ti">문의 상세</span></div>
         <div class="card2"><div class="line w7" style="margin:0 0 6px"></div><div class="line w9"></div><div class="line w5"></div></div>
@@ -715,10 +749,10 @@
         <h4>화면 상세 정의</h4>
         <dl>
           <dt>목적</dt><dd>고객 1:1 문의 확인 및 <b>답변 등록</b></dd>
-          <dt>진입</dt><dd>메뉴 → 문의 관리, 대시보드/알림</dd>
+          <dt>진입</dt><dd>문의 목록(S4-A2-1)에서 카드 클릭</dd>
           <dt>주요 요소</dt><dd>문의 본문, 답변 입력, 답변 등록 CTA</dd>
           <dt>규칙·로직</dt><dd>답변 등록 시 고객에게 <b>카카오 알림톡</b> 발송(알림 인터페이스, 실발송 이연)</dd>
-          <dt>화면 이동</dt><dd>답변 등록 → 문의 목록(답변완료)</dd>
+          <dt>화면 이동</dt><dd>답변 등록 → 문의 목록(S4-A2-1, 답변완료)</dd>
         </dl>
       </div>
     </div>

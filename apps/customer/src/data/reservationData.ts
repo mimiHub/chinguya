@@ -60,20 +60,9 @@ const reservations: CustomerReservation[] = [
   },
 ];
 
-export function findReservationById(id: string): CustomerReservation | undefined {
-  return reservations.find((r) => r.id === id);
-}
-
 /** 최신순으로 전체 예약 목록 */
 export function listReservations(): CustomerReservation[] {
   return [...reservations];
-}
-
-export function updateReservationStatus(id: string, status: CustomerReservationStatus, cancelFeeRate?: number): void {
-  const reservation = findReservationById(id);
-  if (!reservation) return;
-  reservation.status = status;
-  if (cancelFeeRate !== undefined) reservation.cancelFeeRate = cancelFeeRate;
 }
 
 /** S1-C5 목록 화면의 탭 4개("전체" 포함) */

@@ -1,153 +1,259 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import type { CustomerReservationStatus } from "@chinguya/types";
-import { Title, Kv, StatusBadge, Badge, Button, Card, ComingSoon, Text, Toast, FormMessage, Stack } from "@chinguya/ui";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
-  findAdminReservationById,
-  getElapsedHours,
-  activeItemsTotal,
-  isPartiallyCancelled,
-  UNPAID_AFTER_HOURS,
-} from "@/data/reservationData";
-import { cancellationFeeRules, daysBeforeUse, resolveCancellationFeeRate } from "@/data/settingsData";
+  createApiClient,
+  ApiError,
+  type AdminBookingDetail,
+  type BookingItemStatus,
+} from "@chinguya/api-client";
+import { RENTAL_OPTION_LABEL, type CustomerReservationStatus } from "@chinguya/types";
+import {
+  Title,
+  Kv,
+  StatusBadge,
+  Badge,
+  Button,
+  Card,
+  Text,
+  Toast,
+  FormMessage,
+  Stack,
+  Alert,
+  ConfirmPopup,
+} from "@chinguya/ui";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
-/** 금액 표시(전용 Price 컴포넌트 제거 후 Kv 안에서 직접 포맷). sign은 취소 수수료처럼
- * 마이너스 금액 앞에 "− " 등을 붙이고 싶을 때만 넘긴다. */
-function priceText(value: number, sign = "") {
+/**
+ * S1-A7/A8 예약 상세 · 입금확인(`a-resdetail`).
+ *
+ * Core API 실연동: GET /admin/bookings/{id}, POST /admin/bookings/{id}/deposit-confirm,
+ * POST /admin/bookings/{id}/force-cancel. 계약은 packages/api-spec/openapi/chinguya-admin-api.yaml.
+ *
+ * - 1 예약번호 = N 항목, 입금액은 유효 항목 합계.
+ * - 입금 확인 → 완료. 접수 후 24시간(입금 기한)이 지나면 '미입금' → 예약 전체 강제 취소(재고 즉시 복원).
+ * - 처리 버튼은 슈퍼어드민에게만 보인다(서버도 403으로 막는다).
+ * - 취소요청 처리(S1-A9)는 아직 연동 전이라 이 화면에서 다루지 않는다.
+ */
+
+const api = createApiClient();
+
+const ITEM_STATUS: Record<BookingItemStatus, { label: string; variant: "success" | "info" | "gray" }> = {
+  ACTIVE: { label: "유효", variant: "success" },
+  CANCEL_REQUESTED: { label: "취소요청", variant: "info" },
+  CANCELLED: { label: "취소", variant: "gray" },
+};
+
+type Action = "confirm" | "forceCancel";
+
+function StatusTag({ booking }: { booking: AdminBookingDetail }) {
+  if (booking.unpaid) return <Badge variant="warning">미입금</Badge>;
+  if (booking.status === "AWAITING_DEPOSIT") return <Badge variant="gray">입금대기</Badge>;
+  return <StatusBadge status={booking.status.toLowerCase() as CustomerReservationStatus} />;
+}
+
+function formatDates(dates: string[]): string {
+  const first = dates[0] ?? "";
+  const last = dates[dates.length - 1] ?? "";
+  return dates.length > 1 ? `${first} ~ ${last}` : first;
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function priceText(value: number) {
   return (
     <Text as="span" size="sm" weight="bold">
-      {sign}₩ {value.toLocaleString()}
+      ₩ {value.toLocaleString()}
     </Text>
   );
 }
 
 export default function AdminReservationDetailPage() {
   const params = useParams<{ id: string }>();
-  const reservation = findAdminReservationById(params.id);
+  const router = useRouter();
+  const { isSuperAdmin } = useAdminAuth();
+  const [booking, setBooking] = useState<AdminBookingDetail | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pending, setPending] = useState<Action | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; nextTab: string } | null>(null);
 
-  // 목업 데이터라 실제 서버에 저장되진 않지만, 버튼을 눌렀을 때 상태가 바뀌는 걸
-  // 화면에서 바로 확인할 수 있도록 로컬 상태로 흉내낸다.
-  const [status, setStatus] = useState<CustomerReservationStatus | undefined>(reservation?.status);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    api.bookings
+      .detail(params.id)
+      .then((res) => {
+        if (active) setBooking(res);
+      })
+      .catch((err: unknown) => {
+        if (active) setLoadError(err instanceof ApiError ? err.message : "예약 정보를 불러오지 못했습니다.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [params.id]);
 
-  if (!reservation || !status) {
-    return <ComingSoon label="존재하지 않는 예약입니다" />;
+  const runAction = async () => {
+    if (!booking || !pending) return;
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      if (pending === "confirm") {
+        setBooking(await api.bookings.confirmDeposit(booking.bookingId));
+        setToast({ message: "입금 확인 처리되었습니다", nextTab: "completed" });
+      } else {
+        setBooking(await api.bookings.forceCancel(booking.bookingId));
+        setToast({ message: "미입금으로 강제 취소 처리되었습니다", nextTab: "cancelled" });
+      }
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "처리하지 못했습니다.");
+    } finally {
+      setSubmitting(false);
+      setPending(null);
+    }
+  };
+
+  if (loadError) {
+    return (
+      <main className="mx-auto max-w-2xl p-6">
+        <Title size="md">예약 상세</Title>
+        <Alert status="error" className="mt-4">
+          {loadError}
+        </Alert>
+      </main>
+    );
   }
 
-  // 취소 수수료율은 관리자 설정(계좌·정책, /settings)의 차등 요율표를 이용일까지 남은
-  // 일수로 조회해서 정한다. 단, 이 화면은 아직 목업 예약이라 요율표도 목업(settingsData)을
-  // 읽는다 — /settings 화면이 Core API에 저장한 실제 요율표는 여기 반영되지 않는다.
-  const daysLeft = daysBeforeUse(reservation.useDate);
-  const cancelFeeRate = resolveCancellationFeeRate(cancellationFeeRules, daysLeft);
-  const depositAmount = activeItemsTotal(reservation); // 입금액은 유효 항목 합계 기준
-  const cancelFee = Math.round(depositAmount * cancelFeeRate);
-  const refundAmount = depositAmount - cancelFee;
-  const partiallyCancelled = isPartiallyCancelled(reservation);
+  if (!booking) {
+    return (
+      <main className="mx-auto max-w-2xl p-6">
+        <Title size="md">예약 상세</Title>
+        <Text variant="sub" className="mt-4">
+          불러오는 중…
+        </Text>
+      </main>
+    );
+  }
 
-  const elapsedHours = getElapsedHours(reservation.createdAt);
-  const isUnpaidNow = status === "received" && elapsedHours >= UNPAID_AFTER_HOURS;
-  const remainingHours = Math.max(0, UNPAID_AFTER_HOURS - elapsedHours);
-
-  const confirmDeposit = () => {
-    // TODO: 실제 연동 시 POST /api/admin/reservations/{id}/confirm-deposit 호출로 교체
-    setStatus("completed");
-    setToastMessage("입금 확인 처리되었습니다");
-  };
-
-  const forceCancel = () => {
-    // TODO: 실제 연동 시 POST /api/admin/reservations/{id}/force-cancel 호출로 교체. 재고 즉시 복원.
-    setStatus("cancelled");
-    setToastMessage("미입금으로 강제 취소 처리되었습니다");
-  };
-
-  const confirmCancel = () => {
-    // TODO: 실제 연동 시 환불 이체 확인 후 POST /api/admin/reservations/{id}/confirm-cancel. 재고 즉시 복원.
-    setStatus("cancelled");
-    setToastMessage("취소가 확정되었습니다(환불완료)");
-  };
+  const remainingHours = booking.depositDueBy
+    ? Math.max(0, Math.ceil((new Date(booking.depositDueBy).getTime() - Date.now()) / (60 * 60 * 1000)))
+    : null;
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Title size="md" subtitle={reservation.id}>
+      <Title size="md" subtitle={booking.bookingNumber}>
         <span className="inline-flex items-center gap-2">
-          예약 상세 {isUnpaidNow ? <Badge variant="warning">미입금</Badge> : <StatusBadge status={status} />}
-          {partiallyCancelled && <Badge variant="gray">부분취소</Badge>}
+          예약 상세 <StatusTag booking={booking} />
+          {booking.partiallyCancelled && <Badge variant="gray">부분취소</Badge>}
         </span>
       </Title>
 
       <Kv
         className="mt-4"
-        items={[{ key: "고객 / 여권명", value: `${reservation.customer} / ${reservation.passportName}` }]}
+        items={[
+          { key: "고객 / 여권명", value: `${booking.customerLoginId} / ${booking.passportName}` },
+          { key: "예약 시각", value: formatDateTime(booking.createdAt) },
+          ...(booking.depositDueBy ? [{ key: "입금 기한", value: formatDateTime(booking.depositDueBy) }] : []),
+        ]}
       />
 
       <Stack direction="column" gap="sm" className="mt-4">
-        <Text weight="bold">예약 항목 ({reservation.items.length}건)</Text>
-        {reservation.items.map((item) => (
-          <Card key={item.id} padding="sm">
-            <Stack direction="column" gap="xs">
-              <Stack justify="between" align="center">
-                <Text weight="bold">
-                  {item.productName} · {item.optionLabel}
-                </Text>
-                <Badge variant={item.status === "active" ? "success" : "gray"}>
-                  {item.status === "active" ? "유효" : "취소"}
-                </Badge>
+        <Text weight="bold">예약 항목 ({booking.items.length}건)</Text>
+        {booking.items.map((item) => {
+          const status = ITEM_STATUS[item.status];
+          return (
+            <Card key={item.bookingItemId} padding="sm" className={item.status === "CANCELLED" ? "opacity-50" : undefined}>
+              <Stack direction="column" gap="xs">
+                <Stack justify="between" align="center">
+                  <Text weight="bold">
+                    {item.productName} · {RENTAL_OPTION_LABEL[item.optionType]}
+                    {item.crossRegionReturn ? " · 타지역 반납" : ""}
+                  </Text>
+                  <Badge variant={status.variant}>{status.label}</Badge>
+                </Stack>
+                <Stack justify="between" align="center">
+                  <Text variant="sub">
+                    {formatDates(item.dates)} · {item.quantity}개
+                  </Text>
+                  {priceText(item.lineTotal)}
+                </Stack>
               </Stack>
-              <Stack justify="between" align="center">
-                <Text variant="sub">
-                  {item.useDate} · {item.quantity}개
-                </Text>
-                {priceText(item.amountKrw)}
-              </Stack>
-            </Stack>
-          </Card>
-        ))}
-        <Kv items={[{ key: "입금액(유효 항목)", value: priceText(depositAmount) }]} />
+            </Card>
+          );
+        })}
+        <Kv items={[{ key: "입금액(유효 항목)", value: priceText(booking.activeTotalAmount) }]} />
       </Stack>
 
-      {status === "received" && (
-        <Stack  direction="column" gap="sm">
-          <Button onClick={confirmDeposit}>입금 확인 → 완료 처리</Button>
-          <Text variant="sub">
-            접수 후 24시간 내 미입금 시 &apos;미입금&apos; 표시 → 강제 취소 가능(재고 즉시 복원). 접수 후{" "}
-            {Math.floor(elapsedHours)}시간 경과.
-          </Text>
-          
-          <Button variant="subtle" onClick={forceCancel} disabled={!isUnpaidNow}>
-            미입금 강제 취소
-          </Button>          
-          {!isUnpaidNow && (
-            <FormMessage type="helper">
-              아직 미입금 처리 시점이 아니에요.
-              <br />
-              {Math.ceil(remainingHours)}시간 뒤부터 강제 취소할 수 있어요.
-            </FormMessage>
+      {actionError && (
+        <Alert status="error" className="mt-4">
+          {actionError}
+        </Alert>
+      )}
+
+      {booking.depositConfirmable && (
+        <Stack direction="column" gap="sm" className="mt-6">
+          {isSuperAdmin ? (
+            <>
+              <Button onClick={() => setPending("confirm")} disabled={submitting}>
+                입금 확인 → 완료 처리
+              </Button>
+              <Text variant="sub">
+                접수 후 24시간 내 미입금 시 &apos;미입금&apos; 표시 → 강제 취소 가능(예약 전체, 재고 즉시 복원).
+              </Text>
+              <Button
+                variant="subtle"
+                onClick={() => setPending("forceCancel")}
+                disabled={!booking.forceCancellable || submitting}
+              >
+                미입금 강제 취소
+              </Button>
+              {!booking.forceCancellable && remainingHours !== null && (
+                <FormMessage type="helper">
+                  아직 미입금 처리 시점이 아니에요.
+                  <br />
+                  {remainingHours}시간 뒤부터 강제 취소할 수 있어요.
+                </FormMessage>
+              )}
+            </>
+          ) : (
+            <FormMessage type="helper">입금 확인·강제 취소는 슈퍼어드민만 할 수 있어요.</FormMessage>
           )}
         </Stack>
       )}
 
-      {status === "cancel_requested" && (
-        <Stack  direction="column" gap="sm">
-          <Title size="sm">취소요청 처리</Title>
-          <Kv
-            className="mt-2"
-            items={[
-              { key: "입금액(유효 항목)", value: priceText(depositAmount) },
-              { key: "취소 수수료(차등)", value: priceText(cancelFee, "− ") },
-              { key: "환불 예정액", value: priceText(refundAmount) },
-              { key: "고객 환불계좌", value: "○○ 000-000" },
-            ]}
-          />
-          <Text variant="sub" className="my-2">
-            환불 이체는 수동 진행. 이체 후 아래 버튼으로 취소 확정 → 재고 즉시 복원.
-          </Text>
-          <Button onClick={confirmCancel}>취소 확정(환불완료)</Button>
-        </Stack>
-      )}
+      <ConfirmPopup
+        open={pending === "confirm"}
+        title="입금 확인"
+        message={`${booking.bookingNumber} 예약을 입금 확인하고 완료 처리할까요? (입금액 ₩ ${booking.activeTotalAmount.toLocaleString()})`}
+        confirmLabel="완료 처리"
+        onConfirm={runAction}
+        onClose={() => setPending(null)}
+      />
+      <ConfirmPopup
+        open={pending === "forceCancel"}
+        title="미입금 강제 취소"
+        message={`${booking.bookingNumber} 예약 전체를 취소하고 재고를 복원합니다. 되돌릴 수 없어요.`}
+        confirmLabel="강제 취소"
+        danger
+        onConfirm={runAction}
+        onClose={() => setPending(null)}
+      />
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
+      <Toast
+        open={!!toast}
+        onClose={() => {
+          const nextTab = toast?.nextTab;
+          setToast(null);
+          if (nextTab) router.push(`/reservations?tab=${nextTab}`);
+        }}
+        message={toast?.message ?? ""}
+      />
     </main>
   );
 }

@@ -354,17 +354,178 @@ export interface CustomerDepositInfo {
   dueBy?: string | null;
 }
 
-/** 예약(S1-C3 확정 결과). 항목·취소 필드는 예약 목록·바우처(S1-C5~C7) 연동 때 넓힌다. */
+/** 예약 항목 상태(계약 BookingItemStatus). 취소된 항목도 목록에 남는다. */
+export type BookingItemStatus = "ACTIVE" | "CANCEL_REQUESTED" | "CANCELLED";
+
+/** 취소 범위(계약 CancellationScope). 완료 이후만 항목 선택, 입금 전에는 전체만. */
+export type CancellationScope = "FULL_ONLY" | "ITEM_SELECTABLE";
+
+/** 예약 항목(계약 BookingItem). 1 예약번호 = N 항목. */
+export interface CustomerBookingItem {
+  bookingItemId: string;
+  /** 연결 자산 id(고객앱 상품 id) */
+  productId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  /** 실제 이용일(2일 옵션이면 연속 2일) */
+  dates: string[];
+  quantity: number;
+  crossRegionReturn: boolean;
+  lineTotal: number;
+  status: BookingItemStatus;
+  /** 지금 취소 대상으로 고를 수 있는지 */
+  cancellable: boolean;
+}
+
+/** 예약(S1-C3 확정 결과 · S1-C6 예약 상세·바우처). 계약: Booking. */
 export interface CustomerBooking {
   bookingId: string;
   bookingNumber: string;
   status: CustomerBookingStatus;
+  /** 취소 항목 포함, 담은 순 */
+  items: CustomerBookingItem[];
+  /** 원 결제액 */
   totalAmount: number;
+  /** 유효 항목 합계 — 화면 합계는 이 값 */
   activeTotalAmount: number;
+  partiallyCancelled: boolean;
   passportName: string;
+  /** 취소 요청 버튼 노출 */
+  cancellable: boolean;
+  /** 취소할 수 없으면 null */
+  cancellationScope: CancellationScope | null;
   /** 입금 계좌가 아직 등록되지 않았으면 비어 있다. */
   depositInfo?: CustomerDepositInfo | null;
   createdAt: string;
+}
+
+/** 취소 견적 항목 1줄(계약 CancellationQuoteItem). 요율은 항목 시작일까지 남은 일수로 정해진다. */
+export interface CustomerCancellationQuoteItem {
+  bookingItemId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  /** 요율 기준 이용일(YYYY-MM-DD) */
+  useDate: string;
+  /** 이용일까지 남은 일수(당일 0) */
+  daysToUse: number;
+  /** 0~1 */
+  feeRate: number;
+  lineAmount: number;
+  cancellationFee: number;
+  refundAmount: number;
+}
+
+/** 취소 견적(S1-C7). 계약: CancellationQuote. 합계는 항목별 값을 더한 것이다. */
+export interface CustomerCancellationQuote {
+  bookingId: string;
+  /** FULL = 유효 항목 전부 */
+  scope: "FULL" | "PARTIAL";
+  items: CustomerCancellationQuoteItem[];
+  /** 예약 원 결제액 */
+  paidAmount: number;
+  /** 대상 항목 결제액 합계 */
+  selectedAmount: number;
+  cancellationFee: number;
+  refundAmount: number;
+}
+
+/** 취소 요청(S1-C7). itemIds를 생략하면 취소 가능한 항목 전부. 계좌 값은 각각 50자 이하. */
+export interface CustomerCancelRequestInput {
+  itemIds?: string[];
+  refundAccount: { bankName: string; accountNumber: string; accountHolder: string };
+  reason?: string;
+}
+
+/** 내 예약 목록(S1-C5) 탭. 입금대기·취소요청은 탭 없이 '전체' 안에서 상태 태그로만 보인다. */
+export type CustomerBookingListStatus = "ALL" | "RECEIVED" | "COMPLETED" | "CANCELLED";
+
+/** 내 예약 목록(S1-C5) 카드 1장. 계약: BookingSummary. */
+export interface CustomerBookingSummary {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  /** 대표 상품명 — 카드 제목은 "상품명 외 (itemCount - 1)건" */
+  productName: string;
+  /** 총 항목 수(취소 항목 포함) */
+  itemCount: number;
+  /** 일부 항목만 취소됨 — '부분취소' 뱃지 */
+  partiallyCancelled: boolean;
+  /** 항목별 이용일의 합집합(오름차순, YYYY-MM-DD) */
+  useDates: string[];
+  /** 원 결제액 */
+  totalAmount: number;
+  /** 유효 항목 합계 */
+  activeTotalAmount: number;
+  createdAt: string;
+}
+
+export interface CustomerBookingListPage {
+  content: CustomerBookingSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
+/** 예약 관리 목록(S1-A6) 탭. UNPAID(미입금)는 '입금대기·접수 + 입금 기한 경과' 계산값이다. */
+export type AdminBookingTab = "RECEIVED" | "COMPLETED" | "UNPAID" | "CANCEL_REQUESTED" | "CANCELLED";
+
+/** 예약 관리 목록(S1-A6) 카드 1장. 계약: chinguya-admin-api.yaml AdminBookingSummary. */
+export interface AdminBookingSummary {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  /** 입금 기한이 지난 입금대기·접수 — '미입금' 표시 */
+  unpaid: boolean;
+  customerLoginId: string;
+  passportName: string;
+  productName: string;
+  itemCount: number;
+  partiallyCancelled: boolean;
+  useDates: string[];
+  /** 유효 항목 합계(입금액) */
+  activeTotalAmount: number;
+  depositDueBy?: string | null;
+  createdAt: string;
+}
+
+/** 예약 상세(S1-A7)의 항목 1줄. 계약: AdminBookingItem. */
+export interface AdminBookingItem {
+  bookingItemId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  dates: string[];
+  quantity: number;
+  crossRegionReturn: boolean;
+  lineTotal: number;
+  status: BookingItemStatus;
+}
+
+/** 예약 상세·입금확인(S1-A7/A8). 계약: AdminBookingDetail. */
+export interface AdminBookingDetail {
+  bookingId: string;
+  bookingNumber: string;
+  status: CustomerBookingStatus;
+  unpaid: boolean;
+  customerLoginId: string;
+  passportName: string;
+  items: AdminBookingItem[];
+  totalAmount: number;
+  /** 유효 항목 합계 = 입금액 */
+  activeTotalAmount: number;
+  partiallyCancelled: boolean;
+  /** 입금 확인 → 완료 처리 가능(입금대기·접수) */
+  depositConfirmable: boolean;
+  /** 미입금 강제 취소 가능(= unpaid) */
+  forceCancellable: boolean;
+  depositDueBy?: string | null;
+  createdAt: string;
+}
+
+export interface AdminBookingListPage {
+  content: AdminBookingSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
 }
 
 export class ApiError extends Error {
@@ -455,6 +616,25 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       depositInfo: (bookingId: string) => request<CustomerDepositInfo>(`/bookings/${bookingId}/deposit-info`),
       requestDeposit: (bookingId: string) =>
         request<CustomerBooking>(`/bookings/${bookingId}/deposit-request`, { method: "POST" }),
+      /** S1-C6 예약 상세·바우처(취소 항목 포함). 남의 예약은 404. */
+      detail: (bookingId: string) => request<CustomerBooking>(`/bookings/${bookingId}`),
+      /** S1-C5 내 예약 목록(최근 예약 먼저). */
+      list: (status: CustomerBookingListStatus = "ALL", page = 0, size = 20) =>
+        request<CustomerBookingListPage>(`/bookings?status=${status}&page=${page}&size=${size}`),
+      /**
+       * S1-C7 취소 견적. itemIds를 생략하면 취소 가능한 항목 전부.
+       * 취소할 수 없는 예약이면 409(INVALID_BOOKING_STATUS), 입금 전 일부 선택이면 409(PARTIAL_CANCEL_NOT_ALLOWED).
+       */
+      cancellationQuote: (bookingId: string, itemIds?: string[]) =>
+        request<CustomerCancellationQuote>(
+          `/bookings/${bookingId}/cancellation-quote${itemIds?.length ? `?itemIds=${itemIds.join(",")}` : ""}`,
+        ),
+      /** S1-C7 취소 요청. 갱신된 예약을 돌려준다(유효 항목 전부면 상태 = CANCEL_REQUESTED). */
+      requestCancel: (bookingId: string, body: CustomerCancelRequestInput) =>
+        request<CustomerBooking>(`/bookings/${bookingId}/cancel-request`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
     },
     customerReservations: {
       list: () => request<CustomerReservation[]>("/customer/reservations"),
@@ -573,6 +753,30 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** 새 토큰을 끊어 다시 보낸다. 이전 링크는 이 순간 무효가 된다. */
       resendInvitation: (agencyId: string) =>
         request<AgencyInvitationResult>(`/agencies/${agencyId}/invitations`, { method: "POST" }),
+    },
+    /**
+     * 관리자 예약 관리(S1-A6 목록 / S1-A7 상세 / S1-A8 입금확인·강제취소). 관리자 앱 프록시가 `/admin` 프리픽스를 붙인다.
+     * 고객 예약만 다룬다(여행사 예약 제외). 목록은 관리자 API 중 유일하게 페이지네이션한다.
+     */
+    bookings: {
+      /** keyword는 예약번호·여권 영문명 부분 일치(대소문자 무시). */
+      list: (params: { tab: AdminBookingTab; keyword?: string; page?: number; size?: number }) => {
+        const query = new URLSearchParams({
+          tab: params.tab,
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.keyword?.trim()) query.set("keyword", params.keyword.trim());
+        return request<AdminBookingListPage>(`/bookings?${query.toString()}`);
+      },
+      /** S1-A7 예약 상세. */
+      detail: (bookingId: string) => request<AdminBookingDetail>(`/bookings/${bookingId}`),
+      /** S1-A8 입금 확인 → 완료. 입금대기·접수가 아니면 409(INVALID_BOOKING_STATUS). 슈퍼어드민 전용. */
+      confirmDeposit: (bookingId: string) =>
+        request<AdminBookingDetail>(`/bookings/${bookingId}/deposit-confirm`, { method: "POST" }),
+      /** S1-A8 미입금 강제 취소(예약 전체, 재고 즉시 복원). 미입금이 아니면 409. 슈퍼어드민 전용. */
+      forceCancel: (bookingId: string) =>
+        request<AdminBookingDetail>(`/bookings/${bookingId}/force-cancel`, { method: "POST" }),
     },
     /**
      * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.

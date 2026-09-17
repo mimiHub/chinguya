@@ -6,7 +6,7 @@ import { Title, Text, Card, Stack, LabeledBox, Input, Button, Toast } from "@chi
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
- * 하단 시드 계정 안내를 개발 모드에서만 렌더하기 위한 플래그.
+ * 하단 시드 계정 안내(chinguya-api 의 db/seed-dev/R__dev_seed.sql)를 개발 모드에서만 렌더하기 위한 플래그.
  *
  * Next가 빌드 시점에 NODE_ENV를 상수로 치환하므로, 프로덕션 빌드에서는 해당 블록이
  * 번들에서 통째로 제거된다 — 배포할 때 지우는 걸 잊어도 노출되지 않는다. 시드 계정
@@ -88,11 +88,11 @@ export default function AdminLoginPage() {
 
           {isDev && (
             <Text variant="sub" className="text-center">
-              개발용 계정 (슈퍼어드민)
+              개발용 샘플 계정
               <br />
-              아이디: admin
+              슈퍼어드민 · 아이디: admin · 비밀번호: ChinguyaAdmin!2026
               <br />
-              비밀번호: ChinguyaAdmin!2026
+              일반 관리자(조회 전용) · 아이디: staff01 · 비밀번호: staff1234
             </Text>
           )}
         </Stack>
