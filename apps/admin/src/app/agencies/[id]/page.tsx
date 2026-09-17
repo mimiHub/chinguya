@@ -189,20 +189,31 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
           </Card>
 
           <Card padding="sm" className="mt-4">
-            <Stack justify="between" align="center">
-              <Stack direction="column" gap="xs">
-                <Text weight="bold">사용 가능</Text>
-                <Text variant="sub">끄면 이 여행사의 로그인·예약이 차단됩니다.</Text>
-              </Stack>
-              <Stack gap="sm" align="center">
+            {isSuperAdmin ? (
+              // 슈퍼어드민은 스위치 자체가 on/off 상태를 보여주므로 옆의 배지는 중복 정보라
+              // 뺐다 — 대신 제목·설명 텍스트까지 label로 묶어서 텍스트를 눌러도 토글되게 한다.
+              <Toggle
+                on={agency.active}
+                onChange={() => void handleToggleActive()}
+                className="w-full justify-between"
+                label={
+                  <Stack direction="column" gap="xs">
+                    <Text weight="bold">사용 가능</Text>
+                    <Text variant="sub">끄면 이 여행사의 로그인·예약이 차단됩니다.</Text>
+                  </Stack>
+                }
+              />
+            ) : (
+              <Stack justify="between" align="center">
+                <Stack direction="column" gap="xs">
+                  <Text weight="bold">사용 가능</Text>
+                  <Text variant="sub">끄면 이 여행사의 로그인·예약이 차단됩니다.</Text>
+                </Stack>
                 <Badge variant={agency.active ? "success" : "gray"}>
                   {agency.active ? "활성화" : "비활성화"}
                 </Badge>
-                {isSuperAdmin && (
-                  <Toggle on={agency.active} onChange={() => void handleToggleActive()} />
-                )}
               </Stack>
-            </Stack>
+            )}
           </Card>
 
           <Stack direction="column" gap="md" className="mt-4">

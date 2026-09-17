@@ -116,24 +116,30 @@ export default function AdminAgenciesPage() {
                   {agency.contactPhone ? ` · ${agency.contactPhone}` : ""}
                 </Text>
                 <Text variant="sub">{agency.contactEmail}</Text>
-                <Stack justify="between" align="center">
-                  <Badge variant={agency.active ? "success" : "gray"}>
-                    {agency.active ? "활성화" : "비활성화"}
-                  </Badge>
-                  {isSuperAdmin ? (
-                    <Toggle
-                      on={agency.active}
-                      onChange={() => {
-                        if (pendingId) return;
-                        void toggleActive(agency);
-                      }}
-                    />
-                  ) : (
+                {isSuperAdmin ? (
+                  <Toggle
+                    on={agency.active}
+                    onChange={() => {
+                      if (pendingId) return;
+                      void toggleActive(agency);
+                    }}
+                    className="w-full justify-between"
+                    label={
+                      <Badge variant={agency.active ? "success" : "gray"}>
+                        {agency.active ? "활성화" : "비활성화"}
+                      </Badge>
+                    }
+                  />
+                ) : (
+                  <Stack justify="between" align="center">
+                    <Badge variant={agency.active ? "success" : "gray"}>
+                      {agency.active ? "활성화" : "비활성화"}
+                    </Badge>
                     <Button size="sm" variant="outline" onClick={() => router.push(`/agencies/${agency.agencyId}`)}>
                       상세
                     </Button>
-                  )}
-                </Stack>
+                  </Stack>
+                )}
               </Stack>
             </Card>
           );

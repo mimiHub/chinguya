@@ -131,26 +131,26 @@ export default function AdminProductsPage() {
                   <Text variant="sub">고객가 {product.customerPrice.toLocaleString()}원</Text>
                   {isSuperAdmin && (
                     <Stack gap="lg">
-                      <Stack gap="xs" align="center">
-                        <Text variant="sub" as="span">
-                          고객
-                        </Text>
-                        <Toggle
-                          on={product.customerVisible}
-                          disabled={pendingId === product.productId}
-                          onChange={() => toggleVisibility(product, "customerVisible")}
-                        />
-                      </Stack>
-                      <Stack gap="xs" align="center">
-                        <Text variant="sub" as="span">
-                          여행사
-                        </Text>
-                        <Toggle
-                          on={product.agencyVisible}
-                          disabled={pendingId === product.productId}
-                          onChange={() => toggleVisibility(product, "agencyVisible")}
-                        />
-                      </Stack>
+                      <Toggle
+                        on={product.customerVisible}
+                        disabled={pendingId === product.productId}
+                        onChange={() => toggleVisibility(product, "customerVisible")}
+                        label={
+                          <Text variant="sub" as="span">
+                            고객
+                          </Text>
+                        }
+                      />
+                      <Toggle
+                        on={product.agencyVisible}
+                        disabled={pendingId === product.productId}
+                        onChange={() => toggleVisibility(product, "agencyVisible")}
+                        label={
+                          <Text variant="sub" as="span">
+                            여행사
+                          </Text>
+                        }
+                      />
                     </Stack>
                   )}
                 </Stack>

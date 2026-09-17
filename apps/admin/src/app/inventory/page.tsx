@@ -677,12 +677,17 @@ export default function AdminInventoryPage() {
                   hideLastBorder={false}
                 />
 
-                <Stack justify="between" align="center">
-                  <Text variant="sub" as="span" className="inline-flex items-center gap-1.5">
-                    매장 휴무 <Badge>전 자산 공통</Badge>
-                  </Text>
-                  <Toggle on={dayDetail.closed} onChange={handleToggleClosed} disabled={!isSuperAdmin} />
-                </Stack>
+                <Toggle
+                  on={dayDetail.closed}
+                  onChange={handleToggleClosed}
+                  disabled={!isSuperAdmin}
+                  className="w-full justify-between"
+                  label={
+                    <Text variant="sub" as="span" className="inline-flex items-center gap-1.5">
+                      매장 휴무 <Badge>전 자산 공통</Badge>
+                    </Text>
+                  }
+                />
 
                 {isSuperAdmin && (
                   <Button variant="outline" fullWidth onClick={openAddAdjustment}>

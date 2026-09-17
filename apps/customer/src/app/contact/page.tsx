@@ -254,12 +254,16 @@ export default function ContactPage() {
                 onChange={(e) => setWriteContent(e.target.value)}
               />
 
-              <Stack justify="between" align="center">
-                <Text as="span" weight="medium">
-                  공개로 등록
-                </Text>
-                <Toggle on={writePublic} onChange={setWritePublic} />
-              </Stack>
+              <Toggle
+                on={writePublic}
+                onChange={setWritePublic}
+                className="w-full justify-between"
+                label={
+                  <Text as="span" weight="medium">
+                    공개로 등록
+                  </Text>
+                }
+              />
 
               {!writePublic && (
                 <Stack direction="column" gap="xs">
