@@ -88,6 +88,9 @@
   .cal .days span{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:9px;border-radius:4px;background:var(--fill);color:var(--ink)}
   .cal .days span.off{color:#c4c8ce;background:transparent}
   .cal .days span.dis{color:#c4c8ce;background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 3px,#e8eaed 3px,#e8eaed 6px)}
+  /* "마감"(재고 0) — "불가"(과거·기간 밖·휴무, 빗금)와 구분되는 연분홍. 색은 실제 구현의
+     theme.css --color-error/--color-error-light 값을 그대로 옮겼다(2026-09 반영). */
+  .cal .days span.zero{color:#a8564a;background:#ebd1cc;border:1px solid #a8564a;cursor:pointer}
   .cal .days span.sel{background:var(--accent);color:#fff}
   .cal .days span.ok{background:#e5efe7;color:#2f6b3d}
   .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
@@ -257,10 +260,10 @@
           <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
           <div class="days">
             <span class="off"></span><span class="off"></span><span class="off"></span><span class="dis">1</span><span class="dis">2</span><span class="ok">3</span><span class="ok">4</span>
-            <span class="ok">5</span><span class="ok">6</span><span class="sel">7</span><span class="ok">8</span><span class="ok">9</span><span class="dis">10</span><span class="ok">11</span>
+            <span class="ok">5</span><span class="ok">6</span><span class="sel">7</span><span class="ok">8</span><span class="ok">9</span><span class="zero" data-toast="예약가능한 날짜를 시작일로 선택해 주세요.">10</span><span class="ok">11</span>
             <span class="ok">12</span><span class="ok">13</span><span class="ok">14</span><span class="ok">15</span><span class="ok">16</span><span class="ok">17</span><span class="ok">18</span>
           </div>
-          <div class="legend"><span><i style="background:#e5efe7"></i>예약가능</span><span><i style="background:var(--accent)"></i>선택</span><span><i style="background:#e8eaed"></i>마감/불가</span></div>
+          <div class="legend"><span><i style="background:#e5efe7"></i>예약가능</span><span><i style="background:var(--accent)"></i>선택</span><span><i style="background:#ebd1cc;border:1px solid #a8564a"></i>마감</span><span><i style="background:#e8eaed"></i>불가</span></div>
         </div>
         <div class="kv" style="align-items:center;border-bottom:none"><span class="k">수량</span>
           <span class="v" style="display:flex;align-items:center;gap:10px">
@@ -271,6 +274,7 @@
           </span></div>
         <div class="kv"><span class="k">합계</span><span class="v">₩ 00,000</span></div>
         <div class="note"><b>날짜 선택</b>: 위에서 선택한 옵션에 따라 선택 가능 일수가 다름 — 2시간·1일 = <b>1일 선택</b>, 2일 = <b>연속 2일 선택</b>, 야간 = <b>야간 가능일 중 1일 선택</b>.<br><b>예약 가능 기간</b>: 오늘 +1일 ~ +3개월(일본 기준 '오늘').<br><b>가용성</b>: 재고×슬롯 겹침으로 판정. 선택 날짜·옵션의 <b>가용 수량 상한</b> 내에서만 수량 선택 가능. 2일+타지역 반납 선택 시 <b>익일·익익일 자동 마감</b>.</div>
+        <div class="note blue"><b>마감 vs 불가(2026-09 추가)</b>: 재고 0으로 못 고르는 날(<b>마감</b>, 연분홍)과 과거·예약 가능 기간 밖·매장 휴무라 애초에 대상이 아닌 날(<b>불가</b>, 빗금)을 색으로 구분한다. API는 사유(reason)를 따로 안 내려주므로(확정, 2026-08-19 결정 로그) 이 구분은 "날짜 데이터가 있는지"로만 가른다. 2일(연속) 옵션에서 <b>마감</b> 칸을 누르면 하단에 토스트로 <b>"예약가능한 날짜를 시작일로 선택해 주세요."</b> 안내(누르면 데모 확인 가능).</div>
         <a class="btn sec" href="javascript:void(0)" data-toast="장바구니에 추가되었습니다.">장바구니 담기</a><a class="btn pri">바로 예약</a>
         <div class="toast"></div>
       </div></div>

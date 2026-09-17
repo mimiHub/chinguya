@@ -72,7 +72,12 @@ export function Toast({
   return (
     <div
       role="status"
-      className="fixed bottom-[76px] left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-toast-bg px-4 py-2 text-sm text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] md:bottom-6"
+      // "장바구니에 추가되었습니다"처럼 짧은 메시지 기준으로 rounded-full(알약 모양) +
+      // whitespace-nowrap을 썼는데, 안내 문구처럼 긴 메시지는 nowrap 때문에 줄바꿈이 안 되고
+      // 좁은 화면(375px 등)에서 알약이 뷰포트보다 넓어져 양옆이 잘려나갔다. max-w로 화면 안에
+      // 가두고 nowrap을 지워 2줄까지는 자연스럽게 접히게 한다 — rounded-full은 그대로 둬도
+      // 여러 줄일 때 그냥 더 큰 알약으로 보일 뿐 어색하지 않다.
+      className="fixed bottom-[76px] left-1/2 z-[200] flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-2 rounded-full bg-toast-bg px-4 py-2 text-center text-sm text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] md:bottom-6"
     >
       <span aria-hidden="true" className={`shrink-0 ${s.text}`}>
         {s.icon}

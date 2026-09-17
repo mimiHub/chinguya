@@ -34,15 +34,21 @@ export interface CalendarProps {
   onSelect?: (date: number) => void;
   range?: CalendarRange;
   onRangeChange?: (range: CalendarRange) => void;
+  /** 마감/불가/선택불가 등 고를 수 없는 칸을 눌렀을 때 — 왜 안 되는지 토스트 등으로 안내하고
+   *  싶은 화면(고객 예약 캘린더)에서만 넘긴다. off(빈 칸)는 대상이 아니다. */
+  onBlockedSelect?: (date: number) => void;
   onPrevMonth?: () => void;
   onNextMonth?: () => void;
   canPrevMonth?: boolean;
   canNextMonth?: boolean;
 }
 
-// 기획서 기준 캘린더 상태는 화면마다 다르다 — 고객 예약 캘린더는 예약가능/선택/마감·불가
-// 세 가지뿐이라 과거 날짜(disabled), 마감(zero), 해당 월 예약 불가(holiday)를 화면에서는
-// 전부 "마감·불가" 하나로 동일하게 보여준다. 반면 재고 세팅(S1-A3)은 잔여 수량 기준으로
+// 기획서 기준 캘린더 상태는 화면마다 다르다 — 고객 예약 캘린더는 예약가능/선택/마감/불가
+// 네 가지로 보여준다. API가 마감 사유(reason)를 따로 안 내려주기로 확정돼 있어(2026-08-19
+// 결정 로그) "그 날짜 자체가 재고 0인지, 2일 옵션처럼 연속일 재고가 모자라 도미노로 막힌
+// 건지"는 구분할 수 없지만, 최소한 "과거 날짜·이번 달 예약 불가 기간(disabled/holiday)"과
+// "재고 부족으로 선택 불가(zero)"는 이미 스타일이 서로 달라서(줄무늬 vs 회색+테두리) 범례도
+// 그에 맞춰 나눠뒀다. 반면 재고 세팅(S1-A3)은 잔여 수량 기준으로
 // 여유(ok)/임박(low)/마감(zero, 0개)/초과(over, 음수)/매장 휴무(holiday)를 전부 다른 색으로
 // 구분해서 보여준다 — 그래서 zero/holiday를 서로 다른 스타일로 분리해뒀다(zero=민무늬 회색,
 // holiday=대각선 줄무늬). 각 항목은 bg/text/border/cursor를 전부 포함한 "완결된" 클래스
@@ -68,6 +74,12 @@ const SELECTED_CLASS = "bg-secondary-800 text-white border-secondary-800 cursor-
 // 기간 선택에서 시작~끝 "사이" 날짜(끝은 아니지만 범위에 포함됨을 보여주는 톤)
 const RANGE_MIDDLE_CLASS = "bg-primary-100 text-ink border-transparent cursor-pointer rounded-none";
 
+// 예약(booking) 캘린더에서 "마감"(zero — 재고 부족)만 회색 대신 연분홍으로 — 옆의 예약가능
+// (연두)과 대비가 뚜렷해서 "못 고른다"는 느낌이 바로 든다. 재고 세팅(inventory) 화면은 같은
+// zero 상태를 "마감(0)"으로 쓰면서 "초과(over)"도 함께 보여주는데 over가 이미 이 색(error-
+// light/error)이라, zero까지 같은 색을 쓰면 두 상태가 안 구분돼서 inventory는 그대로 회색을 쓴다.
+const BOOKING_ZERO_CLASS = "bg-error-light text-error border-error cursor-not-allowed";
+
 // 예약(booking) 캘린더는 마감(zero)/휴무(holiday)/과거(disabled)를 눌러도 아무 의미가 없어
 // 클릭 자체를 막는다. 반면 재고 세팅(inventory) 캘린더는 정반대로, 마감·휴무인 날짜야말로
 // 관리자가 들어가서 재고 조정을 확인·수정하거나 휴무를 해제해야 하는 날짜라 전부 클릭 가능해야
@@ -89,6 +101,7 @@ export function Calendar({
   onSelect,
   range,
   onRangeChange,
+  onBlockedSelect,
   onPrevMonth,
   onNextMonth,
   canPrevMonth = true,
@@ -176,7 +189,9 @@ export function Calendar({
                 .join(" ")
             : rangeRole === "middle"
               ? RANGE_MIDDLE_CLASS
-              : (dayClass[status] ?? dayClass.ok);
+              : status === "zero" && legend === "booking"
+                ? BOOKING_ZERO_CLASS
+                : (dayClass[status] ?? dayClass.ok);
           // dayClass의 zero/holiday는 예약 캘린더 기준으로 cursor-not-allowed가 박혀 있는데,
           // 재고 세팅(inventory) 캘린더에서는 그 상태들도 클릭 가능해서(위 notSelectable 참고)
           // 커서만 포인터로 바꿔준다 — 배경/글자색 등 나머지 스타일은 그대로 유지.
@@ -203,7 +218,13 @@ export function Calendar({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              onClick={() => isSelectable(status) && handleClick(day.date)}
+              onClick={() => {
+                if (isSelectable(status)) {
+                  handleClick(day.date);
+                } else if (status !== "off" && typeof day.date === "number") {
+                  onBlockedSelect?.(day.date);
+                }
+              }}
             >
               {day.hasAdjustment && (
                 <span className="absolute top-[3px] right-[3px] h-[5px] w-[5px] rounded-full bg-error" />
@@ -225,8 +246,12 @@ export function Calendar({
             선택
           </span>
           <span>
+            <i className="mr-[3px] inline-block h-[9px] w-[9px] rounded-[3px] border border-error align-[-1px] bg-error-light" />
+            마감
+          </span>
+          <span>
             <i className="mr-[3px] inline-block h-[9px] w-[9px] rounded-[3px] align-[-1px] bg-stripe-muted-light" />
-            마감/불가
+            불가
           </span>
         </div>
       )}

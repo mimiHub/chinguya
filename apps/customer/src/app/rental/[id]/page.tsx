@@ -11,7 +11,7 @@ import {
   type CustomerAvailability,
   type CustomerProductDetail,
 } from "@chinguya/api-client";
-import { Title, Text, Chip, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, Popup, Toast, ComingSoon, Banner } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, Popup, Toast, ComingSoon, Banner } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
@@ -77,6 +77,7 @@ export default function RentalDetailPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [addedToast, setAddedToast] = useState(false);
+  const [blockedDateNotice, setBlockedDateNotice] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -274,42 +275,93 @@ export default function RentalDetailPage() {
             </div>
             <Stack direction="column" gap="sm">
               <Title size="lg">{product.name}</Title>
-              <Text variant="sub">{subtitle || `${product.name}와 함께하는 여유로운 시간`}</Text>
+              <Text variant="sub">{`${product.name}와 함께하는 여유로운 시간`}</Text>
             </Stack>
           </Stack>
           <div className="border-t border-line" />
         </Stack>
         </ScrollReveal>
+        
+        {subtitle && (
+          <ScrollReveal delay={125}>
+          <Stack direction="column" gap="sm" className="">
+            <Title size="sm" leaf tone="secondary">
+              상품 설명
+            </Title>
+            <Text variant="sub">{subtitle}</Text>
+            <div className="border-t border-line" />
+          </Stack>
+          </ScrollReveal>
+        )}
 
         <ScrollReveal delay={100}>
         <Stack direction="column" gap="md" className="">
           <Title size="sm" leaf tone="secondary">
             시간 옵션
           </Title>
-          <Chip.List>
-            {product.options.map((o) => (
-              <Chip key={o.optionType} on={o.optionType === option.optionType} onClick={() => handleOptionChange(o.optionType)}>
-                {RENTAL_OPTION_LABEL[o.optionType]} · {o.price.toLocaleString()}원
-              </Chip>
-            ))}
-          </Chip.List>
+          <Stack direction="column" gap="sm">
+            {product.options.map((o) => {
+              const isOn = o.optionType === option.optionType;
+              return (
+                <div
+                  key={o.optionType}
+                  role="radio"
+                  aria-checked={isOn}
+                  tabIndex={0}
+                  onClick={() => handleOptionChange(o.optionType)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleOptionChange(o.optionType);
+                    }
+                  }}
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-colors ${
+                    isOn ? "border-accent-300 bg-accent-300" : "border-card-border bg-surface"
+                  }`}
+                >
+                  <Stack align="center" gap="sm">
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                        isOn ? "border-accent-700" : "border-line"
+                      }`}
+                    >
+                      {isOn && <span className="h-2.5 w-2.5 rounded-full bg-accent-700" />}
+                    </span>
+                    <Text>{RENTAL_OPTION_LABEL[o.optionType]}</Text>
+                  </Stack>
+                  <Text weight="bold">{o.price.toLocaleString()}원</Text>
+                </div>
+              );
+            })}
+          </Stack>
+          <Text variant="sub">
+            옵션을 바꾸면 아래 날짜 선택은 초기화돼요. <br />
+            <span className="text-xs">(옵션마다 선택 가능한 일수가 달라요)</span>
+          </Text>
 
           {option.crossRegionReturnAvailable && (
             <Card padding="sm">
-              <Stack justify="between" align="center">
-                <Stack direction="column" gap="xs">
-                  <Text weight="bold">타지역 반납</Text>
-                  <Text variant="sub">
-                    다른 지점에서 반납할 수 있어요 (대당 + {(option.crossRegionReturnExtraFee ?? 0).toLocaleString()}원)
-                  </Text>
-                </Stack>
-                <Toggle on={offSiteReturn} onChange={handleOffSiteReturnChange} />
-              </Stack>
+              <Toggle
+                on={offSiteReturn}
+                onChange={handleOffSiteReturnChange}
+                className="w-full justify-between"
+                label={
+                  <Stack direction="column" gap="xs">
+                    <Text weight="bold">타지역 반납</Text>
+                    <Text variant="sub">
+                      다른 지점에서 반납할 수 있어요 (대당 + {(option.crossRegionReturnExtraFee ?? 0).toLocaleString()}원)
+                    </Text>
+                  </Stack>
+                }
+              />
             </Card>
           )}
           <div className="border-t border-line" />
         </Stack>
         </ScrollReveal>
+
+        
 
         <ScrollReveal delay={150}>
         <Stack direction="column" gap="sm" className="">
@@ -334,6 +386,7 @@ export default function RentalDetailPage() {
             }
             range={isMultiDay ? range : undefined}
             onRangeChange={isMultiDay ? handleRangeSelect : undefined}
+            onBlockedSelect={isMultiDay ? () => setBlockedDateNotice(true) : undefined}
             onPrevMonth={() => canPrevMonth && moveMonth(-1)}
             onNextMonth={() => canNextMonth && moveMonth(1)}
             canPrevMonth={canPrevMonth}
@@ -433,6 +486,13 @@ export default function RentalDetailPage() {
       />
 
       <Toast open={!!submitError} onClose={() => setSubmitError(null)} message={submitError ?? ""} status="error" />
+
+      <Toast
+        open={blockedDateNotice}
+        onClose={() => setBlockedDateNotice(false)}
+        message="예약가능한 날짜를 시작일로 선택해 주세요."
+        status="error"
+      />
     </main>
   );
 }
