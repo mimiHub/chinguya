@@ -20,6 +20,7 @@ const MENU_ITEMS: { label: string; href: string; description: string }[] = [
   { label: "인보이스 관리", href: "/invoices", description: "여행사별 인보이스 발행, 정산 여부 확인" },
   { label: "문의 관리", href: "/inquiries", description: "고객 1:1 문의 확인 및 답변 등록" },
   { label: "FAQ · 콘텐츠 관리", href: "/content", description: "FAQ 등록/수정/삭제·순서, 랜딩·서비스 소개 콘텐츠 편집" },
+  { label: "컴포넌트 가이드", href: "/components", description: "@chinguya/ui 공통 컴포넌트 37종을 한 화면에서 모아 보기" },
 ];
 
 export default function AdminMorePage() {

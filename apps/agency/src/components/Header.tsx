@@ -1,6 +1,7 @@
 "use client";
 
-import { IconHamburger, Button } from "@chinguya/ui";
+import { useState } from "react";
+import { IconHamburger, IconX, Button } from "@chinguya/ui";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 
 /**
@@ -13,19 +14,16 @@ import { useAgencyAuth } from "@/context/AgencyAuthContext";
  * 햄버거/닫기 버튼은 왼쪽에 고정한다 — 실제로 열리는 사이드바 패널도 화면 왼쪽에서 나오므로,
  * 버튼 위치와 패널이 열리는 방향을 일치시켜 헷갈리지 않게 한다.
  *
- * 오른쪽에는 로그인한 아이디(여행사명이 아니라 loginId, 예: agency01)를 캡슐(알약) 모양
- * 배경으로 보여준다 — 테두리 선·그림자는 없이 border-radius로만 캡슐 모양을 내고, 헤더가 흰
- * 배경이라 배경색은 bg-white 대신 톤 차이가 나는 bg-bg-light를 써서 캡슐 모양 자체가 보이게
- * 한다. 값은 세션(GET /api/agency/session, useAgencyAuth)에서 온다. 세션이 없으면 로그인
- * 바로가기 버튼을 두지만, 보호된 화면은 미들웨어가 먼저 /login 으로 보내므로 실제로는 세션이
- * 만료된 직후에만 보인다(계정 등록은 관리자 초대 링크로만 들어가는 화면이라 바로가기를 두지
- * 않는다). 세션 조회 중에는 비워 둔다 — 로그인 버튼이 잠깐 번쩍이지 않게. 로그아웃은 사이드바
- * 하단 링크에서 한다(여기는 정보 표시만).
- *
- * 이 아이디 캡슐은 md(768px) 이상, 즉 PC·태블릿에서만 보이고 모바일에서는 숨긴다
- * (hidden md:flex) — 모바일은 폭이 좁아 로고·햄버거와 함께 두면 답답해 보인다는 요청.
- * 세션이 없을 때 뜨는 "로그인" 버튼은 화면 크기와 무관하게 항상 보인다(어느 기기에서든
- * 로그인은 할 수 있어야 하므로).
+ * 오른쪽 사용자 영역(UserMenu) — 원래는 로그인한 아이디(loginId)를 캡슐(알약) 모양으로
+ * 항상 펼쳐서 보여줬는데, 아이디 텍스트가 바로 노출되지 않도록 아바타 아이콘 버튼 하나로
+ * 줄이고, 누르면 뜨는 팝업(크롬 프로필 메뉴 같은 패턴) 안에 아이디와 — 나중에 계정 관련
+ * 메뉴가 늘어나면 — 추가 메뉴 항목이 들어갈 수 있게 했다. 아이콘 하나뿐이라 자리를 거의
+ * 차지하지 않아 PC·태블릿뿐 아니라 모바일에서도 항상 보인다(이전엔 모바일에서 캡슐 전체를
+ * 숨겼었다). 값은 세션(GET /api/agency/session, useAgencyAuth)에서 온다. 세션이 없으면
+ * 로그인 바로가기 버튼을 두지만, 보호된 화면은 미들웨어가 먼저 /login 으로 보내므로 실제로는
+ * 세션이 만료된 직후에만 보인다(계정 등록은 관리자 초대 링크로만 들어가는 화면이라 바로가기를
+ * 두지 않는다). 세션 조회 중에는 비워 둔다 — 로그인 버튼이 잠깐 번쩍이지 않게. 로그아웃은
+ * 지금은 그대로 사이드바 하단 링크에 있다(이 메뉴는 별도 요청 전까지 정보 표시 + 확장용).
  *
  * z-[130] — 모바일·태블릿(lg 미만)에서는 사이드바가 fixed inset-y-0(화면 맨 위부터)로 뜨는
  * 오버레이라, 헤더보다 쌓임 순서가 낮으면 열렸을 때 이 헤더 전체가 사이드바 뒤로 가려져서
@@ -48,16 +46,7 @@ export function Header({ open, onMenuClick }: { open: boolean; onMenuClick: () =
 
       <div className="absolute right-6 flex items-center gap-2">
         {loading ? null : session ? (
-          <span className="hidden items-center gap-1.5 rounded-full bg-bg-light px-3 py-1.5 text-sm text-ink md:flex">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-mb.png"
-              alt=""
-              aria-hidden="true"
-              className="h-4 w-4 object-contain"
-            />
-            {session.loginId}
-          </span>
+          <UserMenu loginId={session.loginId} />
         ) : (
           <Button href="/login" variant="text" size="sm">
             로그인
@@ -65,5 +54,54 @@ export function Header({ open, onMenuClick }: { open: boolean; onMenuClick: () =
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * 아바타 아이콘 버튼 + 클릭 시 뜨는 계정 팝업. 팝업 바깥을 누르면 닫히는 방식은
+ * packages/ui/src/components/dropdown.tsx(Dropdown)와 같은 패턴 — 화면 전체를 덮는
+ * 투명 레이어(z-40)를 팝업(z-50)보다 낮게 깔아서 바깥 클릭을 감지한다.
+ */
+function UserMenu({ loginId }: { loginId: string }) {
+  const [open, setOpen] = useState(false);
+  const initial = loginId.charAt(0).toUpperCase();
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="사용자 메뉴"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary-800 text-sm font-semibold text-white"
+      >
+        {initial}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full right-0 z-50 mt-2 w-56 rounded-lg border border-line bg-white shadow-lg">
+            {/* 팝업 자체를 닫는 버튼 — 바깥(fixed 레이어) 클릭으로도 닫히지만, 눌러서 바로
+                닫을 수 있는 명시적인 닫기 버튼도 우상단에 둔다. IconX 자체가 기본 클래스로
+                relative를 갖고 있어서 className으로 absolute를 얹어도 카드 밖으로 밀려나
+                버리길래, absolute는 감싸는 wrapper에 주고 IconX는 그 안에서 자기 자리(relative)를
+                그대로 쓰게 했다. */}
+            <div className="absolute top-2 right-2">
+              <IconX aria-label="닫기" size="sm" onClick={() => setOpen(false)} />
+            </div>
+            <div className="flex flex-col items-center gap-2 px-4 py-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-800 text-lg font-semibold text-white">
+                {initial}
+              </span>
+              <span className="truncate text-sm font-semibold text-ink">{loginId}</span>
+            </div>
+            {/* 계정 관련 메뉴 항목이 늘어나면 여기(위 정보 영역 아래)에 구분선(border-t
+                border-line)과 함께 버튼/링크 목록으로 추가한다. */}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

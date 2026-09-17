@@ -69,10 +69,26 @@ export function TopHeader() {
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4">
-          <span className="text-sm font-bold">메뉴</span>
+        <div className="flex h-14 shrink-0 items-center justify-end border-b border-line px-4">
           <IconX size="lg" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)} />
         </div>
+
+        {/* Core API의 세션 응답에는 표시 이름(name)이 없어서 아이디와 등급만 보여준다.
+            이름 노출이 필요해지면 백엔드 응답에 필드를 추가해야 한다(api-spec TODO 1번).
+            로그인 정보를 상단에 두고, 그 아래에 내비게이션을 배치한다(레퍼런스 디자인) — 예전엔
+            "로그인 정보" 라벨과 함께 메뉴 맨 아래 로그아웃 바로 위에 있어서 내비게이션과 분리된
+            느낌이었는데, 위로 올리니 "지금 누구로 로그인해 있는지"가 드로어를 열자마자 바로
+            보인다. 카드처럼 배경을 따로 띄우지 않고 다른 메뉴 줄과 같은 톤으로 두되, 위아래
+            구분선(border)만으로 하나의 섹션임을 나타낸다(레퍼런스 디자인: 다른 항목들과 동일한
+            평면 위에서 선으로만 구획). */}
+        {session && (
+          <div className="border-b border-line px-6 py-3">
+            <p className="text-base font-bold">{session.loginId}</p>
+            <p className="text-sm text-muted">
+              [등급]{session.role === "SUPER_ADMIN" ? "슈퍼어드민" : "관리자"}
+            </p>
+          </div>
+        )}
 
         {/* BottomNav를 대신하는 내비게이션 — 좁은 화면에서 하단 탭바가 안 보일 때 여기로 이동한다. */}
         <nav className="flex flex-col border-b border-line py-2">
@@ -89,18 +105,6 @@ export function TopHeader() {
             );
           })}
         </nav>
-
-        {/* Core API의 세션 응답에는 표시 이름(name)이 없어서 아이디와 등급만 보여준다.
-            이름 노출이 필요해지면 백엔드 응답에 필드를 추가해야 한다(api-spec TODO 1번). */}
-        {session && (
-          <div className="flex flex-col gap-1 border-b border-line px-6 py-4">
-            <span className="text-xs text-muted">로그인 정보</span>
-            <span className="text-base font-bold">{session.loginId}</span>
-            <span className="text-sm text-muted">
-              {session.role === "SUPER_ADMIN" ? "슈퍼어드민" : "관리자"}
-            </span>
-          </div>
-        )}
 
         <div className="flex-1" />
 

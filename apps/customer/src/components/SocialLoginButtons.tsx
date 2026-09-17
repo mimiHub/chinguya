@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Stack, Alert } from "@chinguya/ui";
+import { Stack, Toast } from "@chinguya/ui";
 
 /** 화면에 그리는 소셜 버튼 종류(표시 이름). */
 type SocialProvider = "카카오" | "네이버" | "구글";
@@ -133,11 +133,7 @@ export function SocialLoginButtons({ redirect }: { redirect: string }) {
       {SOCIAL_PROVIDER_ORDER.map((provider) => (
         <SocialLoginButton key={provider} provider={provider} onClick={() => handleClick(provider)} />
       ))}
-      {notice && (
-        <Alert status="info" icon={false}>
-          {notice}
-        </Alert>
-      )}
+      <Toast open={!!notice} onClose={() => setNotice(null)} message={notice ?? ""} />
     </Stack>
   );
 }

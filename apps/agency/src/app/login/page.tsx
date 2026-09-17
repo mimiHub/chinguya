@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Title, Text, Stack, LabeledBox, Input, Button, Alert } from "@chinguya/ui";
+import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";
@@ -202,7 +202,6 @@ function AgencyRegisterScreen({ token }: { token: string }) {
       setRegisterError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    setRegisterError(null);
     setSubmitting(true);
     try {
       await api.request("/agency/invitations/complete", {
@@ -262,6 +261,7 @@ function AgencyRegisterScreen({ token }: { token: string }) {
               onChange={(e) => setNewId(e.target.value)}
               placeholder="사용할 아이디"
               autoComplete="username"
+              error={!!registerError}
             />
           </LabeledBox>
           <LabeledBox label="비밀번호">
@@ -271,6 +271,7 @@ function AgencyRegisterScreen({ token }: { token: string }) {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="new-password"
+              error={!!registerError}
             />
           </LabeledBox>
           <LabeledBox label="비밀번호 확인">
@@ -280,13 +281,9 @@ function AgencyRegisterScreen({ token }: { token: string }) {
               onChange={(e) => setNewPasswordConfirm(e.target.value)}
               placeholder="••••••••"
               autoComplete="new-password"
+              error={!!registerError}
             />
           </LabeledBox>
-          {registerError && (
-            <Alert status="error" icon={false}>
-              {registerError}
-            </Alert>
-          )}
           <Button type="submit" fullWidth disabled={submitting}>
             {submitting ? "등록 중…" : "계정 등록 완료"}
           </Button>
@@ -296,6 +293,8 @@ function AgencyRegisterScreen({ token }: { token: string }) {
           </Text>
         </Stack>
       </form>
+
+      <Toast open={!!registerError} onClose={() => setRegisterError(null)} message={registerError ?? ""} status="error" />
     </AuthScreenLayout>
   );
 }
@@ -311,7 +310,6 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError(null);
     setSubmitting(true);
     try {
       await login(loginId, loginPassword);
@@ -336,7 +334,13 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
       <form onSubmit={(e) => void handleLogin(e)} className="mt-6">
         <Stack direction="column" gap="md">
           <LabeledBox label="아이디">
-            <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="agency01" autoComplete="username" />
+            <Input
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
+              placeholder="agency01"
+              autoComplete="username"
+              error={!!loginError}
+            />
           </LabeledBox>
           <LabeledBox label="비밀번호">
             <Input
@@ -345,13 +349,9 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
               onChange={(e) => setLoginPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="current-password"
+              error={!!loginError}
             />
           </LabeledBox>
-          {loginError && (
-            <Alert status="error" icon={false}>
-              {loginError}
-            </Alert>
-          )}
           <Button type="submit" fullWidth disabled={submitting}>
             {submitting ? "로그인 중…" : "로그인"}
           </Button>
@@ -368,6 +368,8 @@ function AgencyLoginScreen({ registeredId, justRegistered }: { registeredId: str
       <Text variant="sub" className="mt-4 text-center">
         계정은 관리자가 보낸 초대 메일의 링크에서 등록합니다.
       </Text>
+
+      <Toast open={!!loginError} onClose={() => setLoginError(null)} message={loginError ?? ""} status="error" />
     </AuthScreenLayout>
   );
 }

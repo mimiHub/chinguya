@@ -38,11 +38,14 @@ const bellIcon = (
 );
 
 // info(기본값)만 흰 종 아이콘(고유), 나머지 셋은 Alert과 같은 status-icon.tsx의 공용 색 배지를
-// 쓴다 — 그래야 "성공/경고/실패"가 Alert이든 Toast든 항상 같은 아이콘 모양으로 보인다.
+// 쓴다 — 그래야 "성공/경고/실패"가 Alert이든 Toast든 항상 같은 아이콘 모양으로 보인다. 단
+// warning은 Toast 전용 레퍼런스(ICON_TOAST: 초록 체크·빨강 X·노랑 느낌표 원 3종 세트)에 맞춰
+// warningShape="circle"로 success/error와 동일한 원형 배지 모양을 쓴다 — Alert의 삼각형
+// warning 아이콘(기존 사용처 유지)과는 이 부분만 다르다.
 const statusClass: Record<ToastStatus, { text: string; icon: ReactNode }> = {
   info: { text: "text-white", icon: bellIcon },
   success: { text: "text-success", icon: <StatusIcon status="success" /> },
-  warning: { text: "text-warning", icon: <StatusIcon status="warning" /> },
+  warning: { text: "text-warning", icon: <StatusIcon status="warning" warningShape="circle" /> },
   error: { text: "text-error", icon: <StatusIcon status="error" /> },
 };
 

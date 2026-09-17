@@ -222,7 +222,6 @@ export default function RentalDetailPage() {
       return;
     }
     setSubmitting(true);
-    setSubmitError(null);
     try {
       await addItem({
         productId: product.productId,
@@ -396,12 +395,6 @@ export default function RentalDetailPage() {
             ]}
           />
 
-          {submitError && (
-            <Alert status="error" icon={false}>
-              {submitError}
-            </Alert>
-          )}
-
           <Stack gap="sm">
             <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
               장바구니 담기
@@ -434,9 +427,12 @@ export default function RentalDetailPage() {
         open={addedToast}
         onClose={() => setAddedToast(false)}
         message="장바구니에 추가되었습니다"
+        status="success"
         actionLabel="장바구니 보기"
         actionHref="/cart"
       />
+
+      <Toast open={!!submitError} onClose={() => setSubmitError(null)} message={submitError ?? ""} status="error" />
     </main>
   );
 }

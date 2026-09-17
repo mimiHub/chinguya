@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
+import type { ToastStatus } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -49,8 +50,8 @@ export default function AdminSettingsPage() {
   const [tiers, setTiers] = useState<TierDraft[]>([]);
   const [deadlineDays, setDeadlineDays] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [savedOpen, setSavedOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
 
   useEffect(() => {
     api.settings
@@ -79,12 +80,12 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     const fields = [bankName, accountNumber, accountHolder, deadlineDays, ...tiers.flatMap((t) => [t.minDaysBefore, t.feePercent])];
     if (fields.some((value) => value.trim() === "")) {
-      setSaveError("빈 칸을 모두 입력해 주세요.");
+      setToastMessage("빈 칸을 모두 입력해 주세요.");
+      setToastStatus("error");
       return;
     }
 
     setSaving(true);
-    setSaveError(null);
     try {
       await api.settings.update({
         depositAccount: { bankName, accountNumber, accountHolder },
@@ -95,9 +96,11 @@ export default function AdminSettingsPage() {
         })),
         agencyCancelDeadlineDays: Number(deadlineDays),
       });
-      setSavedOpen(true);
+      setToastMessage("저장되었습니다");
+      setToastStatus("success");
     } catch (err) {
-      setSaveError(errorMessage(err, "설정을 저장하지 못했습니다."));
+      setToastMessage(errorMessage(err, "설정을 저장하지 못했습니다."));
+      setToastStatus("error");
     } finally {
       setSaving(false);
     }
@@ -251,8 +254,6 @@ export default function AdminSettingsPage() {
             </Text>
           </Stack>
 
-          {saveError && <Alert status="error">{saveError}</Alert>}
-
           {isSuperAdmin && (
             <Button fullWidth disabled={saving} onClick={() => void handleSave()}>
               {saving ? "저장 중…" : "저장"}
@@ -262,9 +263,10 @@ export default function AdminSettingsPage() {
       )}
 
       <Toast
-        open={savedOpen}
-        onClose={() => setSavedOpen(false)}
-        message="저장되었습니다"
+        open={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage ?? ""}
+        status={toastStatus}
       />
     </main>
   );

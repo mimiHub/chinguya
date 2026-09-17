@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { Title, Text, EmptyState, Card, Tab, Stack, Button, Input, IconX, Popup, ConfirmPopup, LabeledBox, Alert, Tooltip, Toast } from "@chinguya/ui";
+import type { ToastStatus } from "@chinguya/ui";
 import {
   createApiClient,
   ApiError,
@@ -184,13 +185,11 @@ export default function AdminContentPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [faqs, setFaqs] = useState<AdminFaq[]>([]);
-  const [faqError, setFaqError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("add");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState("");
   const [answerDraft, setAnswerDraft] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminFaq | null>(null);
@@ -202,14 +201,20 @@ export default function AdminContentPage() {
   // 키 형식: "<slot>:pc" | "<slot>:mobile" — 배너 3개 × 2장이라 배열보다 맵이 다루기 쉽다.
   const [imagePreviews, setImagePreviews] = useState<Record<string, ImagePreview>>({});
   const [bannerSaving, setBannerSaving] = useState(false);
-  const [bannerError, setBannerError] = useState<string | null>(null);
 
   const [introBody, setIntroBody] = useState("");
   const [introSaving, setIntroSaving] = useState(false);
-  const [introError, setIntroError] = useState<string | null>(null);
 
-  const [bannerToastOpen, setBannerToastOpen] = useState(false);
-  const [introToastOpen, setIntroToastOpen] = useState(false);
+  // FAQ 삭제·순서변경·등록/수정 실패, 배너/소개글 저장 성공·실패를 전부 같은 Toast로
+  // 보여준다 — 예전엔 formError를 FAQ 팝업 안에서만 그려서, 팝업이 닫혀 있을 때 일어나는
+  // 순서변경(move) 실패가 화면 어디에도 안 보이는 버그가 있었다. Toast는 팝업 열림과
+  // 무관하게 항상 화면 위에 뜨므로 그 문제도 같이 해결된다.
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
+  const showToast = (message: string, status: ToastStatus) => {
+    setToastMessage(message);
+    setToastStatus(status);
+  };
 
   useEffect(() => {
     Promise.all([api.faqs.list(), api.content.banners(), api.content.intro()])
@@ -233,11 +238,10 @@ export default function AdminContentPage() {
     ids.splice(targetIdx, 0, ...ids.splice(idx, 1));
 
     setMoving(true);
-    setFormError(null);
     try {
       setFaqs(await api.faqs.reorder(ids));
     } catch (err) {
-      setFormError(errorMessage(err, "순서를 바꾸지 못했습니다."));
+      showToast(errorMessage(err, "순서를 바꾸지 못했습니다."), "error");
     } finally {
       setMoving(false);
     }
@@ -248,7 +252,6 @@ export default function AdminContentPage() {
     setEditingId(null);
     setQuestionDraft("");
     setAnswerDraft("");
-    setFormError(null);
     setFormOpen(true);
   };
 
@@ -257,7 +260,6 @@ export default function AdminContentPage() {
     setEditingId(faq.faqId);
     setQuestionDraft(faq.question);
     setAnswerDraft(faq.answer);
-    setFormError(null);
     setFormOpen(true);
   };
 
@@ -267,7 +269,6 @@ export default function AdminContentPage() {
     if (!question || !answer) return;
 
     setSubmitting(true);
-    setFormError(null);
     try {
       if (formMode === "add") {
         const created = await api.faqs.create({ question, answer });
@@ -278,7 +279,7 @@ export default function AdminContentPage() {
       }
       setFormOpen(false);
     } catch (err) {
-      setFormError(errorMessage(err, "FAQ를 저장하지 못했습니다."));
+      showToast(errorMessage(err, "FAQ를 저장하지 못했습니다."), "error");
     } finally {
       setSubmitting(false);
     }
@@ -288,12 +289,11 @@ export default function AdminContentPage() {
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
-    setFaqError(null);
     try {
       await api.faqs.remove(target.faqId);
       setFaqs((prev) => prev.filter((f) => f.faqId !== target.faqId));
     } catch (err) {
-      setFaqError(errorMessage(err, "FAQ를 삭제하지 못했습니다."));
+      showToast(errorMessage(err, "FAQ를 삭제하지 못했습니다."), "error");
     }
   };
 
@@ -305,10 +305,9 @@ export default function AdminContentPage() {
   // 이전 URL을 반드시 해제해야 한다(안 하면 탭을 오래 켜둘수록 메모리에 계속 쌓인다).
   const selectBannerImage = (key: string, file: File) => {
     if (file.size > IMAGE_MAX_BYTES) {
-      setBannerError("이미지는 10MB까지 올릴 수 있습니다.");
+      showToast("이미지는 10MB까지 올릴 수 있습니다.", "error");
       return;
     }
-    setBannerError(null);
     setImagePreviews((prev) => {
       const old = prev[key];
       if (old) URL.revokeObjectURL(old.url);
@@ -333,12 +332,11 @@ export default function AdminContentPage() {
   const handleSaveBanners = async () => {
     const untitled = banners.find((b) => !b.title.trim());
     if (untitled) {
-      setBannerError(`배너 ${untitled.slot}의 제목을 입력해 주세요.`);
+      showToast(`배너 ${untitled.slot}의 제목을 입력해 주세요.`, "error");
       return;
     }
 
     setBannerSaving(true);
-    setBannerError(null);
     try {
       const uploadIfSelected = async (key: string, currentUrl: string) => {
         const preview = imagePreviews[key];
@@ -354,9 +352,9 @@ export default function AdminContentPage() {
       setBanners(await api.content.updateBanners(next));
       Object.values(imagePreviews).forEach((p) => URL.revokeObjectURL(p.url));
       setImagePreviews({});
-      setBannerToastOpen(true);
+      showToast("배너가 저장되었습니다", "success");
     } catch (err) {
-      setBannerError(errorMessage(err, "배너를 저장하지 못했습니다."));
+      showToast(errorMessage(err, "배너를 저장하지 못했습니다."), "error");
     } finally {
       setBannerSaving(false);
     }
@@ -364,18 +362,17 @@ export default function AdminContentPage() {
 
   const handleSaveIntro = async () => {
     if (!introBody.trim()) {
-      setIntroError("본문을 입력해 주세요.");
+      showToast("본문을 입력해 주세요.", "error");
       return;
     }
 
     setIntroSaving(true);
-    setIntroError(null);
     try {
       const saved = await api.content.updateIntro(introBody);
       setIntroBody(saved.body);
-      setIntroToastOpen(true);
+      showToast("본문이 저장되었습니다", "success");
     } catch (err) {
-      setIntroError(errorMessage(err, "본문을 저장하지 못했습니다."));
+      showToast(errorMessage(err, "본문을 저장하지 못했습니다."), "error");
     } finally {
       setIntroSaving(false);
     }
@@ -441,7 +438,6 @@ export default function AdminContentPage() {
 
               {faqs.length === 0 && <EmptyState>등록된 FAQ가 없습니다.</EmptyState>}
             </Stack>
-            {faqError && <Alert status="error">{faqError}</Alert>}
             <Text variant="sub">
               FAQ는 분류·검색 없이 위 순서 그대로 고객앱에 노출됩니다.
               {isSuperAdmin && " 항목을 눌러 순서를 바꿀 수 있어요."}
@@ -510,7 +506,6 @@ export default function AdminContentPage() {
               </Card>
             )}
 
-            {bannerError && <Alert status="error">{bannerError}</Alert>}
 
             {isSuperAdmin && (
               <Button fullWidth disabled={bannerSaving} onClick={() => void handleSaveBanners()}>
@@ -533,7 +528,6 @@ export default function AdminContentPage() {
               />
             </LabeledBox>
 
-            {introError && <Alert status="error">{introError}</Alert>}
 
             {isSuperAdmin && (
               <Button fullWidth disabled={introSaving} onClick={() => void handleSaveIntro()}>
@@ -589,7 +583,6 @@ export default function AdminContentPage() {
             </LabeledBox>
           )}
 
-          {formError && <Alert status="error">{formError}</Alert>}
 
           <Button
             fullWidth
@@ -608,8 +601,7 @@ export default function AdminContentPage() {
         onClose={() => setDeleteTarget(null)}
       />
 
-      <Toast open={bannerToastOpen} onClose={() => setBannerToastOpen(false)} message="배너가 저장되었습니다" />
-      <Toast open={introToastOpen} onClose={() => setIntroToastOpen(false)} message="본문이 저장되었습니다" />
+      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} status={toastStatus} />
     </main>
   );
 }

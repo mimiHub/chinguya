@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { AdminProduct, Asset, RentalOptionKey } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL, OPTIONS_BY_CATEGORY, RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { Title, Text, Chip, Card, Stack, LabeledBox, Input, Dropdown, Kv, Toggle, Button, Toast, Alert, ConfirmPopup, ComingSoon, IconX, HelpTooltip } from "@chinguya/ui";
+import type { ToastStatus } from "@chinguya/ui";
 import { createApiClient, ApiError, DEFAULT_API_BASE_URL } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -75,12 +76,16 @@ export default function AdminProductEditPage() {
   const [customerVisible, setCustomerVisible] = useState(true);
   const [agencyVisible, setAgencyVisible] = useState(true);
   const [images, setImages] = useState<ProductImageItem[]>([]);
-  const [imageAddError, setImageAddError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const showToast = (message: string, status: ToastStatus) => {
+    setToastMessage(message);
+    setToastStatus(status);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -138,7 +143,6 @@ export default function AdminProductEditPage() {
   /** 여러 장을 한 번에 골라도 순서대로 뒤에 붙인다. 10MB 넘는 파일과, 최대 장수(10장)를
    *  넘는 만큼은 걸러내고 나머지만 추가한다. */
   const addImageFiles = (files: FileList) => {
-    setImageAddError(null);
     const remainingSlots = Math.max(MAX_PRODUCT_IMAGES - images.length, 0);
     const incoming = Array.from(files);
     const overflow = incoming.length > remainingSlots;
@@ -161,7 +165,7 @@ export default function AdminProductEditPage() {
     const errors: string[] = [];
     if (tooLarge) errors.push("이미지는 장당 10MB까지 올릴 수 있습니다.");
     if (overflow) errors.push(`최대 ${MAX_PRODUCT_IMAGES}장까지만 올릴 수 있습니다.`);
-    if (errors.length > 0) setImageAddError(`${errors.join(" ")} 넘는 파일은 제외했습니다.`);
+    if (errors.length > 0) showToast(`${errors.join(" ")} 넘는 파일은 제외했습니다.`, "error");
     if (accepted.length > 0) setImages((prev) => [...prev, ...accepted]);
   };
 
@@ -186,7 +190,6 @@ export default function AdminProductEditPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveError(null);
     try {
       // 새로 고른 파일만 실제로 업로드하고, 기존 이미지는 주소를 그대로 쓴다. 순서가 곧
       // 표시 순서(0번 = 대표)라 Promise.all이 아니라 순서대로 하나씩 올린다.
@@ -220,9 +223,9 @@ export default function AdminProductEditPage() {
       } else {
         await api.products.update(params.id, common);
       }
-      setToastMessage("저장되었습니다");
+      showToast("저장되었습니다", "success");
     } catch (err) {
-      setSaveError(errorMessage(err, "저장하지 못했습니다."));
+      showToast(errorMessage(err, "저장하지 못했습니다."), "error");
     } finally {
       setSaving(false);
     }
@@ -233,9 +236,9 @@ export default function AdminProductEditPage() {
     setSaving(true);
     try {
       await api.products.remove(params.id);
-      setToastMessage("삭제되었습니다");
+      showToast("삭제되었습니다", "success");
     } catch (err) {
-      setSaveError(errorMessage(err, "삭제하지 못했습니다."));
+      showToast(errorMessage(err, "삭제하지 못했습니다."), "error");
     } finally {
       setSaving(false);
     }
@@ -422,7 +425,6 @@ export default function AdminProductEditPage() {
                   </div>
                 ))}
               </Chip.List>
-              {imageAddError && <Alert status="error">{imageAddError}</Alert>}
             </Stack>
           </LabeledBox>
           </Card>
@@ -507,8 +509,6 @@ export default function AdminProductEditPage() {
           </Stack>
          </Card>
 
-          {saveError && <Alert status="error">{saveError}</Alert>}
-
           {isSuperAdmin && (
             <Stack direction="column" gap="sm">
               <Button fullWidth disabled={saving || (isNew && !assetId)} onClick={handleSave}>
@@ -538,10 +538,12 @@ export default function AdminProductEditPage() {
       <Toast
         open={!!toastMessage}
         onClose={() => {
+          const wasSuccess = toastStatus === "success";
           setToastMessage(null);
-          router.push("/products");
+          if (wasSuccess) router.push("/products");
         }}
         message={toastMessage ?? ""}
+        status={toastStatus}
       />
     </main>
   );

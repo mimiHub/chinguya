@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createApiClient, ApiError, type CustomerDepositInfo } from "@chinguya/api-client";
-import { Title, Text, Stack, Card, Kv, Button, Alert, Toast, Banner } from "@chinguya/ui";
+import { Title, Text, Stack, Card, Kv, Button, Alert, Toast, Banner, type ToastStatus } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -35,8 +35,8 @@ function DepositContent() {
   const [info, setInfo] = useState<CustomerDepositInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
-  const [requestError, setRequestError] = useState<string | null>(null);
-  const [requested, setRequested] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
 
   useEffect(() => {
     if (authLoading || !session || !bookingId) return;
@@ -57,13 +57,14 @@ function DepositContent() {
   const handleRequest = async () => {
     if (!info) return;
     setRequesting(true);
-    setRequestError(null);
     try {
       const booking = await api.customerBookings.requestDeposit(bookingId);
       setInfo({ ...info, status: booking.status });
-      setRequested(true);
+      setToastMessage("입금 확인 요청이 접수되었습니다");
+      setToastStatus("success");
     } catch (err) {
-      setRequestError(err instanceof ApiError ? err.message : "입금 확인 요청을 하지 못했습니다.");
+      setToastMessage(err instanceof ApiError ? err.message : "입금 확인 요청을 하지 못했습니다.");
+      setToastStatus("error");
     } finally {
       setRequesting(false);
     }
@@ -124,12 +125,6 @@ function DepositContent() {
         </Alert>
         </ScrollReveal>
 
-        {requestError && (
-          <Alert status="error" className="mt-4" icon={false}>
-            {requestError}
-          </Alert>
-        )}
-
         <Button fullWidth className="mt-6" disabled={!awaitingDeposit || requesting} onClick={handleRequest}>
           {awaitingDeposit ? "입금 확인 요청" : "입금 확인 요청 완료"}
         </Button>
@@ -153,14 +148,15 @@ function DepositContent() {
       {body}
 
       <Toast
-        open={requested}
+        open={!!toastMessage}
         onClose={() => {
-          setRequested(false);
-          router.push("/mypage");
+          const wasSuccess = toastStatus === "success";
+          setToastMessage(null);
+          if (wasSuccess) router.push("/mypage");
         }}
-        message="입금 확인 요청이 접수되었습니다"
-        actionLabel="내 예약 보기"
-        actionHref="/mypage"
+        message={toastMessage ?? ""}
+        status={toastStatus}
+        {...(toastStatus === "success" ? { actionLabel: "내 예약 보기", actionHref: "/mypage" } : {})}
       />
       </div>
     </main>

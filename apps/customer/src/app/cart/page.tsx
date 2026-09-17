@@ -5,7 +5,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { createApiClient, ApiError, type CustomerCartItem } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { Title, Text, Stack, Card, Kv, Input, Button, IconX, Checkbox, ConfirmPopup, FormMessage, Alert, Banner } from "@chinguya/ui";
+import { Title, Text, Stack, Card, Kv, Input, Button, IconX, Checkbox, ConfirmPopup, FormMessage, Alert, Banner, Toast } from "@chinguya/ui";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
@@ -114,7 +114,6 @@ export default function CartPage() {
   };
 
   const removeItems = async (targets: CustomerCartItem[]) => {
-    setActionError(null);
     try {
       for (const item of targets) {
         await removeItem(item.cartItemId);
@@ -128,7 +127,6 @@ export default function CartPage() {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    setActionError(null);
     try {
       const booking = await api.customerBookings.create({
         passportName: passportName.trim(),
@@ -253,12 +251,6 @@ export default function CartPage() {
           </ScrollReveal>
         )}
 
-        {actionError && (
-          <Alert status="error" className="mt-4" icon={false}>
-            {actionError}
-          </Alert>
-        )}
-
         <ScrollReveal>
         <Stack direction="column" gap="sm" className="mt-6">
           <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary">
@@ -334,6 +326,8 @@ export default function CartPage() {
         onClose={() => setBulkDeleteOpen(false)}
       />
       </div>
+
+      <Toast open={!!actionError} onClose={() => setActionError(null)} message={actionError ?? ""} status="error" />
     </main>
   );
 }

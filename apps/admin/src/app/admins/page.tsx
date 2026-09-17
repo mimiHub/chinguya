@@ -3,7 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import type { AdminRole } from "@chinguya/types";
-import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Alert } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Toast } from "@chinguya/ui";
 import { adminAccounts, type AdminAccount } from "@/data/authData";
 
 const ROLE_LABEL: Record<AdminRole, string> = {
@@ -99,13 +99,13 @@ export default function AdminAccountsPage() {
       <Popup open={popupOpen} onClose={() => setPopupOpen(false)} title="관리자 등록">
         <Stack direction="column" gap="md">
           <LabeledBox label="아이디" required>
-            <Input value={id} onChange={(e) => setId(e.target.value)} />
+            <Input value={id} onChange={(e) => setId(e.target.value)} error={!!error} />
           </LabeledBox>
           <LabeledBox label="비밀번호" required>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={!!error} />
           </LabeledBox>
           <LabeledBox label="이름" required>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} error={!!error} />
           </LabeledBox>
           <LabeledBox label="권한" required>
             <Chip.List>
@@ -116,12 +116,6 @@ export default function AdminAccountsPage() {
               ))}
             </Chip.List>
           </LabeledBox>
-
-          {error && (
-            <Alert status="error" icon={false}>
-              {error}
-            </Alert>
-          )}
 
           <Button fullWidth onClick={handleAdd}>
             등록
@@ -135,6 +129,8 @@ export default function AdminAccountsPage() {
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}
       />
+
+      <Toast open={!!error} onClose={() => setError(null)} message={error ?? ""} status="error" />
     </main>
   );
 }

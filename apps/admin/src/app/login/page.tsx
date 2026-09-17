@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title, Text, Card, Stack, LabeledBox, Input, Button, Alert } from "@chinguya/ui";
+import { Title, Text, Card, Stack, LabeledBox, Input, Button, Toast } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 /**
@@ -20,6 +20,13 @@ const isDev = process.env.NODE_ENV === "development";
  * Core API(POST /admin/auth/login)에 인증을 위임한다. 액세스 토큰은 HttpOnly 쿠키로
  * 발급돼 이 화면이 직접 다루지 않고, 로그인 이후 라우트 보호는 middleware.ts가 맡는다.
  * 실패 문구는 서버가 준 message를 그대로 쓴다(계정 존재 여부를 구분하지 않는 문구).
+ */
+/**
+ * 로그인 실패 안내는 폼 안에 계속 남는 인라인 박스 대신 Toast(공용 상태 메시지)로 띄운다 —
+ * 실패해도 카드 레이아웃이 늘어나지 않고, 다른 화면의 성공/실패 알림과 톤이 통일된다. 다만
+ * 서버 메시지가 "아이디 또는 비밀번호가 올바르지 않습니다" 식으로 어느 필드가 틀렸는지
+ * 특정하지 않으므로(계정 존재 여부를 구분하지 않기 위한 의도적 설계), 두 입력창 모두에
+ * error 테두리를 켜서 "여기를 다시 확인하라"는 걸 시각적으로 같이 알려준다.
  */
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -53,7 +60,13 @@ export default function AdminLoginPage() {
           <form onSubmit={handleSubmit}>
             <Stack direction="column" gap="md">
               <LabeledBox label="아이디">
-                <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="아이디" autoComplete="username" />
+                <Input
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="아이디"
+                  autoComplete="username"
+                  error={!!error}
+                />
               </LabeledBox>
 
               <LabeledBox label="비밀번호">
@@ -63,14 +76,9 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="비밀번호"
                   autoComplete="current-password"
+                  error={!!error}
                 />
               </LabeledBox>
-
-              {error && (
-                <Alert status="error" icon={false}>
-                  {error}
-                </Alert>
-              )}
 
               <Button type="submit" fullWidth disabled={submitting}>
                 {submitting ? "로그인 중…" : "로그인"}
@@ -89,6 +97,8 @@ export default function AdminLoginPage() {
           )}
         </Stack>
       </Card>
+
+      <Toast open={!!error} onClose={() => setError(null)} message={error ?? ""} status="error" />
     </main>
   );
 }

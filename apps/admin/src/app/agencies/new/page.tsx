@@ -3,7 +3,8 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
+import { Title, Text, Stack, LabeledBox, Input, Button, Toast } from "@chinguya/ui";
+import type { ToastStatus } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 
 /**
@@ -36,16 +37,25 @@ export default function AdminAgencyNewPage() {
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
+
+  /**
+   * 등록 성공(메일 발송 성공/실패 모두 포함)·검증 실패·API 실패를 전부 같은 Toast로
+   * 보여준다. 등록 자체가 성공했을 때만(status==="success"||"warning") 닫히면서 목록으로
+   * 돌아가고, 검증/네트워크 에러(status==="error")는 이 화면에 남아 다시 시도할 수 있게 한다.
+   */
+  const showToast = (message: string, status: ToastStatus) => {
+    setToastMessage(message);
+    setToastStatus(status);
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !contactEmail.trim()) {
-      setError("여행사명과 담당자 이메일을 입력해 주세요.");
+      showToast("여행사명과 담당자 이메일을 입력해 주세요.", "error");
       return;
     }
-    setError(null);
     setSubmitting(true);
     try {
       const result = await api.agencies.create({
@@ -54,13 +64,14 @@ export default function AdminAgencyNewPage() {
         contactPhone,
         contactEmail,
       });
-      setResultMessage(
+      showToast(
         result.invitation.sent
           ? "등록하고 초대 메일을 보냈습니다"
           : "여행사는 등록했지만 초대 메일 발송에 실패했습니다. 상세에서 재발송해 주세요",
+        result.invitation.sent ? "success" : "warning",
       );
     } catch (err) {
-      setError(errorMessage(err, "여행사를 등록하지 못했습니다."));
+      showToast(errorMessage(err, "여행사를 등록하지 못했습니다."), "error");
     } finally {
       setSubmitting(false);
     }
@@ -100,24 +111,20 @@ export default function AdminAgencyNewPage() {
           사용할 수 있습니다.
         </Text>
 
-        {error && (
-          <Alert status="error" icon={false}>
-            {error}
-          </Alert>
-        )}
-
         <Button fullWidth onClick={() => void handleSave()} disabled={submitting}>
           {submitting ? "발송 중…" : "가입 링크 이메일 발송"}
         </Button>
       </Stack>
 
       <Toast
-        open={!!resultMessage}
+        open={!!toastMessage}
         onClose={() => {
-          setResultMessage(null);
-          router.push("/agencies");
+          const wasError = toastStatus === "error";
+          setToastMessage(null);
+          if (!wasError) router.push("/agencies");
         }}
-        message={resultMessage ?? ""}
+        message={toastMessage ?? ""}
+        status={toastStatus}
       />
     </main>
   );

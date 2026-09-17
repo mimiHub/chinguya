@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import NextLink from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Banner, Title, Text, Stack, Alert } from "@chinguya/ui";
+import { Banner, Title, Text, Stack, Toast } from "@chinguya/ui";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -19,7 +19,7 @@ import { ScrollReveal } from "@/components/ScrollReveal";
 function LoginContent() {
   const params = useSearchParams();
   const redirect = params.get("redirect") || "/profile";
-  const failed = params.get("error") === "kakao";
+  const [failed, setFailed] = useState(() => params.get("error") === "kakao");
 
   return (
     <main>
@@ -32,8 +32,6 @@ function LoginContent() {
             로그인
           </Title>
 
-          {failed && <Alert status="error">카카오 로그인에 실패했어요. 다시 시도해 주세요.</Alert>}
-
           <SocialLoginButtons redirect={redirect} />
 
           <Text className="text-center text-sm">
@@ -45,6 +43,13 @@ function LoginContent() {
         </Stack>
         </ScrollReveal>
       </div>
+
+      <Toast
+        open={failed}
+        onClose={() => setFailed(false)}
+        message="카카오 로그인에 실패했어요. 다시 시도해 주세요."
+        status="error"
+      />
     </main>
   );
 }

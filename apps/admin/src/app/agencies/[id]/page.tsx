@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import type { Agency } from "@chinguya/types";
 import { Title, Text, Stack, Card, Badge, Toggle, LabeledBox, Input, Button, Alert, Toast, ConfirmPopup } from "@chinguya/ui";
+import type { ToastStatus } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { invitationBadge } from "../invitationBadge";
@@ -49,10 +50,16 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
-  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  /** 성공/실패를 한 Toast로 같이 보여준다 — 메시지·색·아이콘을 한 번에 맞추기 위한 헬퍼. */
+  const showToast = (message: string, status: ToastStatus = "info") => {
+    setToastMessage(message);
+    setToastStatus(status);
+  };
 
   const reload = useCallback(async () => {
     try {
@@ -75,17 +82,16 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
 
   const handleSave = async () => {
     if (!name.trim() || !contactEmail.trim()) {
-      setFormError("여행사명과 담당자 이메일을 입력해 주세요.");
+      showToast("여행사명과 담당자 이메일을 입력해 주세요.", "error");
       return;
     }
-    setFormError(null);
     setSubmitting(true);
     try {
       await api.agencies.update(id, { name, contactName, contactPhone, contactEmail });
       await reload();
-      setToastMessage("저장했습니다");
+      showToast("저장했습니다", "success");
     } catch (err) {
-      setFormError(errorMessage(err, "여행사 정보를 저장하지 못했습니다."));
+      showToast(errorMessage(err, "여행사 정보를 저장하지 못했습니다."), "error");
     } finally {
       setSubmitting(false);
     }
@@ -97,9 +103,9 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
     try {
       await api.agencies.setActive(id, !agency.active);
       await reload();
-      setToastMessage(agency.active ? "사용을 중지했습니다" : "사용을 재개했습니다");
+      showToast(agency.active ? "사용을 중지했습니다" : "사용을 재개했습니다", "success");
     } catch (err) {
-      setToastMessage(errorMessage(err, "사용 상태를 바꾸지 못했습니다."));
+      showToast(errorMessage(err, "사용 상태를 바꾸지 못했습니다."), "error");
     } finally {
       setSubmitting(false);
     }
@@ -110,11 +116,12 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
     try {
       const result = await api.agencies.resendInvitation(id);
       await reload();
-      setToastMessage(
+      showToast(
         result.sent ? "초대 메일을 다시 보냈습니다" : "초대는 새로 발급했지만 메일 발송에 실패했습니다",
+        result.sent ? "success" : "warning",
       );
     } catch (err) {
-      setToastMessage(errorMessage(err, "초대를 재발송하지 못했습니다."));
+      showToast(errorMessage(err, "초대를 재발송하지 못했습니다."), "error");
     } finally {
       setSubmitting(false);
     }
@@ -126,7 +133,7 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
       await api.agencies.remove(id);
       router.push("/agencies");
     } catch (err) {
-      setToastMessage(errorMessage(err, "여행사를 삭제하지 못했습니다."));
+      showToast(errorMessage(err, "여행사를 삭제하지 못했습니다."), "error");
     }
   };
 
@@ -225,12 +232,6 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
               />
             </LabeledBox>
 
-            {formError && (
-              <Alert status="error" icon={false}>
-                {formError}
-              </Alert>
-            )}
-
             {isSuperAdmin && (
               <>
                 <Button fullWidth onClick={() => void handleSave()} disabled={submitting}>
@@ -252,7 +253,7 @@ export default function AdminAgencyDetailPage({ params }: { params: Promise<{ id
         onClose={() => setDeleteOpen(false)}
       />
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
+      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} status={toastStatus} />
     </main>
   );
 }

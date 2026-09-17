@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert } from "@chinguya/ui";
+import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert, type ToastStatus } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { createApiClient, ApiError, type AgencyProduct, type AgencyProductList } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
@@ -96,8 +96,8 @@ export default function AgencyBookPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [qtyByProduct, setQtyByProduct] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastStatus, setToastStatus] = useState<ToastStatus>("info");
 
   // 날짜 필드를 누르면 브라우저 기본 달력 대신, 관리자 앱 재고 세팅 화면(inventory/page.tsx)과
   // 같은 방식 — 버튼 + CalendarIcon을 누르면 Popup(제목+닫기 X 기본 제공) 안에 Calendar를
@@ -162,7 +162,6 @@ export default function AgencyBookPage() {
     setProductList(null);
     setLoadError(null);
     setQtyByProduct({});
-    setSubmitError(null);
     void loadProducts(useDate);
   }, [useDate, loadProducts]);
 
@@ -187,16 +186,17 @@ export default function AgencyBookPage() {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    setSubmitError(null);
     try {
       await api.agencyReservations.create({
         useDate,
         items: selectedRows.map((row) => ({ productId: row.productId, quantity: qtyOf(row.productId) })),
       });
       setQtyByProduct({});
-      setToastOpen(true);
+      setToastMessage("예약이 완료되었습니다");
+      setToastStatus("success");
     } catch (err) {
-      setSubmitError(errorMessage(err, "예약하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      setToastMessage(errorMessage(err, "예약하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      setToastStatus("error");
     } finally {
       setSubmitting(false);
       // 성공이면 방금 쓴 할당이, 실패(409)면 그사이 다른 예약이 가용을 바꿨다 — 어느 쪽이든 다시 읽는다.
@@ -323,12 +323,6 @@ export default function AgencyBookPage() {
                         ]}
                       />
                     )}
-                    {submitError ? (
-                      <Alert status="error" icon={true}>
-                        {submitError}
-                      </Alert>
-                    ) : null}
-
                    </Stack>
                   {/* 위에 있는 예약 목록(overflow-y-auto)이 스크롤될 때, 버튼과 목록이
                       같은 평면처럼 붙어 보이지 않도록 버튼 쪽에 위로 향하는 그림자를 줘서
@@ -351,14 +345,15 @@ export default function AgencyBookPage() {
       </Stack>
 
       <Toast
-        open={toastOpen}
+        open={!!toastMessage}
         onClose={() => {
-          setToastOpen(false);
-          router.push("/reservations");
+          const wasSuccess = toastStatus === "success";
+          setToastMessage(null);
+          if (wasSuccess) router.push("/reservations");
         }}
-        message="예약이 완료되었습니다"
-        actionLabel="예약 목록 보기"
-        actionHref="/reservations"
+        message={toastMessage ?? ""}
+        status={toastStatus}
+        {...(toastStatus === "success" ? { actionLabel: "예약 목록 보기", actionHref: "/reservations" } : {})}
       />
     </main>
   );

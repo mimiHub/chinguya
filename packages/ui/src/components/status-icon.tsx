@@ -4,6 +4,12 @@ export interface StatusIconProps {
   status: StatusIconStatus;
   /** Tailwind 크기 클래스(w-*, h-*). 기본 h-4 w-4 — 호출부에서 더 크게 쓰고 싶으면 넘긴다. */
   className?: string;
+  /**
+   * warning 아이콘 모양 — 기본 "triangle"(Alert 등 기존 사용처 그대로 유지). Toast는 성공/실패
+   * 아이콘과 통일된 원형 배지 세트를 쓰기 위해 "circle"을 넘긴다(레퍼런스 디자인: 초록 체크·
+   * 빨강 X·노랑 느낌표 원 3종이 한 세트인 ICON_TOAST 스펙).
+   */
+  warningShape?: "triangle" | "circle";
 }
 
 /**
@@ -15,7 +21,7 @@ export interface StatusIconProps {
  * className으로 크기를 받는 함수형 컴포넌트인 이유: 정적 노드(Record<Status, ReactNode>)로
  * 두면 svg 자체에 크기가 h-4 w-4로 고정돼서, 쓰는 곳마다 더 크게/작게 보여줄 수가 없었다.
  */
-export function StatusIcon({ status, className = "h-4 w-4" }: StatusIconProps) {
+export function StatusIcon({ status, className = "h-4 w-4", warningShape = "triangle" }: StatusIconProps) {
   switch (status) {
     case "success":
       return (
@@ -39,6 +45,15 @@ export function StatusIcon({ status, className = "h-4 w-4" }: StatusIconProps) {
         </svg>
       );
     case "warning":
+      if (warningShape === "circle") {
+        return (
+          <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+            <circle cx="10" cy="10" r="10" fill="currentColor" />
+            <rect x="9.2" y="5.5" width="1.6" height="5.7" rx="0.8" fill="white" />
+            <circle cx="10" cy="13.8" r="1" fill="white" />
+          </svg>
+        );
+      }
       return (
         <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
           <path d="M10 1.8 19 17.6H1Z" fill="currentColor" strokeLinejoin="round" />
