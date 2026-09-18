@@ -133,9 +133,14 @@ export default function AgencyReservationsPage() {
       </ScrollReveal>
       </Stack>
 
+      {/* 기본 문구("정말 삭제하시겠습니까?" / "삭제")는 이 화면에 맞지 않는다 — 여기선 '취소'가
+          확정 동작이라, 닫기 버튼까지 '취소'면 어느 쪽이 무엇인지 알 수 없다. */}
       <ConfirmPopup
         open={Boolean(cancelTarget)}
-        message={`${cancelTarget?.reservationNumber} 예약을 취소할까요? 취소는 즉시 처리되며 되돌릴 수 없습니다.`}
+        title="예약을 취소할까요?"
+        message={`${cancelTarget?.reservationNumber} 예약을 취소합니다. 취소는 즉시 처리되며 되돌릴 수 없습니다.`}
+        confirmLabel="예약 취소"
+        cancelLabel="닫기"
         onConfirm={handleConfirmCancel}
         onClose={() => setCancelTarget(null)}
       />
