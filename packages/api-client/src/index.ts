@@ -1,6 +1,5 @@
 import type {
   CustomerReservation,
-  AgencyReservation,
   Invoice,
   AdminProduct,
   AdminProductCreate,
@@ -155,7 +154,7 @@ export interface AdminSettings {
   depositAccount: DepositAccount | null;
   /** 시작 일수 오름차순 */
   cancellationPolicy: CancellationPolicyTier[];
-  /** 여행사 취소 마감일(이용일 D-N). ⚠ 아직 이 값을 쓰는 서버 로직이 없다(api-spec 헤더 TODO 9). */
+  /** 여행사 취소 마감일(이용일 D-N). 여행사 예약 취소(S2-G6)가 이 값을 쓴다. */
   agencyCancelDeadlineDays: number;
 }
 
@@ -199,9 +198,11 @@ export interface HeroBanner {
 }
 
 /**
- * 여행사 상품 조회·예약(S2-G4/G5) API 타입. 계약 원본은 api-spec/openapi/chinguya-agency-api.yaml.
+ * 여행사 상품 조회·예약·예약 목록·취소(S2-G4/G5/G6) API 타입.
+ * 계약 원본은 api-spec/openapi/chinguya-agency-api.yaml.
  *
- * packages/types의 AgencyReservation은 아직 목업(S2-G6 예약 목록)이 쓰는 모양이라 응답 타입을 여기 따로 둔다.
+ * packages/types의 AgencyReservation은 아직 목업(대시보드 S2-G3·인보이스 S2-G7)이 쓰는 모양이라
+ * 응답 타입을 여기 따로 둔다.
  */
 export interface AgencyProduct {
   productId: string;
@@ -242,6 +243,18 @@ export interface AgencyReservationResult {
   amount: number;
   status: "COMPLETED" | "CANCELLED";
   createdAt: string;
+}
+
+/**
+ * S2-G6 예약 목록. 취소 가능 여부는 줄마다 오지 않는다 —
+ * `useDate - today >= cancelDeadlineDays` 로 화면이 판정한다.
+ */
+export interface AgencyReservationList {
+  /** 서버 기준 오늘. 브라우저 시계를 쓰면 판정이 서버와 어긋난다. */
+  today: string;
+  /** 취소 마감 기준 일수. 기본 3(D-3)이고 관리자가 조정한다(S1-A10). */
+  cancelDeadlineDays: number;
+  reservations: AgencyReservationResult[];
 }
 
 /**
@@ -645,7 +658,8 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         }),
     },
     agencyReservations: {
-      list: () => request<AgencyReservation[]>("/agency/reservations"),
+      /** S2-G6 예약 목록. 취소된 예약도 포함하고, 이용일 내림차순이다. */
+      list: () => request<AgencyReservationList>("/agency/reservations"),
       /**
        * S2-G5 예약(즉시 완료). 줄마다 예약 1건이 생기고, 전부 성공하거나 전부 실패한다.
        * 가용을 넘으면 409(ALLOCATION_EXCEEDED), 매장 휴무일이면 409(STORE_CLOSED).
@@ -654,6 +668,14 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<AgencyReservationResult[]>("/agency/reservations", {
           method: "POST",
           body: JSON.stringify(body),
+        }),
+      /**
+       * S2-G6 즉시 취소. 마감(기본 D-3)이 지났거나 이미 취소됐으면 409,
+       * 남의 예약이면 404. 재고는 서버에서 바로 복원된다.
+       */
+      cancel: (reservationId: string) =>
+        request<AgencyReservationResult>(`/agency/reservations/${reservationId}/cancel`, {
+          method: "POST",
         }),
     },
     /** S2-G4 이용 날짜별 예약 가능 상품. 여행사 앱 프록시가 `/v1` 프리픽스를 붙인다. */

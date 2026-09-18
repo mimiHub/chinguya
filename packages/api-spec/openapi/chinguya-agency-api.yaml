@@ -4,7 +4,7 @@ openapi: 3.1.0
 # 친구야 — 여행사(G) 대상 Core API 명세 [v0.1]
 #
 # 범위: 계정 등록(초대 링크 수락, S2-G1), 로그인·로그아웃·세션 조회(S2-G2),
-#       상품 조회·예약(S2-G4/G5). 대시보드·예약 목록·인보이스(S2-G3, S2-G6, S2-G7)는
+#       상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6). 대시보드·인보이스(S2-G3, S2-G7)는
 #       아직 없다 — 구현되는 대로 이어 붙인다.
 #
 # x-screens: 각 operation에 그 엔드포인트를 쓰는 화면코드를 단다(관리자 문서 헤더와 같은 규약).
@@ -37,7 +37,9 @@ openapi: 3.1.0
 #   5. **여권 영문명을 받지 않는다**(S2-G4/G5). 대시보드(S2-G3) 오늘 이용자 명단에는
 #      여권명 칸이 있지만 예약 화면에는 입력칸이 없다. 이용자마다(수량만큼) 받을지,
 #      예약마다 대표자 1명만 받을지 기획 결정이 필요하다.
-#   6. 예약 목록·취소(S2-G6)가 아직 없어 예약 `status` 는 지금 항상 `COMPLETED` 다.
+#   6. 취소 이력을 남기지 않는다 — `agency_reservation` 에 취소 시각·사유 컬럼이 없고
+#      `status` 만 `CANCELLED` 로 바뀐다. 누가 언제 취소했는지 물어볼 일이 생기면
+#      컬럼을 추가해야 한다(S2-G6 화면에는 필요 없어서 넣지 않았다).
 #   7. 매장 휴무는 **이용일(시작일)만** 본다. 2일(DAY_2) 상품의 둘째 날이 휴무여도 막지 않는다.
 #   8. 예약번호는 `AG-{생성 연월 YYMM}{일련번호 4자리 이상}` 이다. 일련번호는 월마다
 #      초기화되지 않고 계속 올라간다.
@@ -50,7 +52,7 @@ info:
   version: 0.1.0
   description: |
     여행사(G) 앱이 쓰는 Core API 계약. 현재는 계정 등록(S2-G1)·로그인(S2-G2)과
-    상품 조회·예약(S2-G4/G5)을 정의한다.
+    상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6)를 정의한다.
 
     **계정의 생애주기** — 관리자와 여행사가 나눠 가진다:
 
@@ -80,6 +82,11 @@ info:
     - 매장 휴무일에는 예약할 수 없다.
     - 예약은 **즉시 완료**다(입금 흐름 없음). 금액은 예약 시점의 여행사가로 서버가 계산한다.
 
+    **여행사 취소 규칙**(S2-G6):
+    - 취소도 **즉시 확정**이다(고객처럼 '취소 요청 → 관리자 승인'이 아니다). 수수료·환불 없음.
+    - **이용일 기준 D-3 까지**가 기본이고, 관리자가 조정한다(S1-A10 · `admin_settings`).
+    - 재고는 상태만 바꾸면 복원된다 — 가용량이 `COMPLETED` 예약의 합이기 때문이다.
+
 servers:
   - url: https://api.chinguya.co.kr/v1
     description: 운영(prod)
@@ -92,7 +99,7 @@ tags:
   - name: agency-auth
     description: 여행사 로그인·로그아웃·세션 조회 (S2-G2)
   - name: agency-booking
-    description: 이용 날짜별 상품 조회·예약(즉시 완료) (S2-G4/G5)
+    description: 이용 날짜별 상품 조회·예약(즉시 완료)·예약 목록·취소 (S2-G4/G5/G6)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -303,6 +310,30 @@ paths:
           $ref: '#/components/responses/AgencyInactive'
 
   /agency/reservations:
+    get:
+      tags: [agency-booking]
+      x-screens: [S2-G6]
+      summary: 여행사 예약 목록 (S2-G6)
+      description: |
+        이 여행사의 예약을 **전부** 돌려준다. 취소된 예약도 포함한다(화면이 상태를 같이 보여준다).
+        페이징은 없다 — 여행사 1곳의 예약은 표 하나로 훑는 양이라는 전제다. 늘어나면 그때 붙인다.
+
+        정렬은 **이용일 내림차순**, 같은 날은 예약번호 내림차순(최근 것이 위)이다.
+
+        취소 가능 여부는 줄마다 내려주지 않는다. 화면이 `useDate - today >= cancelDeadlineDays`
+        로 판정하고 버튼을 그리거나 `취소불가(D-n)` 를 쓴다. `today` 를 함께 내려주는 것은
+        브라우저 시계가 서버와 어긋나도 판정이 흔들리지 않게 하려는 것이다.
+      responses:
+        '200':
+          description: 예약 목록 — 없으면 `reservations` 가 빈 배열이다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyReservationList' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
+
     post:
       tags: [agency-booking]
       x-screens: [S2-G5]
@@ -358,6 +389,56 @@ paths:
               example:
                 code: ALLOCATION_EXCEEDED
                 message: 전기자전거의 예약 가능 수량을 넘었습니다(2026-09-20 남은 수량 1대).
+
+  /agency/reservations/{reservationId}/cancel:
+    post:
+      tags: [agency-booking]
+      x-screens: [S2-G6]
+      summary: 예약 취소 — 즉시 (S2-G6)
+      description: |
+        여행사 취소는 **즉시 확정**이다(고객의 '취소 요청'과 다르다. 관리자 승인이 없다).
+        수수료·환불 계산도 없다 — 여행사 정산은 월별 인보이스(S2-G7)에서 취소된 예약을
+        빼는 방식이기 때문이다.
+
+        **재고는 상태를 바꾸는 것만으로 즉시 복원된다.** 가용량이 `COMPLETED` 예약의 합으로
+        계산되므로(`GET /agency/products`) 별도의 복원 처리가 없다.
+
+        **마감** — `이용일 - 오늘 >= cancelDeadlineDays` 일 때만 된다. 기본 3(D-3)이고
+        관리자가 조정한다(S1-A10). 이미 취소된 예약을 다시 취소하면 409 다.
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 취소 완료 — `status` 가 `CANCELLED` 로 바뀐 예약
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyReservation' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
+        '404':
+          description: |
+            없는 예약이거나 **다른 여행사의 예약**이다(`RESERVATION_NOT_FOUND`).
+            남의 예약 존재 여부를 알려주지 않으려고 403 이 아니라 404 로 답한다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: RESERVATION_NOT_FOUND
+                message: 예약을 찾을 수 없습니다.
+        '409':
+          description: |
+            이미 취소됐거나(`RESERVATION_ALREADY_CANCELLED`) 취소 마감일이 지났다(`CANCEL_DEADLINE_PASSED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: CANCEL_DEADLINE_PASSED
+                message: 취소 마감일(2026-09-17)이 지나 취소할 수 없습니다.
 
 # -----------------------------------------------------------------------------
 components:
@@ -590,8 +671,31 @@ components:
         status:
           type: string
           enum: [COMPLETED, CANCELLED]
-          description: 여행사 예약은 만들어지는 즉시 COMPLETED. 취소(S2-G6)는 아직 없다.
+          description: 여행사 예약은 만들어지는 즉시 COMPLETED. 취소(S2-G6)하면 CANCELLED 다.
         createdAt: { type: string, format: date-time }
+
+    AgencyReservationList:
+      type: object
+      required: [today, cancelDeadlineDays, reservations]
+      description: |
+        취소 가능 여부는 줄마다 내려주지 않는다. 화면이 `useDate - today >= cancelDeadlineDays`
+        로 판정하고, 최종 판정은 취소 API가 한다(409).
+      properties:
+        today:
+          type: string
+          format: date
+          description: |
+            서버 기준 '오늘'. 취소 가능 판정과 `취소불가(D-n)` 표기의 기준이며, 브라우저
+            시계를 쓰면 안 된다(규칙상 '오늘'은 일본 기준 — 헤더 TODO 9).
+        cancelDeadlineDays:
+          type: integer
+          minimum: 0
+          description: |
+            취소 마감 기준 일수. 기본 3(= D-3)이고 관리자가 조정한다(S1-A10,
+            `PUT /admin/settings` 의 `agencyCancelDeadlineDays`).
+        reservations:
+          type: array
+          items: { $ref: '#/components/schemas/AgencyReservation' }
 
     Error:
       type: object
@@ -623,6 +727,11 @@ components:
             - `PRODUCT_NOT_FOUND` — 없거나 삭제됐거나 여행사앱 표출이 꺼진 상품이다.
             - `STORE_CLOSED` — 이용 날짜가 매장 휴무일이다.
             - `ALLOCATION_EXCEEDED` — 가용보다 많이 담았다. 메시지에 자산명·날짜·남은 수량이 있다.
+
+            예약 목록·취소(S2-G6):
+            - `RESERVATION_NOT_FOUND` — 없는 예약이거나 다른 여행사의 예약이다.
+            - `RESERVATION_ALREADY_CANCELLED` — 이미 취소된 예약이다.
+            - `CANCEL_DEADLINE_PASSED` — 취소 마감일이 지났다. 메시지에 마감일이 있다.
         message: { type: string }
         fieldErrors:
           type: array
