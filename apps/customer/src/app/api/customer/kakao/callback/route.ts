@@ -6,6 +6,7 @@ import {
   STATE_COOKIE,
   cookieOptions,
   coreBaseUrl,
+  kakaoRedirectUri,
   readSetCookie,
   safeRedirect,
 } from "../../coreSession";
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
     const core = await fetch(`${coreBaseUrl()}/v1/auth/kakao/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code }),
+      // 인가 URL 을 받을 때 쓴 값과 같아야 한다 — 카카오가 대조한다(kakaoRedirectUri 주석 참고).
+      body: JSON.stringify({ code, redirectUri: kakaoRedirectUri(request) }),
       cache: "no-store",
     });
     if (!core.ok) {

@@ -74,3 +74,24 @@ export function safeRedirect(path: string | null | undefined): string {
   }
   return path;
 }
+
+/** 카카오 개발자 콘솔에 등록하는 콜백 경로. Core 의 허용 목록에도 이 경로가 들어간다. */
+export const KAKAO_CALLBACK_PATH = "/api/customer/kakao/callback";
+
+/**
+ * 카카오에 넘길 redirect_uri — **이 앱이 실제로 떠 있는 오리진** 기준으로 만든다.
+ *
+ * 서버 설정에 하나로 박아 두면 한쪽이 반드시 깨진다. 이 앱은 로컬(localhost:3000)과
+ * 개발 EC2(nip.io 주소) 양쪽에서 뜨기 때문이다. Core 는 허용 목록에 있는 값만 받는다.
+ *
+ * ⚠ 인가 URL 을 받을 때와 토큰을 교환할 때 **같은 값**이어야 한다 — 카카오가 두 값을 대조한다.
+ * 그래서 start·callback 이 이 함수 하나를 같이 쓴다.
+ *
+ * nginx 뒤에서는 요청 URL 이 내부 주소일 수 있어 X-Forwarded-* 를 먼저 본다.
+ */
+export function kakaoRedirectUri(request: Request): string {
+  const url = new URL(request.url);
+  const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
+  return `${proto}://${host}${KAKAO_CALLBACK_PATH}`;
+}

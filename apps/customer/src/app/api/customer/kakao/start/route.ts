@@ -8,6 +8,7 @@ import {
   STATE_COOKIE,
   cookieOptions,
   coreBaseUrl,
+  kakaoRedirectUri,
   safeRedirect,
 } from "../../coreSession";
 
@@ -33,8 +34,11 @@ export async function GET(request: NextRequest) {
 
   const state = crypto.randomUUID();
   try {
+    // 콜백 주소는 이 앱의 오리진으로 만들어 보낸다 — 로컬과 개발 EC2 의 주소가 다르기 때문이다.
+    const redirectUri = kakaoRedirectUri(request);
     const core = await fetch(
-      `${coreBaseUrl()}/v1/auth/kakao/authorize-url?state=${encodeURIComponent(state)}`,
+      `${coreBaseUrl()}/v1/auth/kakao/authorize-url?state=${encodeURIComponent(state)}` +
+        `&redirectUri=${encodeURIComponent(redirectUri)}`,
       { cache: "no-store" },
     );
     if (!core.ok) {

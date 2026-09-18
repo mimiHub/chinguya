@@ -672,17 +672,32 @@ paths:
       x-screens: [S0-C1]
       summary: 카카오 인가 URL 조회 (S0-C1)
       description: |
-        카카오 동의 화면 주소를 돌려준다. 앱 키와 Redirect URI를 **서버 설정 한 곳**에서만
-        관리하려고, BFF가 주소를 직접 만들지 않고 이 값을 받아 302 한다.
+        카카오 동의 화면 주소를 돌려준다. 앱 키를 **서버 설정 한 곳**에서만 관리하려고,
+        BFF가 주소를 직접 만들지 않고 이 값을 받아 302 한다.
 
         `state`는 BFF가 만들어 자기 오리진 쿠키에 보관하고, 카카오 콜백으로 돌아온 값과
         비교한다(CSRF 방지). 서버는 받은 값을 URL에 넣기만 한다.
+
+        `redirectUri`는 BFF가 **자기 오리진**으로 채워 보낸다. 고객 앱이 여러 주소에서 뜨기
+        때문이다(로컬 `localhost:3000`, 개발 EC2 의 nip.io 주소). 서버에 하나로 박아 두면
+        한쪽이 반드시 깨진다. 서버는 **허용 목록에 있는 값만** 받는다(없으면 400
+        `REDIRECT_URI_NOT_ALLOWED`) — 이 값이 카카오가 인가 코드를 실어 보낼 주소라,
+        아무 값이나 받으면 남의 인가 코드를 가로챌 수 있기 때문이다.
+        여기 쓰는 주소는 **카카오 콘솔에도 등록**돼 있어야 한다.
       security: []
       parameters:
         - name: state
           in: query
           required: true
           schema: { type: string }
+        - name: redirectUri
+          in: query
+          required: false
+          description: |
+            카카오 콜백 주소(`{고객 앱 오리진}/api/customer/kakao/callback`).
+            생략하면 서버 기본값을 쓴다. ⚠ `POST /auth/kakao/login` 에 **같은 값**을 보내야 한다 —
+            다르면 카카오가 토큰 교환을 거부한다.
+          schema: { type: string, format: uri }
       responses:
         '200':
           description: 카카오 인가 URL
@@ -1395,6 +1410,13 @@ components:
         code:
           type: string
           description: 카카오 콜백으로 받은 인가 코드(1회용).
+        redirectUri:
+          type: string
+          format: uri
+          description: |
+            인가 URL을 받을 때(`GET /auth/kakao/authorize-url`) 쓴 값과 **같아야** 한다 —
+            카카오가 두 값을 대조하므로 다르면 토큰 교환이 실패한다. 생략하면 서버 기본값.
+            허용 목록 밖이면 400 `REDIRECT_URI_NOT_ALLOWED`.
 
     KakaoLoginResult:
       type: object
