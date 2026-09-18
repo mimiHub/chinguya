@@ -1,6 +1,5 @@
 import type {
   CustomerReservation,
-  Invoice,
   AdminProduct,
   AdminProductCreate,
   AdminProductUpdate,
@@ -243,6 +242,38 @@ export interface AgencyReservationResult {
   amount: number;
   status: "COMPLETED" | "CANCELLED";
   createdAt: string;
+}
+
+/**
+ * S2-G7 인보이스 라인아이템 1줄 = 그 달에 이용일이 든 완료 예약 1건.
+ * 단가·금액은 예약 시점 여행사가 스냅샷이라 나중에 가격이 바뀌어도 흔들리지 않는다.
+ */
+export interface AgencyInvoiceLineItem {
+  useDate: string;
+  reservationNumber: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
+/**
+ * S2-G7 전월 인보이스. 저장된 문서가 아니라 서버가 예약에서 집계한 값이다 —
+ * 취소 마감이 이용일 D-3 이라 전월 집계는 더 이상 변하지 않는다.
+ *
+ * 발행 상태·정산 완료(packages/types 의 `Invoice.settled`)는 여기 없다. 그건 관리자
+ * 인보이스 화면(S2-A5/A6)이 쓸 값이라 그때 계약에 넣는다.
+ */
+export interface AgencyInvoice {
+  /** 대상 월(YYYY-MM). 서버가 정한다 — 브라우저 시계로 정하면 월초에 어긋난다. */
+  period: string;
+  /** KRW 고정. 세금 라인은 없다. */
+  currency: "KRW";
+  /** 이용일 오름차순 */
+  lineItems: AgencyInvoiceLineItem[];
+  /** lineItems 의 amount 합. 대상이 없으면 0. */
+  totalAmount: number;
 }
 
 /**
@@ -683,7 +714,11 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       list: (useDate: string) => request<AgencyProductList>(`/agency/products?useDate=${useDate}`),
     },
     invoices: {
-      list: () => request<Invoice[]>("/agency/invoices"),
+      /**
+       * S2-G7 전월 인보이스. 기간 파라미터가 없는 것은 화면에 월 선택 UI 가 없기 때문이다.
+       * 대상 예약이 없어도 200 이고, lineItems 가 빈 배열·totalAmount 가 0 으로 온다.
+       */
+      previousMonth: () => request<AgencyInvoice>("/agency/invoices"),
     },
     /**
      * 관리자 자산 관리(S1-A2). 관리자 앱의 프록시가 `/admin` 프리픽스를 붙이므로

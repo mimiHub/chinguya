@@ -1,20 +1,55 @@
-import { Title, Text, EmptyState, Table, Stack, Card } from "@chinguya/ui";
-import { findRentalProductById } from "@/data/rentalData";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Title, Text, EmptyState, Table, Stack, Card, Alert } from "@chinguya/ui";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { listReservations } from "@/data/reservationData";
+import { createApiClient, ApiError, type AgencyInvoice } from "@chinguya/api-client";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
-/** 이번 달 기준 "전월"(YYYY-MM) — 인보이스는 항상 전월 기준으로 발행한다는 규칙 */
-function previousPeriod(now: Date = new Date()): string {
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+const api = createApiClient();
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
 }
 
-/** S2-G7 여행사 인보이스. 매월 1일 전월 기준으로 발행되며, 라인아이템은 그 달의 완료된 예약 건이다. */
+/**
+ * S2-G7 여행사 인보이스(`g-invoice`). 매월 1일 전월 기준으로 발행되며, 라인아이템은 그 달에
+ * 이용일이 든 완료 예약 건이다. KRW 고정·세금 라인 없음이고, 실제 정산(입금)은 시스템 밖
+ * 수동 확인이라 이 화면은 조회 전용이다.
+ *
+ * Core API(GET /v1/agency/invoices)에 실연동돼 있다 — 계약은
+ * packages/api-spec/openapi/chinguya-agency-api.yaml.
+ *
+ * 대상 월·합계를 화면에서 계산하지 않고 서버 값을 그대로 쓴다. 월 경계에서 브라우저 시계가
+ * 서버와 다르면 엉뚱한 달의 인보이스를 보여주게 되기 때문이다.
+ */
 export default function AgencyInvoicePage() {
-  const period = previousPeriod();
-  const reservations = listReservations().filter((r) => r.status === "completed" && r.useDate.startsWith(period));
-  const total = reservations.reduce((sum, r) => sum + r.amountKrw, 0);
+  const [invoice, setInvoice] = useState<AgencyInvoice | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadInvoice = useCallback(async () => {
+    try {
+      const response = await api.invoices.previousMonth();
+      setLoadError(null);
+      setInvoice(response);
+    } catch (err) {
+      setLoadError(errorMessage(err, "인보이스를 불러오지 못했습니다."));
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInvoice();
+  }, [loadInvoice]);
+
+  const tableEmptyMessage = loadError ? (
+    <Alert status="error" icon={true}>
+      {loadError}
+    </Alert>
+  ) : invoice === null ? (
+    <EmptyState>인보이스를 불러오는 중입니다.</EmptyState>
+  ) : (
+    <EmptyState>{invoice.period} 발행 대상 예약이 없습니다.</EmptyState>
+  );
 
   return (
     <main className="flex h-full min-h-0 flex-col">
@@ -26,9 +61,11 @@ export default function AgencyInvoicePage() {
               작은 사각 배지로 붙인다 — 기존 Badge 컴포넌트는 rounded-full(알약형) + 옅은
               배경(gray-100)이라 이 느낌과 달라서, 여기서는 그 컴포넌트를 쓰지 않고 직접
               스타일을 준다. */}
-          <span className="inline-flex items-center rounded-md bg-gray-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-            {period} · KRW
-          </span>
+          {invoice && (
+            <span className="inline-flex items-center rounded-md bg-gray-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              {invoice.period} · {invoice.currency}
+            </span>
+          )}
         </div>
         </ScrollReveal>
 
@@ -45,28 +82,24 @@ export default function AgencyInvoicePage() {
           { key: "unitPrice", label: "단가", width: "14%", align: "right" },
           { key: "amount", label: "금액", width: "14%", align: "right" },
         ]}
-        rows={reservations.map((r) => {
-          const product = findRentalProductById(r.productId);
-          const unitPrice = r.quantity > 0 ? Math.round(r.amountKrw / r.quantity) : 0;
-          return {
-            date: r.useDate.slice(5),
-            id: r.id,
-            product: `${product?.title ?? r.productId} · ${RENTAL_OPTION_LABEL[r.rentalOption]}`,
-            qty: r.quantity,
-            unitPrice: unitPrice.toLocaleString(),
-            amount: r.amountKrw.toLocaleString(),
-          };
-        })}
-        emptyMessage={<EmptyState>{period} 발행 대상 예약이 없습니다.</EmptyState>}
+        rows={(invoice?.lineItems ?? []).map((line) => ({
+          date: line.useDate.slice(5),
+          id: line.reservationNumber,
+          product: `${line.assetName} · ${RENTAL_OPTION_LABEL[line.optionType]}`,
+          qty: line.quantity,
+          unitPrice: line.unitPrice.toLocaleString(),
+          amount: line.amount.toLocaleString(),
+        }))}
+        emptyMessage={tableEmptyMessage}
       />
         </div>
       </Card>
       </ScrollReveal>
       </Stack>
 
-      {reservations.length > 0 && (
+      {invoice !== null && invoice.lineItems.length > 0 && (
         <div className="mt-2 flex justify-end pr-2">
-          <Text weight="bold">합계 ₩{total.toLocaleString()}</Text>
+          <Text weight="bold">합계 ₩{invoice.totalAmount.toLocaleString()}</Text>
         </div>
       )}
     </main>

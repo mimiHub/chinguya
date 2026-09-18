@@ -4,7 +4,7 @@ openapi: 3.1.0
 # 친구야 — 여행사(G) 대상 Core API 명세 [v0.1]
 #
 # 범위: 계정 등록(초대 링크 수락, S2-G1), 로그인·로그아웃·세션 조회(S2-G2),
-#       상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6). 대시보드·인보이스(S2-G3, S2-G7)는
+#       상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6), 인보이스(S2-G7). 대시보드(S2-G3)는
 #       아직 없다 — 구현되는 대로 이어 붙인다.
 #
 # x-screens: 각 operation에 그 엔드포인트를 쓰는 화면코드를 단다(관리자 문서 헤더와 같은 규약).
@@ -52,7 +52,7 @@ info:
   version: 0.1.0
   description: |
     여행사(G) 앱이 쓰는 Core API 계약. 현재는 계정 등록(S2-G1)·로그인(S2-G2)과
-    상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6)를 정의한다.
+    상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6), 인보이스(S2-G7)를 정의한다.
 
     **계정의 생애주기** — 관리자와 여행사가 나눠 가진다:
 
@@ -100,6 +100,8 @@ tags:
     description: 여행사 로그인·로그아웃·세션 조회 (S2-G2)
   - name: agency-booking
     description: 이용 날짜별 상품 조회·예약(즉시 완료)·예약 목록·취소 (S2-G4/G5/G6)
+  - name: agency-invoice
+    description: 월별 인보이스(전월 기준 정산 내역) (S2-G7)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -389,6 +391,47 @@ paths:
               example:
                 code: ALLOCATION_EXCEEDED
                 message: 전기자전거의 예약 가능 수량을 넘었습니다(2026-09-20 남은 수량 1대).
+
+  /agency/invoices:
+    get:
+      tags: [agency-invoice]
+      x-screens: [S2-G7]
+      summary: 여행사 인보이스 — 전월 정산 내역 (S2-G7)
+      description: |
+        **전월** 인보이스 1건을 돌려준다. 기간을 고르는 파라미터가 없는 것은 화면에 월 선택
+        UI 가 없기 때문이다(와이어프레임 g-invoice). 지난 달들을 다시 보는 요구가 생기면
+        그때 `period` 쿼리를 붙인다.
+
+        **인보이스를 저장하지 않는다** — 요청할 때마다 예약에서 집계한다. 그래도 값이
+        흔들리지 않는 이유는 취소 마감이 이용일 D-3 이기 때문이다. 전월 인보이스가 발행되는
+        매월 1일에는 그 달 이용일의 예약이 전부 취소 불가 상태라, 집계 결과가 더는 변하지
+        않는다. 발행 상태·정산 완료(`settled`) 플래그는 그것이 실제로 필요한 관리자 화면
+        (S2-A5/A6)에서 도입한다.
+
+        **라인아이템** = 그 달에 **이용일**이 든 **완료** 예약 1건. 예약 줄 단위라
+        예약 목록(S2-G6)의 줄과 1:1 이다.
+        - 취소된 예약은 **빼고 준다** — 여행사 취소에는 수수료가 없어 청구할 금액이 없다.
+          ⚠ 관리자 인보이스 화면(S2-A5/A6)의 목업은 취소 건을 금액 0 으로 **표시**한다.
+          두 화면이 갈리는 지점이라, 관리자 API 를 만들 때 한쪽으로 맞춰야 한다.
+        - 2일(`DAY_2`) 상품이 월말에 걸쳐도 **이용일(시작일)이 든 달**에만 청구한다.
+          예약이 두 달에 나뉘어 잘리지 않게 하려는 것이다.
+        - 단가·금액은 예약 시점 여행사가 스냅샷이라, 관리자가 가격을 바꿔도 지난
+          인보이스는 흔들리지 않는다(V14 설계).
+
+        통화는 **KRW 고정**이고 **세금 라인이 없다**. 실제 정산(입금)은 시스템 밖에서
+        수동 확인한다.
+      responses:
+        '200':
+          description: |
+            전월 인보이스. 대상 예약이 없으면 `lineItems` 가 빈 배열이고 `totalAmount` 는 0 이다
+            (그 달에 인보이스가 없다는 뜻이라 404 가 아니다 — 화면은 '발행 대상 예약이 없습니다'를 쓴다).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencyInvoice' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
 
   /agency/reservations/{reservationId}/cancel:
     post:
@@ -696,6 +739,52 @@ components:
         reservations:
           type: array
           items: { $ref: '#/components/schemas/AgencyReservation' }
+
+    AgencyInvoice:
+      type: object
+      required: [period, currency, lineItems, totalAmount]
+      description: 월 1건. 저장된 문서가 아니라 예약에서 집계한 값이다(`GET /agency/invoices` 설명 참고).
+      properties:
+        period:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: '2026-08'
+          description: 대상 월(전월). 서버가 정한다 — 브라우저 시계를 쓰면 월초에 어긋난다.
+        currency:
+          type: string
+          enum: [KRW]
+          description: KRW 고정. 세금 라인은 없다.
+        lineItems:
+          type: array
+          description: 이용일 오름차순, 같은 날은 예약번호 오름차순.
+          items: { $ref: '#/components/schemas/AgencyInvoiceLineItem' }
+        totalAmount:
+          type: integer
+          minimum: 0
+          description: lineItems 의 amount 합. 대상이 없으면 0.
+
+    AgencyInvoiceLineItem:
+      type: object
+      required: [useDate, reservationNumber, assetName, optionType, quantity, unitPrice, amount]
+      description: 완료 예약 1건. 화면의 상품 표기는 `assetName · 옵션 라벨`이다.
+      properties:
+        useDate: { type: string, format: date }
+        reservationNumber: { type: string, example: AG-26080001 }
+        assetName: { type: string }
+        optionType:
+          type: string
+          enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: integer
+          minimum: 0
+          description: 예약 시점 여행사가 스냅샷(KRW).
+        amount:
+          type: integer
+          minimum: 0
+          description: unitPrice × quantity.
 
     Error:
       type: object
