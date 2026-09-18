@@ -34,7 +34,8 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
  * - 1 예약번호 = N 항목, 입금액은 유효 항목 합계.
  * - 입금 확인 → 완료. 접수 후 24시간(입금 기한)이 지나면 '미입금' → 예약 전체 강제 취소(재고 즉시 복원).
  * - 처리 버튼은 슈퍼어드민에게만 보인다(서버도 403으로 막는다).
- * - 취소요청 처리(S1-A9)는 아직 연동 전이라 이 화면에서 다루지 않는다.
+ * - 취소요청 처리(S1-A9)는 별도 화면(`/reservations/{id}/cancel`)에서 다룬다 — 처리 안 된
+ *   취소 요청이 있으면(`pendingCancellationId`) 아래 안내 배너로 그 화면으로 보낸다.
  */
 
 const api = createApiClient();
@@ -189,6 +190,17 @@ export default function AdminReservationDetailPage() {
         })}
         <Kv items={[{ key: "입금액(유효 항목)", value: priceText(booking.activeTotalAmount) }]} />
       </Stack>
+
+      {booking.pendingCancellationId && (
+        <Alert status="info" className="mt-4">
+          <Stack direction="column" gap="sm">
+            <Text size="sm">취소 요청된 항목이 있어요. 항목별 수수료·환불액을 확인하고 처리하세요.</Text>
+            <Button size="sm" onClick={() => router.push(`/reservations/${booking.bookingId}/cancel`)}>
+              취소요청 처리하러 가기
+            </Button>
+          </Stack>
+        </Alert>
+      )}
 
       {actionError && (
         <Alert status="error" className="mt-4">

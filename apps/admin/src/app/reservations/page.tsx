@@ -143,7 +143,15 @@ function AdminReservationsPageInner() {
             <EmptyState>{query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}</EmptyState>
           )}
           {bookings.map((b) => (
-            <NextLink key={b.bookingId} href={`/reservations/${b.bookingId}`} className="block">
+            <NextLink
+              key={b.bookingId}
+              href={
+                b.pendingCancellationId
+                  ? `/reservations/${b.bookingId}/cancel`
+                  : `/reservations/${b.bookingId}`
+              }
+              className="block"
+            >
               <Card padding="sm">
                 <Stack justify="between" align="center">
                   <div className="min-w-0">
@@ -160,6 +168,7 @@ function AdminReservationsPageInner() {
                   <Stack gap="xs" align="center" className="shrink-0">
                     <StatusTag booking={b} />
                     {b.partiallyCancelled && <Badge variant="warning">부분취소</Badge>}
+                    {b.pendingCancellationId && <Badge variant="info">취소요청</Badge>}
                   </Stack>
                 </Stack>
               </Card>

@@ -473,10 +473,17 @@ export interface CustomerCancellationQuote {
   refundAmount: number;
 }
 
+/** 환불 계좌. 고객이 취소 요청 때 입력한 값(S1-C7)이며, 관리자 취소요청 처리(S1-A9)에도 그대로 내려온다. */
+export interface RefundAccount {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
 /** 취소 요청(S1-C7). itemIds를 생략하면 취소 가능한 항목 전부. 계좌 값은 각각 50자 이하. */
 export interface CustomerCancelRequestInput {
   itemIds?: string[];
-  refundAccount: { bankName: string; accountNumber: string; accountHolder: string };
+  refundAccount: RefundAccount;
   reason?: string;
 }
 
@@ -529,6 +536,8 @@ export interface AdminBookingSummary {
   /** 유효 항목 합계(입금액) */
   activeTotalAmount: number;
   depositDueBy?: string | null;
+  /** 처리 안 된 취소 요청 id(S1-A9 진입 키). 없으면 null. 여러 건이면 가장 먼저 요청한 것. */
+  pendingCancellationId: string | null;
   createdAt: string;
 }
 
@@ -562,6 +571,8 @@ export interface AdminBookingDetail {
   /** 미입금 강제 취소 가능(= unpaid) */
   forceCancellable: boolean;
   depositDueBy?: string | null;
+  /** 처리 안 된 취소 요청 id(S1-A9 진입 키). 없으면 null. 여러 건이면 가장 먼저 요청한 것. */
+  pendingCancellationId: string | null;
   createdAt: string;
 }
 
@@ -570,6 +581,62 @@ export interface AdminBookingListPage {
   page: number;
   size: number;
   totalElements: number;
+}
+
+/**
+ * 취소요청 처리(S1-A9)의 항목 1줄. 계약: AdminCancellationItem.
+ * `requested=false`면 이 취소 요청에 담기지 않은 항목(유지·이전 취소·다른 요청)이라 요율·금액 필드가 null —
+ * 화면에서 흐리게 표시한다.
+ */
+export interface AdminCancellationItem {
+  bookingItemId: string;
+  productName: string;
+  optionType: RentalOptionKey;
+  dates: string[];
+  quantity: number;
+  lineTotal: number;
+  status: BookingItemStatus;
+  requested: boolean;
+  /** 요율 산정 기준 이용일(항목 시작일) */
+  useDate: string | null;
+  /** 요청 시점 기준 남은 일수(당일 0) */
+  daysToUse: number | null;
+  /** 0~1, 요청 시점 요율표 스냅샷 */
+  feeRate: number | null;
+  cancellationFee: number | null;
+  refundAmount: number | null;
+}
+
+/**
+ * 고객 취소 요청 1건(S1-A9). 계약: AdminCancellationDetail. 진입 키는 예약 목록·상세의
+ * `pendingCancellationId`. 금액은 모두 **고객이 요청한 시점의 견적 스냅샷** — 확정 시 다시 계산하지 않는다.
+ */
+export interface AdminCancellationDetail {
+  cancellationId: string;
+  bookingId: string;
+  bookingNumber: string;
+  bookingStatus: CustomerBookingStatus;
+  partiallyCancelled: boolean;
+  customerLoginId: string;
+  passportName: string;
+  /** 요청 당시 유효 항목 전부(FULL)인지 일부(PARTIAL)인지 */
+  scope: "FULL" | "PARTIAL";
+  /** 예약 항목 전체(담은 순) — requested 개수 / 전체 개수로 "(2 / 3건)" 표시 */
+  items: AdminCancellationItem[];
+  /** 요청 항목 결제액 합계 */
+  selectedAmount: number;
+  /** 취소 수수료 합계(항목별 산정 후 합산) */
+  cancellationFee: number;
+  /** 환불 예정액 합계 = selectedAmount − cancellationFee */
+  refundAmount: number;
+  refundAccount: RefundAccount;
+  /** 고객이 적은 취소 사유(선택) */
+  reason?: string | null;
+  requestedAt: string;
+  /** 취소 확정(환불 완료) 시각. 처리 전이면 null. */
+  processedAt: string | null;
+  /** true면 아직 미확정 — '요청 항목 취소 확정' 버튼 노출 */
+  confirmable: boolean;
 }
 
 export class ApiError extends Error {
@@ -834,6 +901,22 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** S1-A8 미입금 강제 취소(예약 전체, 재고 즉시 복원). 미입금이 아니면 409. 슈퍼어드민 전용. */
       forceCancel: (bookingId: string) =>
         request<AdminBookingDetail>(`/bookings/${bookingId}/force-cancel`, { method: "POST" }),
+    },
+    /**
+     * 관리자 취소요청 처리(S1-A9, a-cancel). 관리자 앱 프록시가 `/admin` 프리픽스를 붙인다.
+     * 진입 키는 예약 목록·상세(`bookings.list`/`bookings.detail`)의 `pendingCancellationId`.
+     */
+    cancellations: {
+      /** 취소 요청 1건 상세 — 요청 시점 견적 스냅샷 + 예약 항목 전체. */
+      detail: (cancellationId: string) =>
+        request<AdminCancellationDetail>(`/cancellations/${cancellationId}`),
+      /**
+       * A9-M1 완료 — 고객 계좌로 수동 이체를 마친 뒤 호출. 요청 항목만 취소 확정하고 해당
+       * 항목·날짜의 재고를 즉시 복원한다. 이미 처리된 요청이면 409(CANCELLATION_ALREADY_PROCESSED).
+       * 슈퍼어드민 전용.
+       */
+      confirm: (cancellationId: string) =>
+        request<AdminCancellationDetail>(`/cancellations/${cancellationId}/confirm`, { method: "POST" }),
     },
     /**
      * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.
