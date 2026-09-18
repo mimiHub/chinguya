@@ -7,6 +7,10 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
+    "@chinguya/mocks#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["src/types.gen.ts"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
