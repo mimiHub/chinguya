@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
+import { Title, Text, Stack, LabeledBox, Input, Button, Card, Alert, Toast } from "@chinguya/ui";
 import type { ToastStatus } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
@@ -135,27 +135,42 @@ export default function AdminSettingsPage() {
             <Text weight="bold" leaf>
               입금 계좌
             </Text>
-            <Stack direction="column" gap="sm">
-              <LabeledBox label="은행명">
-                <Input value={bankName} disabled={!isSuperAdmin} onChange={(e) => setBankName(e.target.value)} />
-              </LabeledBox>
-              <LabeledBox label="계좌번호">
-                <Input value={accountNumber} disabled={!isSuperAdmin} onChange={(e) => setAccountNumber(e.target.value)} />
-              </LabeledBox>
-              <LabeledBox label="예금주">
-                <Input value={accountHolder} disabled={!isSuperAdmin} onChange={(e) => setAccountHolder(e.target.value)} />
-              </LabeledBox>
-            </Stack>
-            <Text variant="sub">
-              고객이 예약 후 이 계좌로 직접 입금합니다.
-            </Text>
+            <Card>
+              <Stack direction="column" gap="sm">
+                <LabeledBox label="은행명">
+                  <Input value={bankName} disabled={!isSuperAdmin} onChange={(e) => setBankName(e.target.value)} />
+                </LabeledBox>
+                <LabeledBox label="계좌번호">
+                  <Input value={accountNumber} disabled={!isSuperAdmin} onChange={(e) => setAccountNumber(e.target.value)} />
+                </LabeledBox>
+                <LabeledBox label="예금주">
+                  <Input value={accountHolder} disabled={!isSuperAdmin} onChange={(e) => setAccountHolder(e.target.value)} />
+                </LabeledBox>
+                <Text variant="sub">
+                  고객이 예약 후 이 계좌로 직접 입금합니다.
+                </Text>
+              </Stack>            
+            </Card>            
           </Stack>
 
           <Stack direction="column" gap="sm">
-            <Text weight="bold" leaf>
+            <Stack justify="between">
+              <Text weight="bold" leaf>
               취소 수수료율
             </Text>
-            <Stack direction="column" gap="sm">
+            {isSuperAdmin && (
+              <Button
+                size="sm"
+                variant="subtle"
+                align="start"
+                onClick={() => setTiers((prev) => [...prev, { minDaysBefore: "", feePercent: "" }])}
+              >
+                + 구간 추가
+              </Button>
+            )}
+            </Stack>
+            <Card>
+              <Stack direction="column" gap="sm">
               {tiers.map((tier, i) => (
                 <Stack key={i} justify="between" align="center">
                   <Stack gap="xs" align="center">
@@ -205,53 +220,49 @@ export default function AdminSettingsPage() {
                   </Stack>
                 </Stack>
               ))}
-            </Stack>
-            {isSuperAdmin && (
-              <Button
-                size="sm"
-                variant="subtle"
-                align="start"
-                onClick={() => setTiers((prev) => [...prev, { minDaysBefore: "", feePercent: "" }])}
-              >
-                + 구간 추가
-              </Button>
-            )}
-            <Text variant="sub">
+              {/* 입력 줄들과 아래 안내 문구를 구분하는 선 — 위아래로 gap(8px)+여백 4px씩 */}
+              <div className="my-1 border-t border-line" />
+              <Text variant="sub">
               남은 일수가 여러 구간에 걸리면 일수가 가장 큰 구간의 요율이 적용됩니다. 0일(당일) 구간은 꼭
               있어야 합니다. 환불 이체는 관리자가 수동으로 처리합니다.
             </Text>
+            </Stack>
+            </Card>           
           </Stack>
 
           <Stack direction="column" gap="sm">
             <Text weight="bold" leaf>
               여행사 취소 마감
             </Text>
-            <Stack justify="between" align="center">
-              <Text variant="sub" as="span">
-                이용일 기준
-              </Text>
-              <Stack gap="xs" align="center">
+            <Card>
+              <Stack justify="between" align="center">
                 <Text variant="sub" as="span">
-                  D-
+                  이용일 기준
                 </Text>
-                <Input
-                  type="number"
-                  size="sm"
-                  fullWidth={false}
-                  className="w-16 text-right"
-                  value={deadlineDays}
-                  min={0}
-                  disabled={!isSuperAdmin}
-                  onChange={(e) => setDeadlineDays(e.target.value)}
-                />
-                <Text variant="sub" as="span">
-                  까지
-                </Text>
+                <Stack gap="xs" align="center">
+                  <Text variant="sub" as="span">
+                    D-
+                  </Text>
+                  <Input
+                    type="number"
+                    size="sm"
+                    fullWidth={false}
+                    className="w-16 text-right"
+                    value={deadlineDays}
+                    min={0}
+                    disabled={!isSuperAdmin}
+                    onChange={(e) => setDeadlineDays(e.target.value)}
+                  />
+                  <Text variant="sub" as="span">
+                    까지
+                  </Text>
+                </Stack>
               </Stack>
-            </Stack>
-            <Text variant="sub">
-              여행사는 이 날까지 예약을 즉시 취소할 수 있습니다(기본 D-3).
-            </Text>
+              <div className="my-3 border-t border-line" />
+              <Text variant="sub">
+                여행사는 이 날까지 예약을 즉시 취소할 수 있습니다(기본 D-3).
+              </Text>
+            </Card>
           </Stack>
 
           {isSuperAdmin && (

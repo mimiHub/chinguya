@@ -488,8 +488,9 @@ export default function AdminInventoryPage() {
   };
 
   // 조정 한 줄 — 보유 조정은 태그(임차·수리 등), 할당 조정은 태그 자리에 대상 여행사를 표시한다.
+  // 카드(bg-surface) 안에서 테두리 없이 한 단계 어두운 배경(bg-bg)으로만 구분한다.
   const renderAdjustment = (adj: InventoryAdjustment) => (
-    <Stack key={adj.id} direction="column" gap="xs" className="rounded-sm border border-line bg-surface p-2">
+    <Stack key={adj.id} direction="column" gap="xs" className="rounded-md bg-bg p-2">
       <Stack justify="between" align="center">
         {/* LabeledBox의 emphasis 라벨(강조색 점 + 굵고 큰 글씨)과 같은 스타일 — 이
             카드 안에서 "이날 조정"이 아래 메모/기간 줄과 확실히 구분되는 부제목이
@@ -617,65 +618,68 @@ export default function AdminInventoryPage() {
                   {viewMonth}월 {selectedDay}일 (선택)
                 </Text>
 
-                <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} hideLastBorder={false} />
+                {/* 재고 상세를 흐름별 카드 3장으로 나눈다 — ① 보유(기준 보유량·조정·총 보유) ② 여행사 할당
+                    ③ 고객 가용(가용·예약·잔여). 매장 휴무·조정 추가 버튼은 카드 밖에 둔다. */}
+                <Card padding="sm">
+                  <Stack direction="column" gap="sm">
+                    <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} hideLastBorder={false} />
 
-                {stockAdjustments.map(renderAdjustment)}
+                    {stockAdjustments.map(renderAdjustment)}
 
-                <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} hideLastBorder={false} />
+                    <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} />
+                  </Stack>
+                </Card>
 
                 {(dayDetail.allocations.length > 0 || agencyAdjustments.length > 0) && (
-                  <Stack direction="column" gap="xs">
-                    <Kv
-                      items={[
-                        {
-                          key: (
-                            <>
-                              여행사 할당 {dayDetail.allocationReleased && <Badge>D-3 반환</Badge>}
-                            </>
-                          ),
-                          value: `${dayDetail.allocated}개`,
-                        },
-                      ]}
-                      hideLastBorder={false}
-                    />
-                    {dayDetail.allocations.map((line) => (
-                      <Stack key={line.agencyId} justify="between" align="center" className="pl-3">
-                        <Text variant="sub" as="span">
-                          {line.agencyName} · 기준 {line.baseline}
+                  <Card padding="sm">
+                    <Stack direction="column" gap="sm">
+                      <Kv
+                        items={[
+                          {
+                            key: (
+                              <>
+                                여행사 할당 {dayDetail.allocationReleased && <Badge>D-3 반환</Badge>}
+                              </>
+                            ),
+                            value: `${dayDetail.allocated}개`,
+                          },
+                        ]}
+                        hideLastBorder={false}
+                      />
+                      {dayDetail.allocations.map((line) => (
+                        <Stack key={line.agencyId} justify="between" align="center" className="pl-3">
+                          <Text variant="sub" as="span">
+                            {line.agencyName} · 기준 {line.baseline}
+                          </Text>
+                          <Text as="span">{line.allocated}개</Text>
+                        </Stack>
+                      ))}
+                      {agencyAdjustments.map(renderAdjustment)}
+                      {dayDetail.allocationReleased && (
+                        <Text variant="sub">
+                          여행사 예약 마감(이용일 D-3)이 지나 안 팔린 할당은 고객 가용으로 반환됐습니다.
                         </Text>
-                        <Text as="span">{line.allocated}개</Text>
-                      </Stack>
-                    ))}
-                    {agencyAdjustments.map(renderAdjustment)}
-                    {dayDetail.allocationReleased && (
-                      <Text variant="sub">
-                        여행사 예약 마감(이용일 D-3)이 지나 안 팔린 할당은 고객 가용으로 반환됐습니다.
-                      </Text>
-                    )}
-                  </Stack>
+                      )}
+                    </Stack>
+                  </Card>
                 )}
 
-                <Kv
-                  items={[
-                    {
-                      key: (
-                        <>
-                          고객 가용 <Badge>총 보유 − 할당</Badge>
-                        </>
-                      ),
-                      value: `${dayDetail.customerAvailable}개`,
-                    },
-                  ]}
-                  hideLastBorder={false}
-                />
-
-                <Kv
-                  items={[
-                    { key: "예약", value: `${dayDetail.reserved}개` },
-                    { key: "잔여", value: `${dayDetail.remaining}개` },
-                  ]}
-                  hideLastBorder={false}
-                />
+                <Card padding="sm">
+                  <Kv
+                    items={[
+                      {
+                        key: (
+                          <>
+                            고객 가용 <Badge>총 보유 − 할당</Badge>
+                          </>
+                        ),
+                        value: `${dayDetail.customerAvailable}개`,
+                      },
+                      { key: "예약", value: `${dayDetail.reserved}개` },
+                      { key: "잔여", value: `${dayDetail.remaining}개` },
+                    ]}
+                  />
+                </Card>
 
                 <Toggle
                   on={dayDetail.closed}
