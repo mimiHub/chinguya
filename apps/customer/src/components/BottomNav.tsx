@@ -68,7 +68,7 @@ export function BottomNav() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    // h-16(64px)로 높이를 고정한다 — layout.tsx의 body padding(pb-16)이나 장바구니 하단 고정
+    // h-16(64px)로 높이를 고정한다 — Footer의 아래 padding(탭바 4rem)이나 장바구니 하단 고정
     // 바(bottom-16)처럼 "이 네비 높이는 64px"라고 가정하고 여백을 잡아둔 곳들이 있어서, 내용
     // 길이에 따라 높이가 자동으로 정해지면(기존엔 py-2 + 내용물 높이) 그 가정과 어긋나 틈이
     // 생긴다. 높이를 고정하고 내용은 justify-center로 가운데 정렬한다.

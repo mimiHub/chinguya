@@ -11,10 +11,13 @@ import {
   type CustomerAvailability,
   type CustomerProductDetail,
 } from "@chinguya/api-client";
-import { Title, Text, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, Popup, Toast, ComingSoon, Banner } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, NoticeBox, Popup, Toast, ComingSoon, Banner, Tab, EmptyState } from "@chinguya/ui";
+import { BookingDock } from "@/components/BookingDock";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { PRODUCT_DESCRIPTION_FALLBACK } from "./product-descriptions";
+import { USAGE_GUIDES } from "./usage-guides";
 
 /**
  * 상품 상세 · 예약 `detail`(S3-C1/S1-C2) — 옵션 → 날짜 → 수량을 한 화면에서 고른다.
@@ -28,9 +31,21 @@ import { useCustomerAuth } from "@/context/CustomerAuthContext";
  *   따져서 시작일 단위로 알려 준다.
  * - 수량 상한 = 고른 시작일의 잔여. 그 사이 다른 고객이 먼저 잡았으면 담기가 409 → "방금 마감" 팝업.
  * - 담기·바로 예약은 로그인이 필요하다. 비로그인이면 로그인한 뒤 이 화면으로 돌아온다.
+ * - 상품설명은 시간 옵션과 무관하게 상품 단위 문구 하나로 고정이고, "상품설명 / 상품 사용방법" 탭으로 나뉜다.
+ *   사용방법(사진+글)은 카테고리별로 usage-guides.ts에 있다(지금은 임시 샘플 — 실제 자료가 오면 그 파일만 교체).
+ * - 모바일(md 미만)에서는 옵션~버튼 영역이 BookingDock으로 감싸져 본문을 읽는 동안 화면 하단에 붙어 있다가
+ *   (접어도 합계·버튼은 남음), 끝까지 내려가면 푸터 바로 앞에서 풀린다(sticky — 그래서 본문의 마지막 자식이어야 한다).
+ *   PC(md 이상)는 기존처럼 본문에 그대로 펼쳐 보여준다.
  */
 
 const api = createApiClient();
+
+/** 상품 정보 영역의 탭 — 상품설명(고정 문구) / 상품 사용방법(카테고리별 사진+글, usage-guides.ts). */
+type ProductInfoTab = "info" | "usage";
+const INFO_TABS: { key: ProductInfoTab; label: string }[] = [
+  { key: "info", label: "상품설명" },
+  { key: "usage", label: "상품 사용방법" },
+];
 
 function toDateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -78,6 +93,7 @@ export default function RentalDetailPage() {
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [addedToast, setAddedToast] = useState(false);
   const [blockedDateNotice, setBlockedDateNotice] = useState(false);
+  const [infoTab, setInfoTab] = useState<ProductInfoTab>("info");
 
   useEffect(() => {
     let active = true;
@@ -169,7 +185,11 @@ export default function RentalDetailPage() {
   const canSubmit = Boolean(startKey && maxQty >= 1 && !submitting);
 
   const imageUrl = option.imageUrls?.[0] ?? product.imageUrls?.[0];
-  const subtitle = option.description || product.description || "";
+  // 상품설명은 시간 옵션을 바꿔도 달라지지 않는다 — 상품(자산) 단위 문구 하나로 고정.
+  // (예전엔 옵션별 description이 있으면 그걸로 바뀌었는데, 옵션마다 문구가 흔들려서 없앴다.)
+  // 서버가 상품설명을 주면 그것을, 비어 있으면 product-descriptions.ts의 임시 문구를 쓴다(실제 문구가 오면 그 파일은 지워도 된다).
+  const subtitle = product.description?.trim() || PRODUCT_DESCRIPTION_FALLBACK[product.category] || "";
+  const usageSteps = USAGE_GUIDES[product.category] ?? [];
 
   const resetSelection = () => {
     setRange({ start: null, end: null });
@@ -254,11 +274,12 @@ export default function RentalDetailPage() {
   };
 
   return (
-    <main>
+    <main className="flex min-h-[inherit] flex-col">
+      {/* min-h-[inherit]+flex-col: layout.tsx가 준 "한 화면 높이" 최소 높이를 이어받아 본문이 짧아도 맨 아래 BookingDock이 화면 하단에 머물게 한다 */}
       {/* 소메뉴 배너는 상품명이 아니라 소속된 대메뉴("상품/대여서비스")의 이름을 그대로 쓴다 */}
       <Banner size="sm" title="대여서비스" image="/banner-rental.png" />
 
-      <Stack direction="column" className="mx-auto max-w-2xl p-6">
+      <Stack direction="column" className="mx-auto w-full max-w-2xl flex-1 p-6">
         <ScrollReveal>
         <Stack direction="column" gap="md">
           <NextLink href="/rental" className="text-sm text-muted hover:underline">
@@ -282,18 +303,97 @@ export default function RentalDetailPage() {
         </Stack>
         </ScrollReveal>
         
-        {subtitle && (
-          <ScrollReveal delay={125}>
-          <Stack direction="column" gap="sm" className="">
-            <Title size="sm" leaf tone="secondary">
-              상품 설명
-            </Title>
-            <Text variant="sub">{subtitle}</Text>
-            <div className="border-t border-line" />
-          </Stack>
-          </ScrollReveal>
-        )}
+        {/* 구역 1 — 상품 정보 탭(상품설명 / 상품 사용방법). 사용방법이 길어서 이 영역은 페이지와 함께 스크롤되고,
+            예약(옵션·날짜·수량·합계)은 아래 BookingDock이 모바일에서 항상 화면 하단에 고정해 둔다. */}
+        <ScrollReveal delay={125}>
+        <Stack direction="column" gap="md">
+          {/* 고객지원(FAQ/질문하기) 탭과 같은 알약 모양. self-start: 세로 Stack에서 바가 화면 폭만큼 늘어나지 않고 내용 크기에 맞게 줄어든다. */}
+          <Tab
+            variant="capsule"
+            className="self-start"
+            items={INFO_TABS}
+            activeKey={infoTab}
+            onChange={(key) => setInfoTab(key as ProductInfoTab)}
+          />
+          {infoTab === "info" ? (
+            subtitle ? (
+              <Text variant="sub" className="whitespace-pre-line">
+                {subtitle}
+              </Text>
+            ) : (
+              <EmptyState>등록된 상품 설명이 없습니다.</EmptyState>
+            )
+          ) : usageSteps.length > 0 ? (
+            <Stack direction="column" gap="lg">
+              {usageSteps.map((step, index) => (
+                <Card key={step.title}>
+                  <Stack direction="column" gap="sm">
+                  {step.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={step.image} alt={step.title} className="w-full rounded-lg bg-gray-50 p-5 object-contain" />
+                  )}
+                  <Title size="sm">
+                    {index + 1}. {step.title}
+                  </Title>
+                  <Text variant="sub">{step.text}</Text>
+                </Stack>
+                </Card>
+              ))}
+            </Stack>
+          ) : (
+            <EmptyState>사용방법 안내를 준비 중입니다.</EmptyState>
+          )}
+          <div className="border-t border-line" />
+        </Stack>
+        </ScrollReveal>
 
+        {/* 구역 2 — 예약 패널(옵션·날짜·수량·합계·버튼). 모바일에서는 스크롤과 상관없이 처음부터 화면 하단에 고정되고
+            (접어도 합계·버튼은 남음), PC에서는 본문 흐름 안에 그대로 펼쳐진다. 자세한 동작은 BookingDock 참고. */}
+        <BookingDock
+          popupClassName="-mx-6 -mb-6 mt-auto"
+          footer={(popup) => (
+            <Stack direction="column" gap={popup ? "sm" : "md"}>
+              {crossRegion && (
+                <>
+                  <Stack justify="end">
+                    <Text variant="sub" tone="accent">
+                      타지역 반납 포함 (+ {(extraFeePerUnit * qty).toLocaleString()}원)
+                    </Text>
+                  </Stack>
+                  {/* 하단 팝업에서는 추가요금 안내와 합계 사이를 구분선으로 나눈다(PC는 기존처럼 없음). */}
+                  {popup && <div className="border-t border-line" />}
+                </>
+              )}
+
+              <Kv
+                items={[
+                  {
+                    key: "합계",
+                    value: (
+                      <Text as="span" size="sm" weight="bold">
+                        ₩ {total.toLocaleString()}
+                      </Text>
+                    ),
+                  },
+                ]}
+              />
+
+              <Stack gap="sm">
+                <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
+                  장바구니 담기
+                </Button>
+                <Button className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(true)}>
+                  바로 예약
+                </Button>
+              </Stack>
+              {!startKey && (
+                <Alert status="info">
+                  {isMultiDay ? "대여 시작일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
+                </Alert>
+              )}
+            </Stack>
+          )}
+        >
         <ScrollReveal delay={100}>
         <Stack direction="column" gap="md" className="">
           <Title size="sm" leaf tone="secondary">
@@ -335,10 +435,21 @@ export default function RentalDetailPage() {
               );
             })}
           </Stack>
-          <Text variant="sub">
-            옵션을 바꾸면 아래 날짜 선택은 초기화돼요. <br />
-            <span className="text-xs">(옵션마다 선택 가능한 일수가 달라요)</span>
-          </Text>
+          {/* 렌탈 목록 화면의 "이용 안내"(rental/page.tsx)와 같은 디자인 — 잎 아이콘 제목 + 점 목록. 배경은 페이지 베이지(bg-bg)보다 한 단계 진한 bg-bg-light 토큰 */}
+          <NoticeBox
+            title={
+              <Title size="sm" leaf tone="secondary">
+                이용 안내
+              </Title>
+            }
+            tone="none"
+            className="bg-bg-light"
+          >
+            <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted">
+              <li>옵션을 바꾸면 아래 날짜 선택은 초기화돼요.</li>
+              <li>옵션마다 선택 가능한 일수가 달라요.</li>
+            </ul>
+          </NoticeBox>
 
           {option.crossRegionReturnAvailable && (
             <Card padding="sm">
@@ -426,43 +537,9 @@ export default function RentalDetailPage() {
             </Text>
             <Stepper value={qty} onChange={setQty} min={1} max={startKey ? Math.max(maxQty, 1) : 1} />
           </Stack>
-          <div className="border-t border-line" />
-          {crossRegion && (
-            <Stack justify="end">
-              <Text variant="sub" tone="accent">
-                타지역 반납 포함 (+ {(extraFeePerUnit * qty).toLocaleString()}원)
-              </Text>
-            </Stack>
-          )}
-
-          <Kv
-            items={[
-              {
-                key: "합계",
-                value: (
-                  <Text as="span" size="sm" weight="bold">
-                    ₩ {total.toLocaleString()}
-                  </Text>
-                ),
-              },
-            ]}
-          />
-
-          <Stack gap="sm">
-            <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
-              장바구니 담기
-            </Button>
-            <Button className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(true)}>
-              바로 예약
-            </Button>
-          </Stack>
-          {!startKey && (
-            <FormMessage type="helper">
-              {isMultiDay ? "대여 시작일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
-            </FormMessage>
-          )}
         </Stack>
         </ScrollReveal>
+        </BookingDock>
       </Stack>
 
       <Popup open={Boolean(conflictMessage)} onClose={() => setConflictMessage(null)} title="앗, 방금 마감되었습니다">

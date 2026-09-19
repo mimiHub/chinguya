@@ -25,7 +25,9 @@ const INFO_LINES: InfoLine[] = [
 // (brightness-0 invert)으로 원본 로고 이미지를 흰색으로 반전해서 쓴다.
 export function Footer() {
   return (
-    <footer className="bg-ink px-6 py-10">
+    // pb: 화면 아래에 고정된 하단 탭바(4rem)가 푸터 맨 아래 글자를 가리지 않도록 그만큼 여백을 둔다(PC는 탭바가 없어 기본 py-10).
+    // 상품 상세의 예약 팝업은 푸터 앞에서 풀려 본문 흐름 안에 자리를 차지하므로 여기서 따로 계산하지 않는다(BookingDock 참고).
+    <footer className="bg-ink px-6 pt-10 pb-[calc(2.5rem_+_4rem)] md:pb-10">
       <div className="mx-auto max-w-2xl md:max-w-5xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-pc.png" alt="친구야 카페" className="h-9 w-auto object-contain brightness-0 invert" />
