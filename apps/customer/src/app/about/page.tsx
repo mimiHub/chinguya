@@ -48,11 +48,25 @@ export default function AboutPage() {
 
         <div className="mt-4">
           {tab === "store" ? (
-            <ScrollReveal>
-              <Card>
-                <Kv leaf items={STORE_INFO.map((row) => ({ key: row.key, value: row.value, align: "left" as const }))} />
-              </Card>
-            </ScrollReveal>
+            <Stack direction="column" gap="lg">
+              <ScrollReveal>
+                <Card>
+                  <Kv leaf items={STORE_INFO.map((row) => ({ key: row.key, value: row.value, align: "left" as const }))} />
+                </Card>
+              </ScrollReveal>
+
+              {/* 찾아오는 길 지도(히타카쓰 2호점). 원본이 429px로 작아서, 넓은 화면에서 늘어나 흐려지지 않게 원본 폭까지만 키운다. */}
+              <ScrollReveal delay={100}>
+                <Card padding="sm">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/about-map.png"
+                    alt="히타카쓰 2호점 약도 — 친구야는 미나토식당 옆, 공용주차장 위쪽에 있습니다"
+                    className="mx-auto block h-auto w-full max-w-[429px]"
+                  />
+                </Card>
+              </ScrollReveal>
+            </Stack>
           ) : (
             <Stack direction="column" gap="lg">
               <ScrollReveal>
@@ -85,7 +99,7 @@ export default function AboutPage() {
               </ScrollReveal>
 
               <ScrollReveal delay={100}>
-              <Card padding="sm" polaroid sticker="/sticker02.png">
+              <Card padding="sm" polaroid>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/about-interior.png"

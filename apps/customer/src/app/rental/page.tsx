@@ -10,7 +10,7 @@ import {
   DEFAULT_API_BASE_URL,
   type CustomerProductSummary,
 } from "@chinguya/api-client";
-import { Title, Text, EmptyState, Chip, NoticeBox, Banner, Alert } from "@chinguya/ui";
+import { Title, Text, EmptyState, Tab, NoticeBox, Banner, Alert } from "@chinguya/ui";
 import { rentalNotice } from "@/data/rentalData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -23,6 +23,11 @@ import { ScrollReveal } from "@/components/ScrollReveal";
  */
 
 const api = createApiClient();
+
+const CATEGORY_TABS: { key: AssetCategory; label: string }[] = [
+  { key: "BICYCLE", label: "자전거" },
+  { key: "FISHING_ROD", label: "낚싯대" },
+];
 
 /** 카드 수 = 자산 수라 계약상 최대 크기(100) 한 페이지로 충분하다. */
 const PAGE_SIZE = 100;
@@ -68,14 +73,14 @@ function RentalListContent() {
         상품
       </Title>
 
-      <Chip.List className="mt-4">
-        <Chip on={filter === "BICYCLE"} onClick={() => setFilter("BICYCLE")}>
-          자전거
-        </Chip>
-        <Chip on={filter === "FISHING_ROD"} onClick={() => setFilter("FISHING_ROD")}>
-          낚싯대
-        </Chip>
-      </Chip.List>
+      {/* 서비스 소개·내 예약과 같은 알약 탭(회색 트랙 안에서 선택 항목만 진한 알약)으로 통일 */}
+      <Tab
+        variant="capsule"
+        items={CATEGORY_TABS}
+        activeKey={filter}
+        onChange={(key) => setFilter(key as AssetCategory)}
+        className="mt-4"
+      />
 
       {loadError && (
         <Alert status="error" className="mt-4">
@@ -127,7 +132,7 @@ function RentalListContent() {
       </div>
 
       {products !== null && products.length === 0 && (
-        <EmptyState className="mt-6">해당 분류의 상품이 없습니다.</EmptyState>
+        <EmptyState variant="card" className="mt-6">해당 분류의 상품이 없습니다.</EmptyState>
       )}
 
       <NoticeBox

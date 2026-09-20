@@ -96,7 +96,7 @@ export default function NoticePage() {
             </Stack>
             </ScrollReveal>
           ) : items.length === 0 ? (
-            <EmptyState>등록된 글이 없습니다.</EmptyState>
+            <EmptyState variant="card">등록된 글이 없습니다.</EmptyState>
           ) : (
             <ScrollReveal>
             <Card padding="sm">

@@ -13,11 +13,11 @@ import {
 } from "@chinguya/api-client";
 import { Title, Text, Card, Stack, Toggle, Calendar, type CalendarDay, type CalendarRange, type DayStatus, Stepper, Kv, Button, FormMessage, Alert, NoticeBox, Popup, Toast, ComingSoon, Banner, Tab, EmptyState } from "@chinguya/ui";
 import { BookingDock } from "@/components/BookingDock";
+import { UsageGuideSteps } from "@/components/UsageGuideSteps";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { PRODUCT_DESCRIPTION_FALLBACK } from "./product-descriptions";
-import { USAGE_GUIDES } from "./usage-guides";
 
 /**
  * 상품 상세 · 예약 `detail`(S3-C1/S1-C2) — 옵션 → 날짜 → 수량을 한 화면에서 고른다.
@@ -32,7 +32,7 @@ import { USAGE_GUIDES } from "./usage-guides";
  * - 수량 상한 = 고른 시작일의 잔여. 그 사이 다른 고객이 먼저 잡았으면 담기가 409 → "방금 마감" 팝업.
  * - 담기·바로 예약은 로그인이 필요하다. 비로그인이면 로그인한 뒤 이 화면으로 돌아온다.
  * - 상품설명은 시간 옵션과 무관하게 상품 단위 문구 하나로 고정이고, "상품설명 / 상품 사용방법" 탭으로 나뉜다.
- *   사용방법(사진+글)은 카테고리별로 usage-guides.ts에 있다(지금은 임시 샘플 — 실제 자료가 오면 그 파일만 교체).
+ *   사용방법(사진+글)은 카테고리별로 data/usageGuides.ts에 있다(고객지원 '사용방법' 탭과 같은 데이터)(지금은 임시 샘플 — 실제 자료가 오면 그 파일만 교체).
  * - 모바일(md 미만)에서는 옵션~버튼 영역이 BookingDock으로 감싸져 본문을 읽는 동안 화면 하단에 붙어 있다가
  *   (접어도 합계·버튼은 남음), 끝까지 내려가면 푸터 바로 앞에서 풀린다(sticky — 그래서 본문의 마지막 자식이어야 한다).
  *   PC(md 이상)는 기존처럼 본문에 그대로 펼쳐 보여준다.
@@ -40,7 +40,7 @@ import { USAGE_GUIDES } from "./usage-guides";
 
 const api = createApiClient();
 
-/** 상품 정보 영역의 탭 — 상품설명(고정 문구) / 상품 사용방법(카테고리별 사진+글, usage-guides.ts). */
+/** 상품 정보 영역의 탭 — 상품설명(고정 문구) / 상품 사용방법(카테고리별 사진+글, data/usageGuides.ts — 고객지원 '사용방법' 탭과 같은 데이터). */
 type ProductInfoTab = "info" | "usage";
 const INFO_TABS: { key: ProductInfoTab; label: string }[] = [
   { key: "info", label: "상품설명" },
@@ -93,6 +93,8 @@ export default function RentalDetailPage() {
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [addedToast, setAddedToast] = useState(false);
   const [blockedDateNotice, setBlockedDateNotice] = useState(false);
+  // 날짜를 안 고르고 담기/예약을 누르면 화면에 안내 박스를 늘 띄워 두는 대신 토스트로 알려 준다.
+  const [startDateNotice, setStartDateNotice] = useState(false);
   const [infoTab, setInfoTab] = useState<ProductInfoTab>("info");
 
   useEffect(() => {
@@ -189,7 +191,6 @@ export default function RentalDetailPage() {
   // (예전엔 옵션별 description이 있으면 그걸로 바뀌었는데, 옵션마다 문구가 흔들려서 없앴다.)
   // 서버가 상품설명을 주면 그것을, 비어 있으면 product-descriptions.ts의 임시 문구를 쓴다(실제 문구가 오면 그 파일은 지워도 된다).
   const subtitle = product.description?.trim() || PRODUCT_DESCRIPTION_FALLBACK[product.category] || "";
-  const usageSteps = USAGE_GUIDES[product.category] ?? [];
 
   const resetSelection = () => {
     setRange({ start: null, end: null });
@@ -237,7 +238,11 @@ export default function RentalDetailPage() {
   };
 
   const handleAddToCart = async (navigateToCart: boolean) => {
-    if (!startKey || !canSubmit) return;
+    if (!startKey) {
+      setStartDateNotice(true);
+      return;
+    }
+    if (!canSubmit) return;
     if (!session) {
       loginAndReturn();
       return;
@@ -315,35 +320,21 @@ export default function RentalDetailPage() {
             activeKey={infoTab}
             onChange={(key) => setInfoTab(key as ProductInfoTab)}
           />
+          {/* 상품설명만 카드 하나로 감싼다. 사용방법 탭은 단계마다 이미 카드라서, 바깥을 또 카드로 감싸면 카드 안에 카드가 들어가
+              폴라로이드처럼 겹쳐 보인다 — 그래서 탭 전체가 아니라 상품설명 본문에만 Card를 쓴다. */}
           {infoTab === "info" ? (
             subtitle ? (
-              <Text variant="sub" className="whitespace-pre-line">
-                {subtitle}
-              </Text>
+              <Card>
+                <Text variant="sub" className="whitespace-pre-line">
+                  {subtitle}
+                </Text>
+              </Card>
             ) : (
-              <EmptyState>등록된 상품 설명이 없습니다.</EmptyState>
+              <EmptyState variant="card">등록된 상품 설명이 없습니다.</EmptyState>
             )
-          ) : usageSteps.length > 0 ? (
-            <Stack direction="column" gap="lg">
-              {usageSteps.map((step, index) => (
-                <Card key={step.title}>
-                  <Stack direction="column" gap="sm">
-                  {step.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={step.image} alt={step.title} className="w-full rounded-lg bg-gray-50 p-5 object-contain" />
-                  )}
-                  <Title size="sm">
-                    {index + 1}. {step.title}
-                  </Title>
-                  <Text variant="sub">{step.text}</Text>
-                </Stack>
-                </Card>
-              ))}
-            </Stack>
           ) : (
-            <EmptyState>사용방법 안내를 준비 중입니다.</EmptyState>
+            <UsageGuideSteps category={product.category} />
           )}
-          <div className="border-t border-line" />
         </Stack>
         </ScrollReveal>
 
@@ -379,18 +370,15 @@ export default function RentalDetailPage() {
               />
 
               <Stack gap="sm">
-                <Button variant="outline" className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(false)}>
+                {/* 날짜를 아직 안 골랐을 땐 버튼을 막지 않고 눌렀을 때 토스트로 안내한다(막아 두면 왜 안 눌리는지 알 수 없다).
+                    날짜는 골랐는데 잔여가 없거나 담는 중일 때만 비활성. */}
+                <Button variant="outline" className="flex-1" disabled={Boolean(startKey) && !canSubmit} onClick={() => handleAddToCart(false)}>
                   장바구니 담기
                 </Button>
-                <Button className="flex-1" disabled={!canSubmit} onClick={() => handleAddToCart(true)}>
+                <Button className="flex-1" disabled={Boolean(startKey) && !canSubmit} onClick={() => handleAddToCart(true)}>
                   바로 예약
                 </Button>
               </Stack>
-              {!startKey && (
-                <Alert status="info">
-                  {isMultiDay ? "대여 시작일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
-                </Alert>
-              )}
             </Stack>
           )}
         >
@@ -563,6 +551,12 @@ export default function RentalDetailPage() {
       />
 
       <Toast open={!!submitError} onClose={() => setSubmitError(null)} message={submitError ?? ""} status="error" />
+
+      <Toast
+        open={startDateNotice}
+        onClose={() => setStartDateNotice(false)}
+        message={isMultiDay ? "대여 시작일을 먼저 선택해 주세요." : "대여 날짜를 먼저 선택해 주세요."}
+      />
 
       <Toast
         open={blockedDateNotice}

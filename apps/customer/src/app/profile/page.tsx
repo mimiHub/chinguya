@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CUSTOMER_SOCIAL_PROVIDER_LABEL } from "@chinguya/types";
-import { Banner, Card, Title, Text, EmptyState, Stack, Kv, Button, Input, FormMessage, Alert, ConfirmPopup, Toast, StatusBadge } from "@chinguya/ui";
+import { Banner, Card, Title, Text, Stack, Kv, Button, Input, FormMessage, ConfirmPopup, Toast, StatusBadge, HelpTooltip } from "@chinguya/ui";
 import { useCart } from "@/context/CartContext";
 import { listReservations } from "@/data/reservationData";
 import { findRentalProductById } from "@/data/rentalData";
@@ -27,6 +27,18 @@ const PREVIEW_COUNT = 1;
  *   **다음 예약의 기본값**이고, 이미 만들어진 예약은 확정 시점 스냅샷이라 바뀌지 않는다.
  * - TODO: 회원 탈퇴 API가 아직 없어서 지금은 로그아웃만 한다(계정은 남는다).
  */
+/**
+ * 내정보 화면의 "내 예약 상황"·"내 장바구니" 카드가 비었을 때 보여 주는 안내 — 회색 박스 + 가운데 정렬 + 대표 보조색(secondary) 글자.
+ * 두 카드가 같은 모양이어야 해서 한 곳에 모았다(공용 EmptyState는 왼쪽 정렬·muted 글자라 이 카드 안에선 쓰지 않는다).
+ */
+function ProfileEmpty({ children }: { children: string }) {
+  return (
+    <div className="rounded-md bg-gray-200 px-4 py-3 text-center">
+      <Text tone="secondary">{children}</Text>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { items } = useCart();
@@ -117,17 +129,24 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-2xl p-6">
         <Stack direction="column" gap="lg">
           <ScrollReveal>
-          <Card>
+          {/* 고객지원(FAQ) 카드와 같은 톤(tint="primary") — 안쪽 흰 박스도 FAQ 답변 박스와 같은 모양(rounded-md bg-white p-3)이고, Q/A 아이콘만 뺀다. */}
+          <Card tint="primary">
             <Title leaf size="md">내정보</Title>
-            <Kv items={[
-              { key: "아이디", value: session.loginId },
-              { key: "연결 소셜", value: CUSTOMER_SOCIAL_PROVIDER_LABEL[session.socialProvider] },
-            ]} />
-
+            <div className="mt-3 rounded-md bg-white p-3">
+              <Kv dot items={[
+                { key: "아이디", value: session.loginId },
+                { key: "연결 소셜", value: CUSTOMER_SOCIAL_PROVIDER_LABEL[session.socialProvider] },
+              ]} />
+            </div>
             <Stack direction="column" gap="sm" className="mt-4">
-              <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary">
-                여권 영문명
-              </Title>
+              {/* 안내 문구는 화면에 늘 펼쳐 두지 않고, 제목 옆 "?"를 누르면 말풍선으로 보여 준다. */}
+              <Stack align="center" gap="xs">
+                {/* className="flex": label은 기본이 inline이라 나뭇잎(1.6em)이 줄 높이를 밀어 옆의 "?"와 세로 중심이 어긋났다 — 블록(flex)으로 만들어 중심을 맞춘다. */}
+                <Title as="label" htmlFor="passport-name" size="sm" leaf tone="secondary" className="flex">
+                  여권 영문명
+                </Title>
+                <HelpTooltip>예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.</HelpTooltip>
+              </Stack>
               <Input
                 id="passport-name"
                 value={passportName}
@@ -137,13 +156,7 @@ export default function ProfilePage() {
                 }}
                 placeholder="GILDONG HONG"
               />
-              {passportError ? (
-                <FormMessage type="error">{passportError}</FormMessage>
-              ) : (
-                <Alert status="info" icon={false}>
-                  예약 시 신원 확인용으로 쓰입니다. 언제든 바꿀 수 있어요.
-                </Alert>
-              )}
+              {passportError && <FormMessage type="error">{passportError}</FormMessage>}
               <Button
                 onClick={handleSavePassportName}
                 disabled={!canSavePassportName}
@@ -156,7 +169,8 @@ export default function ProfilePage() {
               </Button>
             </Stack>
 
-            <div className="mt-4 flex gap-2 border-t border-dashed border-line pt-4">
+            {/* 구분선: 카드 배경(tint)이 이미 베이지라 기본 line 색은 묻혀 안 보여서, muted를 40% 투명으로 얹어 한 톤 어둡게 했다. */}
+            <div className="mt-4 flex gap-2 border-t border-muted/40 pt-4">
               <Button variant="outline" fullWidth onClick={handleLogout}>
                 로그아웃
               </Button>
@@ -169,68 +183,72 @@ export default function ProfilePage() {
 
           <ScrollReveal delay={100}>
           <Card>
-            <Title leaf size="md">내 예약 상황</Title>
+            <Stack direction="column" gap="md">
+              <Title leaf size="md">내 예약 상황</Title>
 
-            <Stack direction="column" gap="xs" className="mt-3">
-              {reservations.length === 0 ? (
-                <EmptyState>아직 예약 내역이 없습니다.</EmptyState>
-              ) : (
-                reservations.map((reservation) => {
-                  const product = findRentalProductById(reservation.productId);
-                  return (
-                    <div
-                      key={reservation.id}
-                      className="flex items-center justify-between gap-2 border-b border-line py-3 last:border-b-0"
-                    >
-                      <Stack direction="column" gap="xs">
-                        <Text weight="medium">{reservation.id}</Text>
-                        <Text variant="sub">
-                          {product ? `${product.title} · ${RENTAL_OPTION_LABEL[reservation.rentalOption]}` : ""}
-                        </Text>
-                      </Stack>
-                      <StatusBadge status={reservation.status} />
-                    </div>
-                  );
-                })
-              )}
+              <Stack direction="column" gap="sm">
+                {reservations.length === 0 ? (
+                  <ProfileEmpty>아직 예약 내역이 없습니다.</ProfileEmpty>
+                ) : (
+                  reservations.map((reservation) => {
+                    const product = findRentalProductById(reservation.productId);
+                    return (
+                      <div
+                        key={reservation.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-3"
+                      >
+                        <Stack direction="column" gap="xs">
+                          <Text weight="medium">{reservation.id}</Text>
+                          <Text variant="sub">
+                            {product ? `${product.title} · ${RENTAL_OPTION_LABEL[reservation.rentalOption]}` : ""}
+                          </Text>
+                        </Stack>
+                        <StatusBadge status={reservation.status} />
+                      </div>
+                    );
+                  })
+                )}
+              </Stack>
+              <div className="border-t border-line" />
+              <Button href="/mypage" fullWidth>
+                내 예약 전체보기
+              </Button>
             </Stack>
-            <div className="border-t border-line" />
-            <Button href="/mypage" fullWidth className="mt-4">
-              내 예약 전체보기
-            </Button>
           </Card>
           </ScrollReveal>
 
           <ScrollReveal delay={150}>
           <Card>
-            <Title leaf size="md">내 장바구니</Title>
+            <Stack direction="column" gap="md">
+              <Title leaf size="md">내 장바구니</Title>
 
-            <Stack direction="column" gap="xs" className="mt-3">
-              {cartPreview.length === 0 ? (
-                <Text tone="secondary" className="py-4 text-center">장바구니가 비어 있습니다.</Text>
-              ) : (
-                cartPreview.map((item) => (
-                  <Stack
-                    key={item.cartItemId}
-                    direction="column"
-                    gap="xs"
-                    className="border-b border-line py-3 last:border-b-0"
-                  >
-                    <Text weight="medium">{item.productName}</Text>
-                    <Text variant="sub">
-                      {RENTAL_OPTION_LABEL[item.optionType]} · ×{item.quantity}
-                    </Text>
-                    <Text weight="bold" className="text-right">
-                      ₩ {item.lineTotal.toLocaleString()}
-                    </Text>
-                  </Stack>
-                ))
-              )}
+              <Stack direction="column" gap="sm">
+                {cartPreview.length === 0 ? (
+                  <ProfileEmpty>장바구니가 비어 있습니다.</ProfileEmpty>
+                ) : (
+                  cartPreview.map((item) => (
+                    <Stack
+                      key={item.cartItemId}
+                      direction="column"
+                      gap="xs"
+                      className="rounded-md border border-line bg-surface px-3 py-3"
+                    >
+                      <Text weight="medium">{item.productName}</Text>
+                      <Text variant="sub">
+                        {RENTAL_OPTION_LABEL[item.optionType]} · ×{item.quantity}
+                      </Text>
+                      <Text weight="bold" className="text-right">
+                        ₩ {item.lineTotal.toLocaleString()}
+                      </Text>
+                    </Stack>
+                  ))
+                )}
+              </Stack>
+              <div className="border-t border-line" />
+              <Button href="/cart" fullWidth>
+                내 장바구니 전체보기
+              </Button>
             </Stack>
-            <div className="border-t border-line" />
-            <Button href="/cart" fullWidth className="mt-4">
-              내 장바구니 전체보기
-            </Button>
           </Card>
           </ScrollReveal>
         </Stack>

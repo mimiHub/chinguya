@@ -6,13 +6,12 @@ import { HomeCarousel } from "@/components/HomeCarousel";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { rentalProducts } from "@/data/rentalData";
 
-// 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지·스티커. 이미지는 캐러셀에 이미 쓰던
+// 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지. 이미지는 캐러셀에 이미 쓰던
 // 배너 이미지를 재사용한다(banner-pc-2=자전거 코스, banner-pc-3=낚시 장면 — HomeCarousel.tsx
-// SLIDES 참고). 스티커는 테마색이 있는 sticker-bike.png 대신, 시안처럼 점박이/체크 무늬
-// 범용 스티커(sticker02/03)를 썼다.
-const RENTAL_CATEGORIES: { key: AssetCategory; image: string; sticker: string }[] = [
-  { key: "BICYCLE", image: "/banner-pc-2.png", sticker: "/sticker02.png" },
-  { key: "FISHING_ROD", image: "/banner-pc-3.png", sticker: "/sticker03.png" },
+// SLIDES 참고). 폴라로이드 카드는 워시테이프 장식만 쓰고 동그란 스티커는 붙이지 않는다(모든 폴라로이드 공통).
+const RENTAL_CATEGORIES: { key: AssetCategory; image: string }[] = [
+  { key: "BICYCLE", image: "/banner-pc-2.png" },
+  { key: "FISHING_ROD", image: "/banner-pc-3.png" },
 ];
 
 // 카드 사진 위에 흩뿌릴 별 위치 — 장식용이라 고정값으로 충분 (cafe-next의 CategoryCard.jsx와
@@ -73,7 +72,7 @@ export default function Page() {
           {RENTAL_CATEGORIES.map((category, i) => (
             <ScrollReveal key={category.key} delay={i * 120}>
             <NextLink href={`/rental?category=${category.key}`}>
-              <Card polaroid sticker={category.sticker} padding="md">
+              <Card polaroid padding="md">
                 <div className="relative overflow-hidden rounded-lg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

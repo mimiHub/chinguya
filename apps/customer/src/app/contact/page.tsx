@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Banner, NoticeBox, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
-import type { InquiryEntry } from "@chinguya/types";
+import type { AssetCategory, InquiryEntry } from "@chinguya/types";
 import { faqEntries } from "@/data/faqData";
 import { initialInquiries } from "@/data/inquiryData";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { UsageGuideSteps } from "@/components/UsageGuideSteps";
 
-type ContactTab = "faq" | "qna";
+type ContactTab = "faq" | "usage" | "qna";
+
+/** 사용방법 탭에서 고르는 상품 종류 — 상품 조회(/rental)의 카테고리와 같은 이름을 쓴다. */
+const USAGE_CATEGORY_TABS: { key: AssetCategory; label: string }[] = [
+  { key: "BICYCLE", label: "자전거" },
+  { key: "FISHING_ROD", label: "낚싯대" },
+];
 type QnaView = "list" | "write" | "detail";
 
 
@@ -15,8 +23,9 @@ type QnaView = "list" | "write" | "detail";
 type QnaEntry = InquiryEntry;
 
 /**
- * 고객지원(S4-C3 FAQ / S4-C4 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ와 1:1
- * 질문하기를 한 화면에 묶었다. 로그인 기능이 없어서 "이 브라우저 세션에서 쓴 글 전부"를
+ * 고객지원(S4-C3 FAQ / 사용방법 / S4-C4 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ·사용방법·1:1
+ * 질문하기를 한 화면에 묶었다. "사용방법"은 상품 상세의 "상품 사용방법" 탭과 같은 데이터(data/usageGuides.ts)를
+ * 그대로 보여준다 — 예약하기 전(상품 상세)에도, 예약한 뒤(대여 중)에도 여러 곳에서 쉽게 찾을 수 있게 하려는 것이다. 로그인 기능이 없어서 "이 브라우저 세션에서 쓴 글 전부"를
  * 본인 글로 취급한다(다른 목업 저장소들과 같은 한계) — 새로고침하면 처음 목업 데이터로
  * 되돌아간다.
  *
@@ -24,8 +33,14 @@ type QnaEntry = InquiryEntry;
  * 작성 화면엔 비밀번호 입력칸이 따로 안 보였지만, 그 비밀번호를 어딘가에서는 정해야 열람
  * 검증이 성립하기 때문에 "비공개로 등록"을 껐을 때만 비밀번호 입력칸이 나오게 추가했다.
  */
-export default function ContactPage() {
-  const [tab, setTab] = useState<ContactTab>("faq");
+function ContactContent() {
+  // 예약 상세 등 다른 화면에서 /contact?tab=usage&category=FISHING_ROD 로 오면 사용방법 탭·해당 상품 종류가 먼저 선택된 채로 열린다.
+  const searchParams = useSearchParams();
+  const initialTab: ContactTab = searchParams.get("tab") === "usage" ? "usage" : "faq";
+  const initialUsageCategory: AssetCategory =
+    searchParams.get("category") === "FISHING_ROD" ? "FISHING_ROD" : "BICYCLE";
+  const [tab, setTab] = useState<ContactTab>(initialTab);
+  const [usageCategory, setUsageCategory] = useState<AssetCategory>(initialUsageCategory);
   const sortedFaqEntries = [...faqEntries].sort((a, b) => a.order - b.order);
   const [openFaqId, setOpenFaqId] = useState<string | null>(sortedFaqEntries[0]?.id ?? null);
 
@@ -133,6 +148,7 @@ export default function ContactPage() {
             className="self-start"
             items={[
               { key: "faq", label: "FAQ" },
+              { key: "usage", label: "사용방법" },
               { key: "qna", label: "질문하기" },
             ]}
             activeKey={tab}
@@ -192,6 +208,19 @@ export default function ContactPage() {
                   검색·카테고리 분류는 제공하지 않아요. 원하는 답변이 없으면 질문하기 탭에서 직접 물어봐 주세요.
                 </Text>
               </NoticeBox>
+            </Stack>
+          ) : tab === "usage" ? (
+            <Stack direction="column" gap="md">
+              <Title size="lg" subtitle="대여한 상품을 어떻게 쓰고 반납하는지 알려드려요.">
+                상품 사용방법
+              </Title>
+              <Tab
+                variant="segment"
+                items={USAGE_CATEGORY_TABS}
+                activeKey={usageCategory}
+                onChange={(key) => setUsageCategory(key as AssetCategory)}
+              />
+              <UsageGuideSteps category={usageCategory} />
             </Stack>
           ) : qnaView === "list" ? (
             <Stack direction="column" gap="sm">
@@ -373,5 +402,14 @@ export default function ContactPage() {
         onClose={() => setDeleteTargetId(null)}
       />
     </main>
+  );
+}
+
+// useSearchParams를 쓰는 컴포넌트는 Suspense 경계 안에서만 정적 렌더링이 가능하다(rental/page.tsx와 같은 패턴).
+export default function ContactPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContactContent />
+    </Suspense>
   );
 }

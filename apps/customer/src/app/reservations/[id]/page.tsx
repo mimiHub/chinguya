@@ -11,7 +11,7 @@ import {
   type CustomerBookingItem,
   type CustomerBookingStatus,
 } from "@chinguya/api-client";
-import { RENTAL_OPTION_LABEL, type CustomerReservationStatus } from "@chinguya/types";
+import { RENTAL_OPTION_LABEL, type AssetCategory, type CustomerReservationStatus } from "@chinguya/types";
 import { Title, Text, Stack, Card, Kv, StatusBadge, Badge, Button, Banner, Alert, ComingSoon } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
@@ -24,9 +24,13 @@ import { ScrollReveal } from "@/components/ScrollReveal";
  * - 1 예약번호 = N 항목. 항목마다 상품·옵션·이용일이 다를 수 있어 항목별로 보여 준다.
  * - 취소된 항목은 회색·취소 뱃지로 남기고, 합계는 유효 항목만 반영한다.
  * - 일부만 취소된 예약은 '부분취소' 뱃지. 취소 요청 버튼은 서버의 `cancellable`로 노출한다.
+ * - 예약한 상품의 "사용방법 보기" 버튼 — 고객지원 '사용방법' 탭(같은 데이터)으로 이어 준다. 예약 항목엔 상품 종류가 없어서
+ *   상품 상세(GET /products/{id})로 종류를 알아낸다. 알아내지 못하면(조회 실패 등) 종류를 정하지 않은 버튼 하나만 보여 준다.
  */
 
 const api = createApiClient();
+
+const CATEGORY_LABEL: Record<AssetCategory, string> = { BICYCLE: "자전거", FISHING_ROD: "낚싯대" };
 
 const ITEM_STATUS: Record<BookingItemStatus, { label: string; variant: "success" | "info" | "gray" }> = {
   ACTIVE: { label: "유효", variant: "success" },
@@ -82,6 +86,8 @@ export default function ReservationDetailPage() {
   const [booking, setBooking] = useState<CustomerBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  // 이 예약에 든 상품 종류(중복 없이, 항목 순서대로). 상품 상세 조회가 끝나기 전·실패했을 땐 비어 있다.
+  const [categories, setCategories] = useState<AssetCategory[]>([]);
 
   useEffect(() => {
     if (authLoading || !session) return;
@@ -103,6 +109,24 @@ export default function ReservationDetailPage() {
       active = false;
     };
   }, [authLoading, session, params.id]);
+
+  // 예약이 로드되면 항목의 상품 종류를 알아낸다(같은 상품은 한 번만 조회). 실패한 상품은 건너뛴다.
+  useEffect(() => {
+    if (!booking) return;
+    let active = true;
+    const productIds = [...new Set(booking.items.map((item) => item.productId))];
+    Promise.allSettled(productIds.map((id) => api.customerProducts.detail(id))).then((results) => {
+      if (!active) return;
+      const found: AssetCategory[] = [];
+      for (const result of results) {
+        if (result.status === "fulfilled" && !found.includes(result.value.category)) found.push(result.value.category);
+      }
+      setCategories(found);
+    });
+    return () => {
+      active = false;
+    };
+  }, [booking]);
 
   const body = (() => {
     if (authLoading) return null;
@@ -148,6 +172,7 @@ export default function ReservationDetailPage() {
 
         <ScrollReveal delay={100}>
           <Kv
+            dot
             className="mt-4"
             items={[
               { key: "여권명", value: booking.passportName },
@@ -158,19 +183,53 @@ export default function ReservationDetailPage() {
 
         <ScrollReveal delay={150}>
           <Stack direction="column" gap="sm" className="mt-4">
-            <Text weight="bold">예약 항목 ({booking.items.length}건)</Text>
+            <Title size="sm" leaf tone="secondary">
+              예약 항목 ({booking.items.length}건)
+            </Title>
             {booking.items.map((item) => (
               <ItemCard key={item.bookingItemId} item={item} />
             ))}
-            <Kv items={[{ key: "합계(유효 항목)", value: `₩ ${booking.activeTotalAmount.toLocaleString()}` }]} />
+            {/* 합계 위 구분선 — 위 Kv(여권명/예약일)의 구분선과 같은 점선. border-line은 색만 정하므로 굵기(border-t)가 꼭 있어야 그려진다. */}
+            <div className="border-t border-line" />
+            {/* 합계 금액은 이 화면에서 가장 중요한 숫자라 다른 값보다 크고 굵게(값만 — 라벨은 그대로). */}
+            <Kv
+              items={[
+                {
+                  key: "합계 :",
+                  value: (
+                    <Text as="span" size="lg" weight="extrabold">
+                      ₩ {booking.activeTotalAmount.toLocaleString()}
+                    </Text>
+                  ),
+                },
+              ]}
+            />
           </Stack>
         </ScrollReveal>
 
-        {booking.cancellable && (
-          <Button href={`/reservations/${booking.bookingId}/cancel`} fullWidth className="mt-6">
-            취소 요청
-          </Button>
-        )}
+        {/* 예약한 뒤에도 사용법을 바로 찾을 수 있게 — 고객지원 '사용방법' 탭으로 이어진다. */}
+        <ScrollReveal delay={200}>
+          <Stack direction="column" gap="sm" className="mt-6">
+            {categories.length > 0 ? (
+              categories.map((category) => (
+                <Button key={category} href={`/contact?tab=usage&category=${category}`} variant="outline" fullWidth>
+                  {CATEGORY_LABEL[category]} 사용방법 보기
+                </Button>
+              ))
+            ) : (
+              <Button href="/contact?tab=usage" variant="outline" fullWidth>
+                사용방법 보기
+              </Button>
+            )}
+            {booking.cancellable && (
+              <Button href={`/reservations/${booking.bookingId}/cancel`} fullWidth >
+                취소 요청
+              </Button>
+            )}
+          </Stack>
+        </ScrollReveal>
+
+        
       </>
     );
   })();
