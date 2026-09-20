@@ -78,7 +78,11 @@ function resolveTargetItems(
     const item = b.items.find((i) => i.bookingItemId === itemId);
     if (!item) {
       return {
-        error: { status: 400, code: "INVALID_BOOKING_ITEM", message: `예약에 속하지 않는 항목입니다: ${itemId}` },
+        error: {
+          status: 400,
+          code: "INVALID_BOOKING_ITEM",
+          message: `예약에 속하지 않는 항목입니다: ${itemId}`,
+        },
       };
     }
     if (item.status !== "ACTIVE") {
@@ -180,7 +184,9 @@ export function getBooking(id: string): S["Booking"] | null {
 export function getDepositInfo(id: string): S["DepositInfo"] | null {
   const b = bookings.get(id);
   // 상태는 입금 확인 요청으로 바뀌므로 예약에서 다시 읽는다.
-  return b?.depositInfo ? { ...b.depositInfo, bookingNumber: b.bookingNumber, status: b.status } : null;
+  return b?.depositInfo
+    ? { ...b.depositInfo, bookingNumber: b.bookingNumber, status: b.status }
+    : null;
 }
 
 export function requestDeposit(id: string): S["Booking"] | null {
@@ -201,16 +207,22 @@ export function listBookings(status: string): S["BookingListPage"] {
         ? all.filter((b) => b.status === "CANCEL_REQUESTED" || b.status === "CANCELLED")
         : all.filter((b) => b.status === status);
 
-  const content: S["BookingSummary"][] = filtered.map((b) => ({
-    bookingId: b.bookingId,
-    bookingNumber: b.bookingNumber,
-    status: b.status,
-    productName: b.items[0]?.productName ?? "",
-    itemCount: b.items.length,
-    useDates: b.items.flatMap((i) => i.dates),
-    totalAmount: b.totalAmount,
-    createdAt: b.createdAt,
-  }));
+  // 최근 예약 먼저(계약: GET /bookings 는 최신순).
+  const content: S["BookingSummary"][] = filtered
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((b) => ({
+      bookingId: b.bookingId,
+      bookingNumber: b.bookingNumber,
+      status: b.status,
+      productName: (activeItems(b)[0] ?? b.items[0])?.productName ?? "",
+      itemCount: b.items.length,
+      partiallyCancelled: b.partiallyCancelled ?? false,
+      // 항목별 이용일의 합집합(오름차순)
+      useDates: [...new Set(b.items.flatMap((i) => i.dates))].sort(),
+      totalAmount: b.totalAmount,
+      activeTotalAmount: b.activeTotalAmount,
+      createdAt: b.createdAt,
+    }));
   return { content, page: 0, size: 20, totalElements: content.length };
 }
 
@@ -233,7 +245,11 @@ function toQuoteItem(i: S["BookingItem"]): S["CancellationQuoteItem"] {
 
 export function cancellationQuote(id: string, itemIds?: string[]): Result<S["CancellationQuote"]> {
   const b = bookings.get(id);
-  if (!b) return { ok: false, error: { status: 404, code: "NOT_FOUND", message: "예약을 찾을 수 없습니다." } };
+  if (!b)
+    return {
+      ok: false,
+      error: { status: 404, code: "NOT_FOUND", message: "예약을 찾을 수 없습니다." },
+    };
 
   const resolved = resolveTargetItems(b, itemIds, 400); // 견적 조회에서는 400 ITEM_NOT_CANCELLABLE
   if ("error" in resolved) return { ok: false, error: resolved.error };
@@ -269,9 +285,16 @@ export function cancellationQuote(id: string, itemIds?: string[]): Result<S["Can
 
 export function cancelRequest(id: string, dto: S["CancelRequest"]): Result<S["Booking"]> {
   const b = bookings.get(id);
-  if (!b) return { ok: false, error: { status: 404, code: "NOT_FOUND", message: "예약을 찾을 수 없습니다." } };
+  if (!b)
+    return {
+      ok: false,
+      error: { status: 404, code: "NOT_FOUND", message: "예약을 찾을 수 없습니다." },
+    };
   if (!CANCELLABLE_STATUSES.includes(b.status)) {
-    return { ok: false, error: { status: 409, code: "INVALID_STATE", message: "취소할 수 없는 상태입니다." } };
+    return {
+      ok: false,
+      error: { status: 409, code: "INVALID_STATE", message: "취소할 수 없는 상태입니다." },
+    };
   }
 
   const resolved = resolveTargetItems(b, dto.itemIds, 409); // 취소 요청에서는 409 ITEM_NOT_CANCELLABLE
@@ -279,7 +302,10 @@ export function cancelRequest(id: string, dto: S["CancelRequest"]): Result<S["Bo
 
   const active = activeItems(b);
   if (resolved.items.length === 0) {
-    return { ok: false, error: { status: 409, code: "INVALID_STATE", message: "취소할 유효 항목이 없습니다." } };
+    return {
+      ok: false,
+      error: { status: 409, code: "INVALID_STATE", message: "취소할 유효 항목이 없습니다." },
+    };
   }
   if (cancellationScope(b) === "FULL_ONLY" && resolved.items.length !== active.length) {
     return {
@@ -317,6 +343,112 @@ export function __completeBooking(id: string): S["Booking"] | null {
   syncDerived(b);
   return b;
 }
+
+// ── 데모 시드 ────────────────────────────────────────────────────────────────
+// 화면 확인용 임시 예약 3건(입금대기·접수·완료 각 1건). 목 환경(pnpm dev:mock)에서 "내 예약" 목록·예약 상세·
+// 사용방법 버튼 등을 Core 없이 눈으로 볼 수 있게 처음부터 들어 있다. 이용일은 오늘 기준 며칠 뒤로 잡아 항상 미래다.
+// __reset()은 시드까지 지운다(테스트 격리용).
+function isoDay(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function seedDemoBookings(): void {
+  const now = Date.now();
+  const year = new Date(now).getFullYear();
+  const demo: {
+    id: string;
+    no: number;
+    status: S["BookingStatus"];
+    createdAgoDays: number;
+    items: {
+      productId: string;
+      optionType: S["RentalOptionType"];
+      startOffset: number;
+      quantity: number;
+      crossRegionReturn?: boolean;
+    }[];
+  }[] = [
+    {
+      id: "demo-bk-1",
+      no: 9001,
+      status: "AWAITING_DEPOSIT",
+      createdAgoDays: 0,
+      items: [{ productId: "bike-001", optionType: "DAY_1", startOffset: 7, quantity: 2 }],
+    },
+    {
+      id: "demo-bk-2",
+      no: 9002,
+      status: "RECEIVED",
+      createdAgoDays: 1,
+      items: [
+        { productId: "bike-002", optionType: "DAY_2", startOffset: 10, quantity: 1 },
+        { productId: "bike-001", optionType: "HOURS_2", startOffset: 10, quantity: 1 },
+      ],
+    },
+    {
+      id: "demo-bk-3",
+      no: 9003,
+      status: "COMPLETED",
+      createdAgoDays: 3,
+      items: [
+        {
+          productId: "bike-001",
+          optionType: "DAY_2",
+          startOffset: 14,
+          quantity: 1,
+          crossRegionReturn: true,
+        },
+      ],
+    },
+  ];
+
+  for (const d of demo) {
+    const items: S["BookingItem"][] = d.items.map((it, i) => {
+      const dates = spanDates(isoDay(it.startOffset), it.optionType);
+      const product = products.find((p) => p.productId === it.productId);
+      return {
+        bookingItemId: `${d.id}-i${i + 1}`,
+        productId: it.productId,
+        productName: product?.name ?? "",
+        optionType: it.optionType,
+        dates,
+        quantity: it.quantity,
+        crossRegionReturn: !!it.crossRegionReturn,
+        lineTotal:
+          (unitPrice(it.productId, it.optionType) +
+            extraFee(it.productId, it.optionType, !!it.crossRegionReturn)) *
+          it.quantity,
+        status: "ACTIVE",
+      };
+    });
+    const total = items.reduce((sum, i) => sum + i.lineTotal, 0);
+    const createdAt = new Date(now - d.createdAgoDays * 24 * 3600 * 1000).toISOString();
+    const booking: S["Booking"] = {
+      bookingId: d.id,
+      bookingNumber: `CG${year}${d.no}`,
+      status: d.status,
+      items,
+      totalAmount: total,
+      activeTotalAmount: total,
+      passportName: "GILDONG HONG",
+      cancellable: true,
+      depositInfo: {
+        bookingNumber: `CG${year}${d.no}`,
+        status: d.status,
+        ...depositAccountBase,
+        amount: total,
+        dueBy: new Date(now + 24 * 3600 * 1000).toISOString(),
+      },
+      createdAt,
+    };
+    syncDerived(booking);
+    bookings.set(d.id, booking);
+  }
+}
+
+seedDemoBookings();
 
 // 테스트 격리용 리셋
 export function __reset(): void {
