@@ -241,7 +241,7 @@ export default function AdminSettingsPage() {
                 </Text>
                 <Stack gap="xs" align="center">
                   <Text variant="sub" as="span">
-                    D-
+                    D -
                   </Text>
                   <Input
                     type="number"

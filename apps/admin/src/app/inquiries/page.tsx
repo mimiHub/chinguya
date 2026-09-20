@@ -3,7 +3,7 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import type { InquiryEntry } from "@chinguya/types";
-import { Title, Text, EmptyState, Card, Stack, Badge, Input, Button, Toast, NoticeBox } from "@chinguya/ui";
+import { Title, Text, EmptyState, Card, Stack, Badge, Input, Button, Toast, Alert } from "@chinguya/ui";
 import { initialInquiries } from "@/data/inquiryData";
 
 /**
@@ -94,10 +94,10 @@ export default function AdminInquiriesPage() {
             </Button>
           </Stack>
 
-          <NoticeBox tone="gray">
-            답변 등록 시 고객에게 <b>카카오 알림톡</b>이 발송됩니다(알림 인터페이스, 실발송은
-            이연 상태).
-          </NoticeBox>
+          <Alert status="info">
+            <p>답변 등록 시 고객에게 &quot;카카오 알림톡&quot;이 발송됩니다.</p>
+            <p className="text-xs">(알림 인터페이스, 실발송은 이연 상태)</p>
+          </Alert>
         </Stack>
       </main>
     );
