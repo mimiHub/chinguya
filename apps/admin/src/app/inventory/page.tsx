@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Title, Text, Chip, Badge, Kv, Card, Stack, Calendar, type CalendarDay, Toggle, Input, Button, Popup, LabeledBox, Dropdown, Toast, Alert, HelpTooltip } from "@chinguya/ui";
 import {
   createApiClient,
@@ -69,12 +70,24 @@ function errorMessage(err: unknown, fallback: string): string {
  * 쓰기(기준 보유량·여행사 기준 할당 변경·재고 조정 추가/수정/해제·매장 휴무 토글)는 슈퍼어드민만 가능하다.
  * 아래 버튼 숨김은 서버 403과 정합을 맞추는 것일 뿐 보안 경계가 아니다(경계는 SecurityConfig).
  */
-export default function AdminInventoryPage() {
+/**
+ * 대시보드의 "재고 초과 알림"에서 넘어올 때 쓰는 딥링크 — /inventory?asset=<자산ID>&date=YYYY-MM-DD.
+ * (관리자_상세설명.md 화면 이동: 초과 알림 → a-inv의 해당 날짜.) 값이 없거나 형식이 틀리면 무시하고
+ * 원래대로(첫 자산·이번 달·선택 없음) 시작한다.
+ */
+function AdminInventoryContent() {
   const { isSuperAdmin } = useAdminAuth();
+
+  const searchParams = useSearchParams();
+  const linkedAsset = searchParams.get("asset") ?? "";
+  const linkedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(searchParams.get("date") ?? "");
+  const linked = linkedDate
+    ? { year: Number(linkedDate[1]), month: Number(linkedDate[2]), day: Number(linkedDate[3]) }
+    : null;
 
   const [assets, setAssets] = useState<Asset[] | null>(null);
   const [assetsError, setAssetsError] = useState<string | null>(null);
-  const [assetId, setAssetId] = useState("");
+  const [assetId, setAssetId] = useState(linkedAsset);
 
   useEffect(() => {
     let alive = true;
@@ -83,7 +96,10 @@ export default function AdminInventoryPage() {
       .then((list) => {
         if (!alive) return;
         setAssets(list);
-        setAssetId((current) => current || list[0]?.assetId || "");
+        // 딥링크로 받은 자산이 목록에 있으면 그대로 두고, 없으면(삭제됐거나 잘못된 값) 첫 자산으로.
+        setAssetId((current) =>
+          current && list.some((a) => a.assetId === current) ? current : list[0]?.assetId || "",
+        );
       })
       .catch((err) => {
         if (alive) setAssetsError(errorMessage(err, "자산 목록을 불러오지 못했습니다."));
@@ -94,9 +110,9 @@ export default function AdminInventoryPage() {
   }, []);
 
   const now = new Date();
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [viewYear, setViewYear] = useState(linked?.year ?? now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(linked?.month ?? now.getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<number | null>(linked?.day ?? null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // 기준 보유량 변경 / 재고 조정 추가·수정·해제 / 매장 휴무 토글이 반영된 뒤 달력·상세를
@@ -492,12 +508,10 @@ export default function AdminInventoryPage() {
   const renderAdjustment = (adj: InventoryAdjustment) => (
     <Stack key={adj.id} direction="column" gap="xs" className="rounded-md bg-bg p-2">
       <Stack justify="between" align="center">
-        {/* LabeledBox의 emphasis 라벨(강조색 점 + 굵고 큰 글씨)과 같은 스타일 — 이
-            카드 안에서 "이날 조정"이 아래 메모/기간 줄과 확실히 구분되는 부제목이
-            되도록 점을 붙였다. */}
-        <Text weight="bold" as="span" className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
-          이날 조정 {adj.agencyName ? <Badge>{adj.agencyName}</Badge> : adj.tag && <Badge>{adj.tag}</Badge>}
+        {/* "이날 조정" 부제목 — 글자 14px·굵기 300(light). 강조 점은 붙이지 않는다(점은 위·아래
+            기준 보유량·총 보유·할당·고객 가용·예약·잔여 라벨에만 있다). */}
+        <Text weight="light" size="sm" as="span" className="inline-flex items-center gap-1.5">
+          [이날 조정] {adj.agencyName ? <Badge>{adj.agencyName}</Badge> : adj.tag && <Badge>{adj.tag}</Badge>}
         </Text>
         <Text weight="bold" as="span" tone={adj.delta < 0 ? "error" : "success"}>
           {adj.delta > 0 ? `+${adj.delta}` : adj.delta}
@@ -554,32 +568,48 @@ export default function AdminInventoryPage() {
 
         {assetId && (
           <>
-            <Stack justify="between" align="center">
-              <Text variant="sub" as="span">
-                기준 보유량 {currentBaseline}대
-              </Text>
-              {isSuperAdmin && (
-                <Button variant="outline" size="sm" onClick={openBaseline}>
-                  변경
-                </Button>
-              )}
-            </Stack>
-
-            {/* 여행사가 하나도 없으면 할당 줄 자체를 숨긴다(고객 가용 = 총 보유). */}
-            {allocations.length > 0 && (
+            <Card>
               <Stack justify="between" align="center">
-                <Text variant="sub" as="span">
-                  여행사 기준 할당{" "}
-                  {allocatedAgencies.length > 0
-                    ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}`).join(" · ")
-                    : "없음"}
-                </Text>
+                {/* 아래 날짜 상세의 항목 라벨(Kv dot size="md" weight="semibold")과 같은 스타일 — 점 + 16px
+                    세미볼드. 제목은 회색, 값(3대)은 흰색으로 구분한다. */}
+                <span className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                    <span className="text-muted">기준 보유량 ·</span>
+                    <span className="text-ink">{currentBaseline}대</span>
+                  </span>
+                </span>
                 {isSuperAdmin && (
-                  <Button variant="outline" size="sm" onClick={openAllocation}>
+                  <Button variant="outline" size="sm" onClick={openBaseline}>
                     변경
                   </Button>
                 )}
               </Stack>
+            </Card>
+
+            {/* 여행사가 하나도 없으면 할당 줄 자체를 숨긴다(고객 가용 = 총 보유). */}
+            {allocations.length > 0 && (
+              <Card>
+                <Stack justify="between" align="center">
+                  <span className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
+                    {/* 제목(회색)과 값(흰색)을 색으로 구분 — 여행사 이름이 붙어도 어디까지가 제목인지 보이게 */}
+                    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                      <span className="text-muted">여행사 기준 할당 ·</span>
+                      <span className="text-ink">
+                        {allocatedAgencies.length > 0
+                          ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}`).join(" · ")
+                          : "없음"}
+                      </span>
+                    </span>
+                  </span>
+                  {isSuperAdmin && (
+                    <Button variant="outline" size="sm" onClick={openAllocation}>
+                      변경
+                    </Button>
+                  )}
+                </Stack>
+              </Card>
             )}
 
             <Card>
@@ -622,11 +652,11 @@ export default function AdminInventoryPage() {
                     ③ 고객 가용(가용·예약·잔여). 매장 휴무·조정 추가 버튼은 카드 밖에 둔다. */}
                 <Card padding="sm">
                   <Stack direction="column" gap="sm">
-                    <Kv items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} hideLastBorder={false} />
+                    <Kv dot size="md" weight="semibold" items={[{ key: "기준 보유량", value: `${dayDetail.baseline}개` }]} hideLastBorder={false} />
 
                     {stockAdjustments.map(renderAdjustment)}
 
-                    <Kv items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} />
+                    <Kv dot size="md" weight="semibold" items={[{ key: "그날 총 보유", value: `${dayDetail.totalStock}개` }]} />
                   </Stack>
                 </Card>
 
@@ -634,6 +664,9 @@ export default function AdminInventoryPage() {
                   <Card padding="sm">
                     <Stack direction="column" gap="sm">
                       <Kv
+                        dot
+                        size="md"
+                        weight="semibold"
                         items={[
                           {
                             key: (
@@ -666,6 +699,9 @@ export default function AdminInventoryPage() {
 
                 <Card padding="sm">
                   <Kv
+                    dot
+                    size="md"
+                    weight="semibold"
                     items={[
                       {
                         key: (
@@ -681,7 +717,8 @@ export default function AdminInventoryPage() {
                   />
                 </Card>
 
-                <Toggle
+                <Card>
+                  <Toggle
                   on={dayDetail.closed}
                   onChange={handleToggleClosed}
                   disabled={!isSuperAdmin}
@@ -692,6 +729,7 @@ export default function AdminInventoryPage() {
                     </Text>
                   }
                 />
+                </Card>
 
                 {isSuperAdmin && (
                   <Button variant="outline" fullWidth onClick={openAddAdjustment}>
@@ -982,5 +1020,15 @@ export default function AdminInventoryPage() {
 
       <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
     </main>
+  );
+}
+
+// useSearchParams()를 쓰는 컴포넌트는 Next.js가 정적 프리렌더링을 시도할 때 Suspense 경계 안에
+// 있어야 빌드가 통과한다(예약 관리 목록과 같은 방식) — 그래서 화면 본체를 Suspense로 감싼다.
+export default function AdminInventoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminInventoryContent />
+    </Suspense>
   );
 }
