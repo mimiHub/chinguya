@@ -67,6 +67,50 @@ const daysFromNow = (d: number) => {
   return date.toISOString().slice(0, 10);
 };
 
+/**
+ * 일본 시간(JST) 기준 오늘로부터 n일 후 날짜(YYYY-MM-DD). 대시보드의 "오늘 방문 예약"이 일본 기준
+ * '오늘'로 판정되므로(관리자_상세설명.md S1-A1), 데모 데이터도 같은 기준으로 만든다 — 위 daysFromNow는
+ * UTC 날짜라 한국·일본 새벽(0~9시)에는 하루 전 날짜가 나와서 "오늘"과 어긋난다. JST는 UTC+9라
+ * 시각에 9시간을 더한 뒤 날짜 부분만 자른다.
+ */
+const jstDaysFromNow = (d: number) => new Date(Date.now() + 9 * 60 * 60 * 1000 + d * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/**
+ * "오늘 방문 예약" 데모용 예약 한 건을 만든다(이용일 = 오늘 JST, 항목 1건). 목록이 5건을 넘을 때의
+ * "더 보기" 동작을 확인할 수 있게 여러 건이 필요해서, 같은 모양의 행을 손으로 반복해 적는 대신 이
+ * 함수로 만든다. hoursOld는 접수 후 경과 시간이라 24 이상이면 접수 상태가 "미입금"으로 보인다.
+ */
+const todayVisit = (o: {
+  id: string;
+  customer: string;
+  passportName: string;
+  productName: string;
+  optionLabel: string;
+  amountKrw: number;
+  status: CustomerReservationStatus;
+  hoursOld: number;
+}): AdminReservationRow => ({
+  id: o.id,
+  customer: o.customer,
+  passportName: o.passportName,
+  product: `${o.productName} ${o.optionLabel} × 1`,
+  useDate: jstDaysFromNow(0),
+  amountKrw: o.amountKrw,
+  status: o.status,
+  createdAt: hoursAgo(o.hoursOld),
+  items: [
+    {
+      id: `${o.id}-1`,
+      productName: o.productName,
+      optionLabel: o.optionLabel,
+      useDate: jstDaysFromNow(0),
+      quantity: 1,
+      amountKrw: o.amountKrw,
+      status: "active",
+    },
+  ],
+});
+
 export const adminReservations: AdminReservationRow[] = [
   {
     id: "FR-27070001",
@@ -136,6 +180,86 @@ export const adminReservations: AdminReservationRow[] = [
       { id: "FR-27060888-1", productName: "릴낚시대", optionLabel: "2시간", useDate: "2027-06-25", quantity: 1, amountKrw: 5000, status: "cancelled" },
     ],
   },
+  // ─── "오늘 방문 예약" 데모 데이터 ───────────────────────────────────────────────
+  // 대시보드 "오늘 방문 예약"(= 오늘 JST 이용 건)이 비어 보이지 않게, 이용일이 항상 "오늘"인 예약을
+  // 상태별(접수/미입금/완료/취소요청)로 하나씩 넣어 둔다. 실제 백엔드가 연동되면 이 데이터는 API
+  // 응답으로 대체된다.
+  {
+    id: "FR-26092001",
+    customer: "haneul",
+    passportName: "HANEUL JUNG",
+    product: "전기자전거 1일 × 2",
+    useDate: jstDaysFromNow(0),
+    amountKrw: 30000,
+    status: "received",
+    createdAt: hoursAgo(3), // 방금 접수 — 아직 미입금 아님(접수)
+    items: [
+      { id: "FR-26092001-1", productName: "전기자전거", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 15000, status: "active" },
+      { id: "FR-26092001-2", productName: "전기자전거", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 15000, status: "active" },
+    ],
+  },
+  {
+    id: "FR-26091903",
+    customer: "doyun",
+    passportName: "DOYUN CHOI",
+    product: "일반자전거 2시간 × 1",
+    useDate: jstDaysFromNow(0),
+    amountKrw: 3000,
+    status: "received",
+    createdAt: hoursAgo(28), // 24시간 지남 — 미입금
+    items: [
+      { id: "FR-26091903-1", productName: "일반자전거", optionLabel: "2시간", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 3000, status: "active" },
+    ],
+  },
+  {
+    id: "FR-26091801",
+    customer: "soyeon",
+    passportName: "SOYEON HAN",
+    // 한 예약에 항목 2건(상품이 서로 다름) — 카드에는 "대표 상품명 외 N건"으로 표기(관리자_상세설명.md S1-A6)
+    product: "전기자전거 1일 외 1건",
+    useDate: jstDaysFromNow(0),
+    amountKrw: 25000,
+    status: "completed",
+    createdAt: hoursAgo(22),
+    items: [
+      { id: "FR-26091801-1", productName: "전기자전거", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 15000, status: "active" },
+      { id: "FR-26091801-2", productName: "릴낚시대", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 10000, status: "active" },
+    ],
+  },
+  {
+    id: "FR-26091802",
+    customer: "jihoon",
+    passportName: "JIHOON YOO",
+    product: "일반자전거 1일 × 1",
+    useDate: jstDaysFromNow(0),
+    amountKrw: 8000,
+    status: "completed",
+    createdAt: hoursAgo(26),
+    items: [
+      { id: "FR-26091802-1", productName: "일반자전거", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 8000, status: "active" },
+    ],
+  },
+  {
+    id: "FR-26091701",
+    customer: "harin",
+    passportName: "HARIN SONG",
+    product: "전기자전거 1일 × 1",
+    useDate: jstDaysFromNow(0),
+    amountKrw: 15000,
+    status: "cancel_requested",
+    createdAt: hoursAgo(50),
+    items: [
+      { id: "FR-26091701-1", productName: "전기자전거", optionLabel: "1일", useDate: jstDaysFromNow(0), quantity: 1, amountKrw: 15000, status: "active" },
+    ],
+  },
+  // 아래는 "더 보기" 동작 확인용으로 더 넣은 오늘 방문 예약(총 12건: 위 5건 + 7건).
+  todayVisit({ id: "FR-26092002", customer: "yerin", passportName: "YERIN OH", productName: "전기자전거", optionLabel: "1일", amountKrw: 15000, status: "received", hoursOld: 1 }),
+  todayVisit({ id: "FR-26092003", customer: "minjae", passportName: "MINJAE BAE", productName: "릴낚시대", optionLabel: "1일", amountKrw: 10000, status: "completed", hoursOld: 18 }),
+  todayVisit({ id: "FR-26091904", customer: "chaewon", passportName: "CHAEWON KANG", productName: "일반자전거", optionLabel: "1일", amountKrw: 8000, status: "received", hoursOld: 27 }),
+  todayVisit({ id: "FR-26091803", customer: "junseo", passportName: "JUNSEO YOON", productName: "전기자전거", optionLabel: "1일", amountKrw: 15000, status: "completed", hoursOld: 23 }),
+  todayVisit({ id: "FR-26091702", customer: "sua", passportName: "SUA LIM", productName: "일반자전거", optionLabel: "2시간", amountKrw: 3000, status: "cancel_requested", hoursOld: 44 }),
+  todayVisit({ id: "FR-26092004", customer: "taeyang", passportName: "TAEYANG SEO", productName: "릴낚시대", optionLabel: "2시간", amountKrw: 5000, status: "received", hoursOld: 5 }),
+  todayVisit({ id: "FR-26091804", customer: "arin", passportName: "ARIN JEON", productName: "일반자전거", optionLabel: "1일", amountKrw: 8000, status: "completed", hoursOld: 21 }),
 ];
 
 export function findAdminReservationById(id: string): AdminReservationRow | undefined {

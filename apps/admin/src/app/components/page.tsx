@@ -728,12 +728,12 @@ function KvDemo() {
 
 function StatDemo() {
   return (
-    <Demo id="c-Stat" name="Stat" desc="관리자 대시보드 숫자 카드 그리드">
+    <Demo id="c-Stat" name="Stat" desc="관리자 대시보드 숫자 카드 그리드. tone으로 숫자·라벨 색 구분, large는 왼쪽 큰 카드">
       <Stat
         items={[
-          { value: 4, label: "신규 예약" },
-          { value: 12, label: "오늘 이용자" },
-          { value: "2건", label: "미입금" },
+          { value: 4, label: "신규 예약", tone: "primary", large: true },
+          { value: "2건", label: "미입금", tone: "warning" },
+          { value: 1, label: "취소요청", tone: "error" },
         ]}
       />
     </Demo>

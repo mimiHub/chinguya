@@ -16,6 +16,7 @@ export * from "./components/help-tooltip";
 export * from "./components/hold-timer";
 export * from "./components/icon-hamburger";
 export * from "./components/icon-x";
+export * from "./components/icon-face";
 export * from "./components/input";
 export * from "./components/kv";
 export * from "./components/labeled-box";
