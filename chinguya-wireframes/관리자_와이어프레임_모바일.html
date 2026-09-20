@@ -160,16 +160,19 @@
       <div class="cap"><span class="id">S1-A1</span><span class="nm">대시보드</span><span class="dsc">현황 + 오늘 방문</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>DASHBOARD</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">대시보드</span><span class="sp"></span><span class="ic"></span></div>
-        <div class="stat">
-          <div class="s"><div class="n">5</div><div class="l">신규 예약</div></div>
-          <div class="s"><div class="n">3</div><div class="l">입금확인 요청</div></div>
-          <div class="s"><div class="n">1</div><div class="l">취소요청</div></div>
+        <div class="stat" style="grid-template-columns:1.2fr 1fr;grid-template-rows:1fr 1fr">
+          <div class="s" style="grid-row:span 2;text-align:left;display:flex;flex-direction:column;justify-content:flex-end;position:relative"><span style="position:absolute;top:6px;right:8px;font-size:12px">☺</span><div class="n" style="font-size:24px">5</div><div class="l">신규 예약</div></div>
+          <div class="s" style="text-align:left;display:flex;flex-direction:column;justify-content:flex-end"><div class="n">3</div><div class="l">입금확인 요청</div></div>
+          <div class="s" style="text-align:left;display:flex;flex-direction:column;justify-content:flex-end"><div class="n">1</div><div class="l">취소요청</div></div>
         </div>
-        <div class="card2" style="margin:9px 0 0;display:flex;align-items:center;gap:8px"><span class="tag r">초과</span><span style="font-size:11px">재고 초과 날짜 <b>2건</b> · 7/28, 8/3</span></div>
-        <div class="h s" style="margin:14px 0 8px"></div>
-        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">완료</span></div></div>
-        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">접수</span></div></div>
-        <div class="note">'오늘 방문 예약' = 오늘 날짜 이용 건 목록(일본 기준 '오늘').</div>
+        <div style="border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;padding:10px 10px 0;margin-top:12px">
+          <div class="row" style="align-items:center"><div class="h s" style="margin:0"></div><span class="btn sm sec" style="flex:0 0 auto;margin-left:auto">예약 관리</span></div>
+          <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">완료</span></div></div>
+          <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">접수</span></div></div>
+          <div class="note" style="margin:6px 0">카드 <b>5건 높이</b>까지 보이고, 넘으면 목록 영역 안에서 <b>스크롤</b>(아래쪽은 서서히 흐려짐). 0건이면 '오늘 방문 예약이 없습니다.'</div>
+          <div style="display:flex;justify-content:center;padding:4px 0 8px"><span class="card2" style="display:inline-flex;align-items:center;gap:8px;margin:0;padding:5px 12px;border-radius:14px;font-size:11px"><span class="tag r">초과</span>재고 초과 날짜 <b>2건</b> · 7/28, 8/3<span class="btn sm sec">확인</span></span></div>
+        </div>
+        <div class="note">'오늘 방문 예약' = 오늘 날짜 이용 건 목록(일본 기준 '오늘'). <b>재고 초과 알림은 하단 탭 바로 위에 뜨는 토스트</b>(항상 노출, 0건이면 '재고 초과 날짜 0건').</div>
         <div class="bnav"><div class="on"><div class="d"></div>홈</div><div><div class="d"></div>예약</div><div><div class="d"></div>상품</div><div><div class="d"></div>더보기</div></div>
       </div></div>
       <div class="desc">
@@ -177,9 +180,9 @@
         <dl>
           <dt>목적</dt><dd>운영 현황과 <b>오늘 방문 예약</b>을 한눈에 파악</dd>
           <dt>진입</dt><dd>로그인 직후, 하단 탭 '홈'</dd>
-          <dt>주요 요소</dt><dd>지표 카드(신규 예약/입금확인 요청/취소요청), <b>재고 초과 알림 줄</b>, 오늘 방문 예약 목록, 하단 탭</dd>
-          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘') · <b>재고 초과 알림</b> = 그 날짜의 예약 수가 총 보유를 넘은 날(S1-A3에서 재고를 낮춰 발생) · 여행사 할당 합이 총 보유를 넘은 날(<b>할당 초과</b>)도 같은 줄에 표시, 해소될 때까지 상시 노출</dd>
-          <dt>화면 이동</dt><dd>예약 카드 → 예약 상세, 지표 → 해당 목록, <b>초과 알림 → 재고 세팅(a-inv)</b>의 해당 날짜</dd>
+          <dt>주요 요소</dt><dd>지표 카드(신규 예약/입금확인 요청/취소요청 — <b>신규 예약은 2행 높이의 큰 카드</b>로 강조하고 우측 상단에 <b>표정 아이콘</b>: 신규가 있으면 웃는 표정, 0건이면 슬픈 표정), <b>오늘 방문 예약 상자</b>(제목 + <b>'예약 관리' 버튼</b> + 예약 카드 목록, 하단 탭 바로 위까지 이어짐), <b>재고 초과 알림 토스트</b>(하단 탭 위에 고정), 하단 탭</dd>
+          <dt>규칙·로직</dt><dd>'오늘 방문 예약' = 오늘 날짜 이용 건(일본 기준 '오늘', 이용 항목 중 하나라도 오늘이면 포함) · 예약 카드는 예약번호·상품·이용일과 우측 <b>상태 태그</b>(접수·미입금·완료·취소요청, 색으로 구분)이며 카드 배경은 통일 · <b>5건 높이</b>까지 보이고 그보다 많으면 목록 영역 안에서 스크롤(더보기·전체보기 버튼 없음, 페이지 전체는 스크롤하지 않고 화면 높이에 맞춤), 0건이면 '오늘 방문 예약이 없습니다.' · <b>재고 초과 알림</b> = 그 날짜의 예약 수가 총 보유를 넘은 날(S1-A3에서 재고를 낮춰 발생) · 여행사 할당 합이 총 보유를 넘은 날(<b>할당 초과</b>)도 함께 집계 · <b>토스트로 항상 노출</b>하며 문구는 '재고 초과 날짜 N건 · M/D, M/D'(날짜는 최대 4개, 넘으면 '외 N건'), 초과가 없으면 '재고 초과 날짜 0건', 해소될 때까지 상시 노출</dd>
+          <dt>화면 이동</dt><dd>예약 카드 → 예약 상세, <b>'예약 관리' 버튼 → 예약 목록(a-res)</b>, 지표 → 해당 목록, <b>토스트 [확인] → 재고 세팅(a-inv)</b>의 해당 날짜</dd>
         </dl>
       </div>
     </div>
@@ -306,6 +309,7 @@
         <div class="kv"><span class="k"><b>잔여</b> <span style="font-size:10px">고객</span></span><span class="v"><b>2</b></span></div>
         <div class="kv" style="border:none"><span class="k">매장 휴무 <span class="tag k">전 자산 공통</span></span><span class="v"><span class="toggle"></span></span></div>
         <div class="note">한 날짜에 <b>재고 조정이 여러 개 겹칠 수 있고 전부 합산</b>된다(5 +3 −2 = 6). 조정은 <b>각각 개별로 수정·해제</b>하며, 해제하면 그 조정분만 빠진다. 태그(임차·수리)는 <b>메모 앞머리를 자동 표시</b>한 것으로 별도 코드값이 아니다. 할당 조정은 태그 자리에 <b>대상 여행사</b>를 표시한다.</div>
+        <div class="note blue"><b>확정 대기(2026-09-20)</b> — <b>A3-M4 여행사 기준 할당 변경의 저장 단위</b>: 기준 카드 요약 줄은 여러 여행사를 나란히 보여주지만 A3-M4 모달은 <b>여행사 한 곳씩</b> 선택해 저장하는 구조다. ① 한 곳씩 유지(요약 줄은 읽기용) ② 여러 여행사를 한 모달에서 한 번에 입력·저장(저장 API·할당 합 초과 검사도 함께 변경) 중 <b>개발자·기획이 결정</b>해 이 문서를 확정 수정한 뒤 구현을 맞춘다. (노션 비동기 데일리 로그 2026-09-20 참고)</div>
         <div class="note blue"><b>여행사 할당 UI</b>(기준 할당 줄 · A3-M4 · 조정 대상 '여행사 할당')는 여행사가 생기는 <b>Slice 2부터</b> 노출. Slice 1은 할당이 없어 <b>고객 가용 = 총 보유</b>. 여행사 예약 마감(<b>이용일 D-3</b>)이 지나면 여행사가 못 판 할당분은 <b>고객 가용으로 자동 반환</b>.</div>
         <div class="row"><span class="btn sec">재고 조정 추가</span><span class="btn pri">저장</span></div>
       </div></div>
@@ -377,7 +381,7 @@
           <dt>목적</dt><dd>자산별 <b>기준 보유량·여행사 할당</b>과 <b>재고 조정·매장 휴무</b>를 달력 뷰로 관리</dd>
           <dt>진입</dt><dd>메뉴 → 재고 세팅 (대시보드의 <b>재고 초과 알림</b>에서도 진입)</dd>
           <dt>주요 요소</dt><dd><b>자산 선택</b>, 기준 카드(기준 보유량 · <b>여행사 기준 할당</b>, 각각 변경), 달력(잔여/고객 가용 · 여유/임박/마감/초과/휴무 · 조정(보유·할당) 있는 날 점 표시), 선택일 상세(기준 보유량 · <b>이 날 조정 N줄</b> · 총 보유 · <b>여행사 할당(여행사별 기준·조정)</b> · 고객 가용 · 예약(고객/여행사) · 잔여 · 매장 휴무), 모달 4종 <b>A3-M1 기준 보유량 변경 / A3-M2 재고 조정 / A3-M3 초과 경고 / A3-M4 여행사 기준 할당 변경</b></dd>
-          <dt>규칙·로직</dt><dd>세팅 단위 = <b>자산 × 날짜</b>(상품 아님) · <b>수량은 이 화면이 단일 소관</b>(S1-A2 자산은 명칭·카테고리만) · 날짜별 값은 <b>기준 보유량을 상속</b>하고 예외는 <b>재고 조정</b>으로만 건다 · 구매·처분 등 <b>영구 변화는 기준값 변경 + 적용 시작일</b>(A3-M1: 현재값 읽기 전용 + 변경 후 값 2필드), 수리·임차 등 <b>일시 변화는 재고 조정</b>(A3-M2: ±N · 기간(하루는 시작=종료, 수리는 종료일 미정) · 요일 지정 · 메모 1줄) · <b>그날 총 보유 = 기준 보유량 + 그날 걸린 모든 조정의 합</b>, 조정은 <b>개별 수정·해제</b> 가능 · 셀 숫자 = <b>잔여 / 고객 가용</b>, 색상은 잔여 기준 · <b>여행사 할당도 같은 방식</b>(구 S2-A4 흡수): 여행사 × 자산별 <b>기준 할당 + 적용 시작일</b>(A3-M4)을 상속, 특정 날짜만은 <b>재고 조정(대상 = 여행사 할당)</b> · <b>그날 여행사 할당 = 기준 할당 + 그 여행사 할당 조정 합</b>, <b>고객 가용 = 총 보유 − 모든 여행사 할당 합</b>, <b>잔여 = 고객 가용 − 고객 예약</b> · 할당 저장 시 <b>할당 합 &gt; 총 보유면 차단</b>, 보유 감소로 넘으면 <b>경고 후 허용 + 고객 가용 0 + '할당 초과' 알림</b>(A3-M3) · 여행사 예약 마감(<b>이용일 D-3</b>) 후 미판매 할당은 <b>고객 가용으로 자동 반환</b> · <b>삭제된 여행사</b>는 삭제 이후 할당 0 · 할당 UI는 <b>Slice 2부터</b>(Slice 1은 할당 없음 → 고객 가용 = 총 보유) · <b>휴무는 매장 전역</b> 플래그(전 자산 공통, 수량 값은 보존한 채 판매만 차단), 자산 하나만 중단은 <b>수량 0</b>으로 표현 · 예약 수보다 낮아지면 <b>경고 후 저장 허용 + '초과' 표시 + 대시보드 알림</b> · <b>소프트 삭제된 자산</b>은 삭제 시점 <b>이후 날짜의 상속을 중단(0)</b>하고 과거 값·예약 이력은 보존, 조회만 가능 · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>규칙·로직</dt><dd>세팅 단위 = <b>자산 × 날짜</b>(상품 아님) · <b>수량은 이 화면이 단일 소관</b>(S1-A2 자산은 명칭·카테고리만) · 날짜별 값은 <b>기준 보유량을 상속</b>하고 예외는 <b>재고 조정</b>으로만 건다 · 구매·처분 등 <b>영구 변화는 기준값 변경 + 적용 시작일</b>(A3-M1: 현재값 읽기 전용 + 변경 후 값 2필드), 수리·임차 등 <b>일시 변화는 재고 조정</b>(A3-M2: ±N · 기간(하루는 시작=종료, 수리는 종료일 미정) · 요일 지정 · 메모 1줄) · <b>그날 총 보유 = 기준 보유량 + 그날 걸린 모든 조정의 합</b>, 조정은 <b>개별 수정·해제</b> 가능 · 셀 숫자 = <b>잔여 / 고객 가용</b>, 색상은 잔여 기준 · <b>여행사 할당도 같은 방식</b>(구 S2-A4 흡수): 여행사 × 자산별 <b>기준 할당 + 적용 시작일</b>(A3-M4)을 상속, 특정 날짜만은 <b>재고 조정(대상 = 여행사 할당)</b> · <b>그날 여행사 할당 = 기준 할당 + 그 여행사 할당 조정 합</b>, <b>고객 가용 = 총 보유 − 모든 여행사 할당 합</b>, <b>잔여 = 고객 가용 − 고객 예약</b> · 할당 저장 시 <b>할당 합 &gt; 총 보유면 차단</b>, 보유 감소로 넘으면 <b>경고 후 허용 + 고객 가용 0 + '할당 초과' 알림</b>(A3-M3) · 여행사 예약 마감(<b>이용일 D-3</b>) 후 미판매 할당은 <b>고객 가용으로 자동 반환</b> · <b>삭제된 여행사</b>는 삭제 이후 할당 0 · 할당 UI는 <b>Slice 2부터</b>(Slice 1은 할당 없음 → 고객 가용 = 총 보유) · <b>휴무는 매장 전역</b> 플래그(전 자산 공통, 수량 값은 보존한 채 판매만 차단), 자산 하나만 중단은 <b>수량 0</b>으로 표현 · 예약 수보다 낮아지면 <b>경고 후 저장 허용 + '초과' 표시 + 대시보드 알림</b> · <b>소프트 삭제된 자산</b>은 삭제 시점 <b>이후 날짜의 상속을 중단(0)</b>하고 과거 값·예약 이력은 보존, 조회만 가능 · 쓰기는 <b>슈퍼어드민만</b> · <b>[확정 대기]</b> A3-M4는 현재 <b>여행사 한 곳씩</b> 저장하는 구조이며, 여러 여행사를 한 번에 저장할지는 개발자·기획이 결정(요약 줄과 모달의 저장 단위가 다르게 읽힘)</dd>
           <dt>화면 이동</dt><dd>자산 선택 → 해당 자산 달력, 기준 보유량 변경 → A3-M1, 여행사 기준 할당 변경 → A3-M4, 재고 조정 추가/조정 줄의 수정 → A3-M2, 저장 시 초과 발생 → A3-M3 (<b>모달만 사용, 화면 전환 없음</b>)</dd>
         </dl>
       </div>
