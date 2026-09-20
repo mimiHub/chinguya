@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert, type ToastStatus } from "@chinguya/ui";
+import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert, HelpTooltip, type ToastStatus } from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { createApiClient, ApiError, type AgencyProduct, type AgencyProductList } from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
@@ -226,9 +226,14 @@ export default function AgencyBookPage() {
             <ScrollReveal delay={80} className="shrink-0">
             <Card className="shrink-0">
               <Stack direction="column" gap="sm">
-                <Title as="label" htmlFor="use-date" size="sm" leaf tone="secondary">
-                이용 날짜
-              </Title>
+                {/* 예약 가능 기간 안내는 화면에 늘 펼쳐 두지 않고, 제목 옆 "?"를 누르면 말풍선으로 보여 준다.
+                    className="flex": label은 기본이 inline이라 나뭇잎이 줄 높이를 밀어 "?"와 세로 중심이 어긋나는 걸 막는다. */}
+                <Stack align="center" gap="xs">
+                  <Title as="label" htmlFor="use-date" size="sm" leaf tone="secondary" className="flex">
+                    이용 날짜
+                  </Title>
+                  <HelpTooltip>예약 가능 기간은 오늘 +3일 ~ +3개월 입니다.</HelpTooltip>
+                </Stack>
               {/* 관리자 앱 재고 세팅 화면(inventory/page.tsx)의 날짜 선택 버튼과 같은 모양 —
                   알약형 버튼에 날짜 + CalendarIcon을 두고, 누르면 Popup(제목 + 기본 제공되는
                   닫기 X) 안에 Calendar를 띄운다. */}
@@ -258,9 +263,6 @@ export default function AgencyBookPage() {
                   canNextMonth={canNextMonth}
                 />
               </Popup>
-              <Alert status="info" icon={true}>
-                  예약 가능 기간 오늘 +3일 ~ +3개월 입니다.
-              </Alert>
               {productList?.closed ? (
                 <Alert status="warning" icon={true}>
                   매장 휴무일이라 이 날짜는 예약할 수 없습니다.
