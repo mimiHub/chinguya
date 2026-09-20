@@ -38,11 +38,9 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
    *  부담스러운 경우 사용). */
   shadow?: boolean;
   /** true면 카드 상단에 기울어진 워시테이프 장식이 붙어 폴라로이드 사진처럼 보인다.
-   *  홈 Rental 섹션처럼 감성적인 이미지 카드에 사용(sticker와 함께 쓰면 테이프 옆에
-   *  동그란 스티커도 같이 붙는다). */
+   *  홈 Rental 섹션처럼 감성적인 이미지 카드에 사용. 폴라로이드 모양은 모든 화면에서 이 테이프 하나로
+   *  통일한다(예전엔 동그란 스티커도 옵션으로 붙일 수 있었는데 없앴다). */
   polaroid?: boolean;
-  /** 카드 우측 상단에 붙일 동그란 스티커 이미지 경로(예: "/sticker02.png"). polaroid=true일 때만 표시됨 */
-  sticker?: string;
   onClick?: MouseEventHandler<HTMLDivElement>;
   className?: string;
   children?: ReactNode;
@@ -56,7 +54,6 @@ export function Card({
   onClick,
   shadow = true,
   polaroid = false,
-  sticker,
   width = "full",
   children,
   ...rest
@@ -90,20 +87,11 @@ export function Card({
   return (
     <div className={classNames} onClick={onClick} {...rest}>
       {polaroid && (
-        <>
-          <img
-            src="/sticker01.png"
-            alt=""
-            className="pointer-events-none absolute -top-3.5 left-1/2 z-10 w-[150px] -translate-x-1/2 -rotate-6 md:w-[180px]"
-          />
-          {sticker && (
-            <img
-              src={sticker}
-              alt=""
-              className="pointer-events-none absolute -top-4.5 right-6 z-10 w-16 rotate-6"
-            />
-          )}
-        </>
+        <img
+          src="/sticker01.png"
+          alt=""
+          className="pointer-events-none absolute -top-3.5 left-1/2 z-10 w-[150px] -translate-x-1/2 -rotate-6 md:w-[180px]"
+        />
       )}
       {children}
     </div>

@@ -6,7 +6,8 @@ type Size = "lg" | "sm";
 
 const heightClass: Record<Size, string> = {
   lg: "h-56 md:h-[350px]",
-  sm: "h-36",
+  // sm: 모바일 144px, PC(md 이상)는 200px — PC에선 너무 납작해 보여 키웠다(lg가 h-56 md:h-[350px]인 것과 같은 방식).
+  sm: "h-36 md:h-[200px]",
 };
 
 const titleClass: Record<Size, string> = {
@@ -47,7 +48,11 @@ export function Banner({ size = "lg", title, image = "/site-banner.jpg", classNa
     >
       <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
       {title && (
-        <p className={`absolute bottom-3 left-4 font-bold text-white drop-shadow ${titleClass[size]}`}>{title}</p>
+        // 제목은 화면 왼쪽 끝이 아니라 상단 내비(TopNav: mx-auto max-w-5xl px-4)와 같은 폭 안에 둔다 — 넓은 화면에서
+        // 로고·햄버거는 가운데 5xl 안에 모이는데 제목만 화면 왼쪽 끝에 붙어 정렬이 어긋났다.
+        <div className="absolute inset-x-0 bottom-3">
+          <p className={`mx-auto max-w-5xl px-4 font-bold text-white drop-shadow ${titleClass[size]}`}>{title}</p>
+        </div>
       )}
     </div>
   );

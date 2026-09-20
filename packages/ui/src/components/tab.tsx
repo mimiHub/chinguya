@@ -9,17 +9,26 @@ export interface TabProps {
   items?: TabItem[];
   activeKey?: string;
   onChange?: (key: string) => void;
-  /** "underline"(기본, 밑줄 탭) | "capsule"(알약 모양 세그먼트 탭) | "segment"(꽉 찬 폭의
-   *  트랙 안에서 선택된 항목만 진한 배경으로 덮는 세그먼트 컨트롤 — 알약형이 아닌 다른
+  /** "underline"(기본, 밑줄 탭) | "capsule"(알약 모양 세그먼트 탭 — 회색 트랙 안에서 선택된 항목만 진한
+   *  알약으로 올라오는 모양. 서비스 소개·내 예약·상품 조회 등 화면 상단 탭이 모두 이 모양으로 통일돼 있다) |
+   *  "segment"(꽉 찬 폭의 트랙 안에서 선택된 항목만 진한 배경으로 덮는 세그먼트 컨트롤 — 알약형이 아닌 다른
    *  형태가 필요할 때 사용) */
   variant?: "underline" | "capsule" | "segment";
   className?: string;
 }
 
-export function Tab({ items = [], activeKey, onChange, variant = "underline", className = "" }: TabProps) {
+export function Tab({
+  items = [],
+  activeKey,
+  onChange,
+  variant = "underline",
+  className = "",
+}: TabProps) {
   const listClass =
     variant === "capsule"
-      ? "inline-flex gap-1 rounded-full bg-bg-light p-1 md:gap-2"
+      ? // w-fit: 알약 트랙이 안쪽 탭 글자 폭만큼만 차지하게 고정한다. inline-flex만으로는 부모가 세로 Stack(flex, 기본
+        // align-items: stretch)일 때 트랙이 가로로 끝까지 늘어나 화면마다 폭이 달라졌다.
+        "inline-flex w-fit gap-1 rounded-full bg-bg-light p-1 md:gap-2"
       : variant === "segment"
         ? "flex gap-1 rounded-lg bg-bg-light p-1"
         : "flex gap-4 overflow-x-auto border-b border-line md:gap-6";
@@ -28,7 +37,8 @@ export function Tab({ items = [], activeKey, onChange, variant = "underline", cl
     if (variant === "capsule") {
       return [
         "flex-none cursor-pointer rounded-full px-6 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-        active ? "bg-primary-800 text-white" : "text-muted hover:text-ink",
+        // 활성 알약은 대표색(primary-500) — 버튼·segment 탭과 같은 색. 앱마다 primary-500이 다시 정의되므로 앱 테마를 따른다.
+        active ? "bg-primary-500 text-white" : "text-muted hover:text-ink",
       ].join(" ");
     }
     if (variant === "segment") {
@@ -43,14 +53,20 @@ export function Tab({ items = [], activeKey, onChange, variant = "underline", cl
     }
     return [
       "flex-none cursor-pointer border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors md:text-base",
-      active ? "border-primary-500 text-primary-500 font-bold" : "border-transparent text-muted hover:text-ink",
+      active
+        ? "border-primary-500 text-primary-500 font-bold"
+        : "border-transparent text-muted hover:text-ink",
     ].join(" ");
   };
 
   return (
     <div className={`${listClass} ${className}`}>
       {items.map((item) => (
-        <div key={item.key} className={itemClass(item.key === activeKey)} onClick={() => onChange?.(item.key)}>
+        <div
+          key={item.key}
+          className={itemClass(item.key === activeKey)}
+          onClick={() => onChange?.(item.key)}
+        >
           {item.label}
         </div>
       ))}

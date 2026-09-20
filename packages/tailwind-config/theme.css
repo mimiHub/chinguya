@@ -18,13 +18,15 @@
 @source "../ui/src/**/*.{ts,tsx}";
 
 @theme {
-  /* Primary — 블랙 계열, CTA·내비 강조 */
+  /* Primary — CTA·내비 강조. 500이 대표색(진한 갈색 #4a3b20), 600은 hover용으로 한 톤 더 짙게.
+     (100~400·700~900은 아직 예전 블랙/회색 계열 그대로.)
+     관리자 앱은 어두운 테마라 globals.css에서 500·600을 따로 덮어쓴다. */
   --color-primary-100: #e6e6e6;
   --color-primary-200: #c2c2c2;
   --color-primary-300: #999999;
   --color-primary-400: #4d4d4d;
-  --color-primary-500: #1c1c1c;
-  --color-primary-600: #000000;
+  --color-primary-500: #4a3b20;
+  --color-primary-600: #372c18;
   --color-primary-700: #000000;
   --color-primary-800: #000000;
   --color-primary-900: #000000;
@@ -74,6 +76,11 @@
      admin에서만 화이트로 바꿔 "이게 버튼이다"가 배경(bg-bg-light)만으로는 잘 안 드러난다는
      피드백을 반영했다. */
   --color-button-subtle-border: var(--color-line);
+
+  /* Button "outline" variant 테두리 전용 토큰 — 원래 primary-500을 직접 썼는데, primary-500이 진한 브라운(#4a3b20)이
+     되면서 테두리가 너무 도드라졌다. 웜 톤에 어울리는 옅은 토프색으로 낮췄다(글자색은 그대로 primary-500).
+     다크 테마 앱(admin)은 globals.css에서 예전처럼 primary-500을 가리키게 덮어쓴다. */
+  --color-button-outline-border: #c4b9a5;
 
   /* Badge "gray" variant 전용 배경/글자색 토큰 — 기본값은 지금의 bg-gray-100/text-gray-700과
      같은 값을 가리키게 해서 다른 앱엔 영향이 없고, admin(다크 테마)에서는 gray-100이 surface와

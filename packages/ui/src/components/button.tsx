@@ -11,7 +11,7 @@ type Padding = "none";
 const variantClass: Record<Variant, string> = {
   primary: "bg-primary-500 text-white hover:bg-primary-600",
   secondary: "bg-secondary-800 text-ink hover:bg-secondary-600",
-  outline: "bg-surface text-primary-500 border border-primary-500 hover:bg-bg-light",
+  outline: "bg-surface text-primary-500 border border-button-outline-border hover:bg-bg-light",
   text: "bg-transparent text-muted hover:text-ink",
   danger: "bg-error text-white hover:bg-[#d63c3c]",
   // scaffold 초기 데모에서 쓰던 별칭 — cafe-next 원본에는 없던 variant, "text"와 동일하게 취급

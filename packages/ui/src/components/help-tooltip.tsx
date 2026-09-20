@@ -47,8 +47,12 @@ export function HelpTooltip({ children, label = "도움말", className = "" }: H
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={[
-          "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none",
-          open ? "border-primary-500 text-primary-500" : "border-line text-muted hover:border-primary-500 hover:text-ink",
+          // 회색 테두리만 있던 예전 모양은 배경에 묻혀 안 보였다 — 옅은 노랑(secondary) 채운 원 + 진한 브라운 "?"로 눈에 띄게 했다.
+          // 크기도 16px → 20px로 키웠다(작은 글씨 옆에서도 눈에 들어오고, 눌러야 하는 버튼이라).
+          "inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full border text-xs font-bold leading-none text-secondary-900 transition-colors",
+          open
+            ? "border-secondary-800 bg-secondary-600"
+            : "border-secondary-600 bg-secondary-400 hover:bg-secondary-500",
         ].join(" ")}
       >
         ?

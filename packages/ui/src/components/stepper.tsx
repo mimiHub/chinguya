@@ -12,9 +12,10 @@ export function Stepper({ value = 0, min = 0, max, onChange }: StepperProps) {
   const canDecrease = value > min;
   const canIncrease = max === undefined || value < max;
 
+  // 배경은 bg-surface(라이트=흰색) — 예전 bg-gray-100(#f5f5f5)은 베이지 배경 위에서 거의 안 보였다. 다크 테마(admin)에선 surface가 알아서 어두운 면색이 된다.
   const btnClass = (disabled: boolean) =>
-    `inline-flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-line bg-gray-100 text-base select-none ${
-      disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-gray-200"
+    `inline-flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-line bg-surface text-base select-none ${
+      disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-bg-light"
     }`;
 
   return (
