@@ -87,7 +87,7 @@ export function TodayVisitList({ items }: { items: TodayVisitItem[] }) {
   }, [items.length]);
 
   if (items.length === 0) {
-    return <EmptyState>오늘 방문 예약이 없습니다.</EmptyState>;
+    return <EmptyState variant="card">오늘 방문 예약이 없습니다.</EmptyState>;
   }
 
   return (

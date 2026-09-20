@@ -229,7 +229,7 @@ export default function AdminAssetsPage() {
             </Stack>
           </Card>
         ))}
-        {assets !== null && activeAssets.length === 0 && <EmptyState>등록된 자산이 없습니다.</EmptyState>}
+        {assets !== null && activeAssets.length === 0 && <EmptyState variant="card">등록된 자산이 없습니다.</EmptyState>}
       </Stack>
 
       {deletedAssets.length > 0 && (

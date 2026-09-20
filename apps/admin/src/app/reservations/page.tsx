@@ -140,7 +140,7 @@ function AdminReservationsPageInner() {
 
         <Stack direction="column" gap="sm">
           {!loading && !error && bookings.length === 0 && (
-            <EmptyState>{query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}</EmptyState>
+            <EmptyState variant="card">{query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}</EmptyState>
           )}
           {bookings.map((b) => (
             <NextLink

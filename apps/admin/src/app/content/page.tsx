@@ -436,7 +436,7 @@ export default function AdminContentPage() {
                 </Card>
               ))}
 
-              {faqs.length === 0 && <EmptyState>등록된 FAQ가 없습니다.</EmptyState>}
+              {faqs.length === 0 && <EmptyState variant="card">등록된 FAQ가 없습니다.</EmptyState>}
             </Stack>
             <Text variant="sub">
               FAQ는 분류·검색 없이 위 순서 그대로 고객앱에 노출됩니다.

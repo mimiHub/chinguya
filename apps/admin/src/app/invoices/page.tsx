@@ -92,7 +92,7 @@ export default function AdminInvoicesPage() {
             </NextLink>
           ))}
 
-          {filteredInvoices.length === 0 && <EmptyState>아직 발행된 인보이스가 없습니다.</EmptyState>}
+          {filteredInvoices.length === 0 && <EmptyState variant="card">아직 발행된 인보이스가 없습니다.</EmptyState>}
         </Stack>
 
         <NoticeBox tone="gray">

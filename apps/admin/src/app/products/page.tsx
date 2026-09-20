@@ -110,7 +110,7 @@ export default function AdminProductsPage() {
       )}
 
       {products !== null && groups.length === 0 && (
-        <EmptyState className="mt-4">등록된 상품이 없습니다.</EmptyState>
+        <EmptyState variant="card" className="mt-4">등록된 상품이 없습니다.</EmptyState>
       )}
 
       <Stack direction="column" gap="lg" className="mt-4">

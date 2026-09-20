@@ -128,7 +128,7 @@ export default function AdminInquiriesPage() {
           </Card>
         ))}
 
-        {inquiries.length === 0 && <EmptyState>접수된 문의가 없습니다.</EmptyState>}
+        {inquiries.length === 0 && <EmptyState variant="card">접수된 문의가 없습니다.</EmptyState>}
       </Stack>
 
       <Toast open={toastOpen} onClose={() => setToastOpen(false)} message="답변이 등록되었습니다" />

@@ -146,7 +146,7 @@ export default function AdminAgenciesPage() {
         })}
 
         {agencies !== null && agencies.length === 0 && (
-          <EmptyState>등록된 여행사가 없습니다.</EmptyState>
+          <EmptyState variant="card">등록된 여행사가 없습니다.</EmptyState>
         )}
       </Stack>
 
