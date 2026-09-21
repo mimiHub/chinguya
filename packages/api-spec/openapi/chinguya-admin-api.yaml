@@ -8,6 +8,11 @@ openapi: 3.1.0
 #       입금확인·미입금 강제취소(S1-A6/A7/A8), 취소요청 처리(S1-A9). 나머지 관리자 운영
 #       API(인보이스)는 아직 이 문서에 없다 — 구현되는 대로 이어 붙인다.
 #
+# 2026-09-21 변경(문의 관리 S4-A2-1/A2-2 — 고객 질문하기 S4-C5 실연동과 함께):
+#   1. `GET /admin/inquiries`·`GET /admin/inquiries/{inquiryId}`·`PUT /admin/inquiries/{inquiryId}/answer` 신설.
+#   2. 조회는 관리자 누구나, 답변 등록·수정은 슈퍼어드민만(403). 고객 쪽 본인 글 잠금은 관리자에게 적용하지 않는다.
+#   3. 답변은 질문당 하나 — 다시 보내면 덮어쓴다(답변 수정). 카카오 알림톡 발송은 이연(아직 안 보냄).
+#
 # 2026-09-18 변경(취소요청 처리 S1-A9 — 스펙 선행, 백엔드 미구현):
 #   1. `GET /admin/cancellations/{cancellationId}`·`POST /admin/cancellations/{cancellationId}/confirm` 신설.
 #      화면 단위 = **고객 취소 요청 1건**(DB `cancellation`). 한 예약에 요청이 여러 건 생길 수 있어서다
@@ -117,6 +122,8 @@ tags:
     description: 고객 취소요청 처리 — 요청 항목 검토·환불 후 취소 확정 (S1-A9)
   - name: admin-faq
     description: FAQ 등록·수정·삭제·노출 순서 (S4-A1)
+  - name: admin-inquiry
+    description: 고객 1:1 문의 목록·상세·답변 (S4-A2-1/A2-2)
   - name: admin-content
     description: 랜딩 히어로 배너·서비스 소개 본문·이미지 업로드 (S4-A3)
 
@@ -1603,6 +1610,80 @@ paths:
                 code: FAQ_ORDER_MISMATCH
                 message: FAQ 목록이 바뀌었습니다. 새로고침 후 다시 시도해 주세요.
 
+  /admin/inquiries:
+    get:
+      tags: [admin-inquiry]
+      x-screens: [S4-A2-1]
+      summary: 문의 목록 (S4-A2-1)
+      description: 모든 고객 문의를 최신순으로. 페이지네이션 없음. 없으면 빈 배열.
+      responses:
+        '200':
+          description: 문의 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminInquiry' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/inquiries/{inquiryId}:
+    parameters:
+      - name: inquiryId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [admin-inquiry]
+      x-screens: [S4-A2-2]
+      summary: 문의 상세 (S4-A2-2)
+      responses:
+        '200':
+          description: 문의 본문과 답변
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminInquiry' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InquiryNotFound'
+
+  /admin/inquiries/{inquiryId}/answer:
+    parameters:
+      - name: inquiryId
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      tags: [admin-inquiry]
+      x-screens: [S4-A2-2]
+      summary: 답변 등록·수정 (S4-A2-2)
+      description: |
+        답변은 질문당 하나다. 이미 있으면 덮어쓰고 `answeredAt`을 새로 찍는다. 앞뒤 공백은 서버가 제거한다.
+        카카오 알림톡 발송은 이연(아직 보내지 않는다).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InquiryAnswerRequest' }
+      responses:
+        '200':
+          description: 답변이 반영된 문의
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminInquiry' }
+        '400':
+          description: 답변 누락 또는 길이 초과(`VALIDATION_ERROR`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/InquiryNotFound'
+
   /admin/content/banners:
     get:
       tags: [admin-content]
@@ -1892,6 +1973,14 @@ components:
           example:
             code: DUPLICATE_AGENCY_NAME
             message: 이미 사용 중인 여행사 명칭입니다.
+    InquiryNotFound:
+      description: 존재하지 않는 문의
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: INQUIRY_NOT_FOUND
+            message: 문의를 찾을 수 없습니다.
     FaqNotFound:
       description: 존재하지 않는 FAQ
       content:
@@ -2718,6 +2807,31 @@ components:
           type: array
           items: { type: string }
           description: 현재 FAQ 전체 id를 원하는 노출 순서대로.
+
+    AdminInquiry:
+      type: object
+      required: [inquiryId, title, content, status, customerLoginId, createdAt]
+      description: 고객 1:1 문의 한 건(S4-A2). 목록·상세가 같은 모양이다.
+      properties:
+        inquiryId: { type: string }
+        title: { type: string }
+        content: { type: string }
+        status:
+          type: string
+          enum: [WAITING, ANSWERED]
+          description: 답변이 없으면 `WAITING`(대기), 있으면 `ANSWERED`(답변완료).
+        customerLoginId:
+          type: string
+          description: 작성한 고객의 아이디(S0-C2).
+        answer: { type: [string, 'null'] }
+        answeredAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    InquiryAnswerRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer: { type: string, minLength: 1, maxLength: 2000 }
 
     HeroBanner:
       type: object

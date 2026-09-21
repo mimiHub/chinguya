@@ -450,9 +450,78 @@ function seedDemoBookings(): void {
 
 seedDemoBookings();
 
+// ── S4-C4/C5 질문하기 ────────────────────────────────────────────────────────
+// 단일 목 유저 가정이라 mine=true 인 글이 "내 글"이다. 남의 글은 목록에만 보이고 상세는 404.
+type MockInquiry = S["InquiryDetail"] & { mine: boolean };
+const inquiries: MockInquiry[] = [];
+let inquirySeq = 100;
+
+function seedDemoInquiries(): void {
+  const now = Date.now();
+  inquiries.push(
+    {
+      inquiryId: String(inquirySeq++),
+      title: "대여 취소 시 환불은 언제 되나요?",
+      content: "취소 신청을 했는데 환불은 언제쯤 받을 수 있나요?",
+      status: "ANSWERED",
+      answer: "확인 후 영업일 기준 3일 이내로 입금하신 계좌로 환불해 드려요.",
+      answeredAt: new Date(now - 24 * 3600 * 1000).toISOString(),
+      createdAt: new Date(now - 2 * 24 * 3600 * 1000).toISOString(),
+      mine: false,
+    },
+    {
+      inquiryId: String(inquirySeq++),
+      title: "자전거 대여 시 헬멧도 포함인가요?",
+      content: "자전거 대여할 때 헬멧도 같이 대여할 수 있나요?",
+      status: "WAITING",
+      answer: null,
+      answeredAt: null,
+      createdAt: new Date(now - 3600 * 1000).toISOString(),
+      mine: true,
+    },
+  );
+}
+
+seedDemoInquiries();
+
+export function listInquiries(): S["InquirySummary"][] {
+  return [...inquiries]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map(({ inquiryId, title, status, mine, createdAt }) => ({ inquiryId, title, status, mine, createdAt }));
+}
+
+export function createInquiry(dto: S["InquiryCreateRequest"]): S["InquiryDetail"] {
+  const detail: S["InquiryDetail"] = {
+    inquiryId: String(inquirySeq++),
+    title: dto.title.trim(),
+    content: dto.content.trim(),
+    status: "WAITING",
+    answer: null,
+    answeredAt: null,
+    createdAt: new Date().toISOString(),
+  };
+  inquiries.push({ ...detail, mine: true });
+  return detail;
+}
+
+export function getMyInquiry(inquiryId: string): S["InquiryDetail"] | undefined {
+  const found = inquiries.find((q) => q.inquiryId === inquiryId && q.mine);
+  if (!found) return undefined;
+  const { mine: _mine, ...detail } = found;
+  return detail;
+}
+
+export function deleteMyInquiry(inquiryId: string): boolean {
+  const idx = inquiries.findIndex((q) => q.inquiryId === inquiryId && q.mine);
+  if (idx < 0) return false;
+  inquiries.splice(idx, 1);
+  return true;
+}
+
 // 테스트 격리용 리셋
 export function __reset(): void {
   seq = 1;
   cart.length = 0;
   bookings.clear();
+  inquiries.length = 0;
 }

@@ -429,26 +429,6 @@ export interface Invoice {
 }
 
 /**
- * 고객 1:1 문의(S4-C4 질문하기 / S4-A2 문의 관리). 로그인 기능이 없어 비공개 글은
- * 4자리 비밀번호로 열람을 제한한다 — 이 잠금은 고객앱에서만 적용하고, 관리자는 답변을
- * 위해 항상 전체 내용을 볼 수 있어야 하므로 관리자 화면에는 적용하지 않는다.
- */
-export interface InquiryEntry {
-  id: string;
-  title: string;
-  content: string;
-  isPublic: boolean;
-  /** 비공개 글의 열람용 비밀번호(4자리). 공개 글이면 없음. */
-  pin?: string;
-  /** 관리자 답변. 없으면 "답변 대기". 답변 등록 시 고객에게 카카오 알림톡 발송(알림 인터페이스, 실발송 이연). */
-  answer?: string;
-  answeredAt?: string;
-  /** 답변을 본 뒤 같은 글에 이어서 남긴 추가 질문들. */
-  followUps?: string[];
-  createdAt: string;
-}
-
-/**
  * 랜딩 히어로 배너 한 장(S4-A1/A3 관리자 콘텐츠 관리에서 편집 / 고객앱 홈 캐러셀·여행사앱
  * 로그인 배경에 노출). 값 자체는 `packages/catalog-data`가 단일 출처로 갖고 있고, 세 앱
  * (admin/customer/agency) 모두 거기서 읽어온다 — admin에서 이 값을 고치면(실제 저장 연동

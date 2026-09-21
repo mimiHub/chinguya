@@ -312,6 +312,49 @@ export interface CustomerFaq {
   answer: string;
 }
 
+/**
+ * 질문하기(S4-C4/C5)·문의 관리(S4-A2) 타입. 계약: slice1 yaml 의 Inquiry*, admin yaml 의 AdminInquiry.
+ * 답변이 없으면 WAITING(대기), 있으면 ANSWERED(답변완료).
+ */
+export type InquiryStatus = "WAITING" | "ANSWERED";
+
+/** 고객 질문 목록 한 줄 — 제목·상태만(전체 공개). mine=false면 화면은 잠금 표시하고 상세를 열지 않는다. */
+export interface InquirySummary {
+  inquiryId: string;
+  title: string;
+  status: InquiryStatus;
+  mine: boolean;
+  createdAt: string;
+}
+
+/** 내 질문 상세 — 본인 글에만 내려온다. */
+export interface InquiryDetail {
+  inquiryId: string;
+  title: string;
+  content: string;
+  status: InquiryStatus;
+  answer?: string | null;
+  answeredAt?: string | null;
+  createdAt: string;
+}
+
+export interface InquiryInput {
+  title: string;
+  content: string;
+}
+
+/** 관리자 문의 한 건 — 본인 글 잠금 없이 본문·답변을 모두 담는다. */
+export interface AdminInquiry {
+  inquiryId: string;
+  title: string;
+  content: string;
+  status: InquiryStatus;
+  customerLoginId: string;
+  answer?: string | null;
+  answeredAt?: string | null;
+  createdAt: string;
+}
+
 export interface CustomerProductListPage {
   content: CustomerProductSummary[];
   page: number;
@@ -718,6 +761,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       list: () => request<CustomerFaq[]>("/faqs"),
     },
     /**
+     * 질문하기(S4-C4 목록 / S4-C5 상세·작성). 전부 고객 로그인 필요(비로그인 401).
+     * 상세·삭제는 본인 글만 — 남의 글·없는 글은 404(INQUIRY_NOT_FOUND).
+     */
+    customerInquiries: {
+      list: () => request<InquirySummary[]>("/inquiries"),
+      create: (body: InquiryInput) =>
+        request<InquiryDetail>("/inquiries", { method: "POST", body: JSON.stringify(body) }),
+      detail: (inquiryId: string) => request<InquiryDetail>(`/inquiries/${inquiryId}`),
+      remove: (inquiryId: string) => request<void>(`/inquiries/${inquiryId}`, { method: "DELETE" }),
+    },
+    /**
      * 장바구니 = 임시 홀드(S1-C2 담기 / S1-C3). 고객 로그인이 필요하다(비로그인 401).
      * 잔여가 모자라면 409(OUT_OF_STOCK), 예약 가능 기간 밖이면 400(DATE_NOT_BOOKABLE).
      */
@@ -1006,6 +1060,16 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** 전체 id를 원하는 순서대로 보낸다. 그 사이 등록·삭제가 있었으면 409(FAQ_ORDER_MISMATCH). */
       reorder: (faqIds: string[]) =>
         request<AdminFaq[]>("/faqs/order", { method: "PUT", body: JSON.stringify({ faqIds }) }),
+    },
+    /**
+     * 문의 관리(S4-A2-1 목록 / S4-A2-2 상세·답변). 조회는 관리자 누구나, 답변은 슈퍼어드민만(403).
+     * 답변은 질문당 하나라 다시 보내면 덮어쓴다.
+     */
+    inquiries: {
+      list: () => request<AdminInquiry[]>("/inquiries"),
+      detail: (inquiryId: string) => request<AdminInquiry>(`/inquiries/${inquiryId}`),
+      answer: (inquiryId: string, answer: string) =>
+        request<AdminInquiry>(`/inquiries/${inquiryId}/answer`, { method: "PUT", body: JSON.stringify({ answer }) }),
     },
     /**
      * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
