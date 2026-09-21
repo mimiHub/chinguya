@@ -16,8 +16,8 @@ const api = createApiClient();
  * 화면을 꽉 채우는 요소라, 응답을 기다리며 빈 화면을 보여주는 것보다 초기값을 띄우고 교체하는
  * 편이 낫다고 판단했다.
  *
- * ⚠ 여행사 로그인 배경(AuthBackgroundSlides.tsx)도 같은 배너 값을 쓰는데, 그쪽은 아직 이 API 를
- * 읽지 않아 번들 초기값만 보여준다. 붙일 때 같은 계약(`GET /v1/content/banners`)을 쓰면 된다.
+ * 여행사 로그인 배경(agency/AuthBackgroundSlides.tsx)도 같은 API 를 읽는다 — 관리자가 배너를
+ * 바꾸면 두 화면이 같이 바뀐다.
  */
 interface Slide {
   title: string;
@@ -67,7 +67,7 @@ export function HomeCarousel() {
 
   useEffect(() => {
     let active = true;
-    api.customerContent
+    api.publicContent
       .banners()
       .then((banners) => {
         // 배너가 비어 있으면(운영 초기) 초기값을 그대로 둔다 — 빈 히어로를 띄우지 않는다.

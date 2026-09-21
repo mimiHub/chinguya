@@ -966,13 +966,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       list: () => request<CustomerFaq[]>("/faqs"),
     },
     /**
-     * 고객 랜딩 콘텐츠(안 A). 비로그인 열람 허용이고, 관리자 콘텐츠 관리(S4-A3)가 저장한
-     * 값을 그대로 받는다 — 응답 모양도 관리자와 같은 `HeroBanner` 다.
+     * 비로그인 열람이 허용된 공용 콘텐츠. 관리자 콘텐츠 관리(S4-A3)가 저장한 값을 그대로
+     * 받는다 — 응답 모양도 관리자와 같은 `HeroBanner` 다.
+     *
+     * `customer*`/`agency*` 와 달리 앱 이름을 붙이지 않은 것은 **고객 랜딩(안 A)과 여행사
+     * 로그인 배경(S2-G1/G2)이 같은 배너를 함께 쓰기** 때문이다. 두 앱 프록시 모두 `/v1`
+     * 프리픽스를 붙이므로 경로도 같다.
      *
      * 서비스 소개(S4-C2)는 없다 — 관리자 페이지에서 관리하지 않기로 했고(2026-09-21),
      * 화면이 문구를 직접 들고 있다.
      */
-    customerContent: {
+    publicContent: {
       /** 히어로 배너 3장(slot 오름차순). */
       banners: () => request<HeroBanner[]>("/content/banners"),
     },
