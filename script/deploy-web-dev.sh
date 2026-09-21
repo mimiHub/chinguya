@@ -51,6 +51,31 @@ for APP in "${APPS[@]}"; do
 	[ -n "${PORTS[$APP]:-}" ] || { echo "모르는 앱: $APP (customer|admin|agency)" >&2; exit 1; }
 done
 
+# 아래 빌드는 `apps/*/.next` 를 프로덕션 산출물로 갈아치운다. 그 폴더에서 `pnpm dev` 가
+# 돌고 있으면 dev 서버가 참조하던 청크가 사라져 `Cannot find module './###.js'` 로 죽는다
+# (2026-09-21에 실제로 로컬 3000·3002 를 깨뜨렸다).
+#
+# **이 체크아웃의** dev 서버만 막는다 — 별도 worktree 에서 배포하면 `.next` 가 달라서
+# 안전하기 때문이다. 그래서 포트가 아니라 프로세스의 cwd 를 본다.
+REPO_ROOT=$(pwd -P)
+BLOCKING=$(pgrep -f next-server 2>/dev/null | while read -r pid; do
+	CWD=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+	# case 대신 [[ ]] 를 쓴다 — 패턴의 `)` 를 명령 치환의 끝으로 오인하는 bash 가 있다.
+	if [[ "$CWD" == "$REPO_ROOT"/apps/* ]]; then
+		printf '    PID %s  %s\n' "$pid" "$CWD"
+	fi
+done || true)
+if [ -n "$BLOCKING" ]; then
+	{
+		echo "이 체크아웃에서 dev 서버가 돌고 있다 — 배포 빌드가 그 .next 를 덮어써서 죽는다:"
+		echo "$BLOCKING"
+		echo
+		echo "먼저 dev 를 멈추거나, 별도 worktree 에서 배포할 것(권장)."
+		echo "이미 섞였으면 dev 를 멈춘 뒤: rm -rf apps/*/.next"
+	} >&2
+	exit 1
+fi
+
 echo "==> 1/5 빌드 (standalone)"
 FILTERS=()
 for APP in "${APPS[@]}"; do
