@@ -341,6 +341,73 @@ paths:
               schema: { type: string, format: binary }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /notices:
+    get:
+      tags: [notice]
+      summary: 공지사항·이벤트 목록 (S4-C6)
+      x-screens: [S4-C6]
+      description: |
+        관리자(S4-A4)가 등록한 글 중 **공개 글만** 돌려준다(숨긴 글은 빠진다). 비로그인 열람 허용.
+
+        정렬은 **고정 글 먼저, 그다음 작성일 내림차순**(같으면 id 내림차순) — 관리자 목록과 같은 순서다.
+
+        화면이 **무한 스크롤**이라 페이지를 이어 붙인다. 본문·첨부는 담지 않는다 — 목록이
+        무거워지고 첫 화면이 늦어지기 때문이다. 상세는 `GET /notices/{noticeId}` 로 받는다.
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/NoticeCategory' }
+          description: 비우면 전체. 화면은 탭에 맞춰 항상 하나를 보낸다.
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 공개 글 한 페이지. 없으면 `content` 가 빈 배열이다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoticeListPage' }
+        '400':
+          description: 카테고리 값이 올바르지 않거나 page·size 범위를 벗어났다(`VALIDATION_ERROR`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /notices/{noticeId}:
+    get:
+      tags: [notice]
+      summary: 공지사항·이벤트 상세 (S4-C6)
+      x-screens: [S4-C6]
+      description: |
+        글 1건의 본문과 첨부 이미지. 비로그인 열람 허용.
+
+        **숨긴 글은 404** 다 — 목록에서 빠졌는데 주소를 직접 치면 보이는 일이 없어야 한다.
+
+        본문의 `![설명](주소)` 표기는 **화면이 이미지로 렌더한다**. 그 외 마크다운 문법은 서버도
+        화면도 해석하지 않고 글자 그대로 둔다(관리자 S4-A4와 같은 범위).
+      security: []
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 글 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoticeDetail' }
+        '404':
+          description: 존재하지 않거나 **숨겨진** 글(`NOTICE_NOT_FOUND`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /faqs:
     get:
       tags: [faq]
@@ -1066,6 +1133,61 @@ components:
       type: integer
       minimum: 0
       description: KRW 정수(원).
+
+    NoticeCategory:
+      type: string
+      enum: [NOTICE, EVENT]
+      description: 공지사항·이벤트 **2개 고정**. 화면의 캡슐 탭이 이 둘이다.
+
+    NoticeSummary:
+      type: object
+      required: [noticeId, category, title, createdAt, pinned]
+      description: 목록 한 줄(S4-C6). 본문·첨부는 상세에서 받는다.
+      properties:
+        noticeId: { type: string, example: '12' }
+        category: { $ref: '#/components/schemas/NoticeCategory' }
+        title: { type: string }
+        createdAt:
+          type: string
+          format: date
+          description: 작성일. 화면이 카드 오른쪽에 표시한다.
+        pinned:
+          type: boolean
+          description: true 면 목록 맨 위에 붙는다. 화면이 따로 표시하지 않아도 순서로 드러난다.
+        eventStartDate: { type: string, format: date, nullable: true }
+        eventEndDate:
+          type: string
+          format: date
+          nullable: true
+          description: 이 날짜가 지난 이벤트는 화면이 '종료'로 표시한다.
+
+    NoticeListPage:
+      type: object
+      required: [content, page, size, totalElements]
+      description: 무한 스크롤이 이어 붙이는 한 페이지.
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/NoticeSummary' }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, minimum: 0 }
+
+    NoticeDetail:
+      allOf:
+        - $ref: '#/components/schemas/NoticeSummary'
+        - type: object
+          required: [content, imageUrls]
+          properties:
+            content:
+              type: string
+              description: |
+                줄바꿈이 보존돼 있다. `![설명](주소)` 표기는 화면이 이미지로 바꿔 보여준다.
+                다른 마크다운 문법은 글자 그대로다.
+            imageUrls:
+              type: array
+              description: 첨부 이미지. 본문 아래에 순서대로 보여준다.
+              items: { type: string }
 
     Faq:
       type: object

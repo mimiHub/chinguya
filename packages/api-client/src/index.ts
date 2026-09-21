@@ -331,6 +331,64 @@ export interface AdminDashboard {
   todayVisits: AdminDashboardVisit[];
 }
 
+/**
+ * 공지사항·이벤트 카테고리 — **2개 고정**이다. 관리자가 추가할 수 없고, 고객 화면(S4-C6)의
+ * 캡슐 탭이 이 둘에 맞춰져 있다.
+ */
+export type NoticeCategory = "NOTICE" | "EVENT";
+
+/** 목록 한 줄. 본문·첨부는 없다 — 목록이 무거워지지 않게 상세에서 따로 받는다. */
+export interface NoticeSummary {
+  noticeId: string;
+  category: NoticeCategory;
+  title: string;
+  /** 작성일(YYYY-MM-DD). 서버가 정하고 관리자가 고치지 않는다. */
+  createdAt: string;
+  /** 관리자 목록에만 의미가 있다 — 고객 목록에는 공개 글만 와서 늘 true 다. */
+  published: boolean;
+  /** true 면 목록 맨 위. 순서로 드러나므로 화면이 따로 표시하지 않아도 된다. */
+  pinned: boolean;
+  /** 이벤트에만 값이 있다. 비우면 '상시'. */
+  eventStartDate: string | null;
+  /** 이 날짜가 지난 이벤트는 화면이 '종료'로 표시한다. */
+  eventEndDate: string | null;
+}
+
+/** 글 상세. 관리자 수정 폼(S4-A4)과 고객 상세(S4-C6)가 같이 쓴다. */
+export interface NoticeDetail extends NoticeSummary {
+  /**
+   * 줄바꿈이 보존돼 있다. `![설명](주소)` 표기는 **화면이 이미지로 렌더한다** —
+   * 그 외 마크다운 문법은 서버도 화면도 해석하지 않고 글자 그대로 둔다.
+   */
+  content: string;
+  /** 첨부 이미지. 본문 아래에 순서대로 보여준다. */
+  imageUrls: string[];
+  updatedAt: string;
+}
+
+/** 무한 스크롤이 이어 붙이는 한 페이지. 관리자·고객이 같은 모양을 쓴다. */
+export interface NoticeListPage {
+  content: NoticeSummary[];
+  page: number;
+  size: number;
+  /** 화면이 "더 받을 게 남았는지"를 이 값과 지금까지 받은 개수로 판단한다. */
+  totalElements: number;
+}
+
+/** 등록·수정 요청. 수정은 이 값으로 **통째로 교체**한다(첨부 배열도 덮어쓴다). */
+export interface NoticeInput {
+  category: NoticeCategory;
+  title: string;
+  content: string;
+  published: boolean;
+  pinned: boolean;
+  /** 이벤트에만. 공지사항에 값을 보내면 400. */
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  /** 업로드는 `content.uploadImage` 가 하고, 여기엔 그 주소만 담는다. 최대 5장. */
+  imageUrls?: string[];
+}
+
 /** 여행사 예약 상태. 입금 흐름이 없어 두 값뿐이다. */
 export type AgencyReservationStatus = "COMPLETED" | "CANCELLED";
 
@@ -908,6 +966,22 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       list: () => request<CustomerFaq[]>("/faqs"),
     },
     /**
+     * 고객 공지사항·이벤트(S4-C6). 비로그인 열람 허용이고 **공개 글만** 온다.
+     * 숨긴 글은 상세도 404 다 — 주소를 직접 쳐도 보이지 않는다.
+     */
+    customerNotices: {
+      /** 무한 스크롤이 page 를 올려 가며 이어 붙인다. */
+      list: (params: { category?: NoticeCategory; page?: number; size?: number } = {}) => {
+        const query = new URLSearchParams({
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.category) query.set("category", params.category);
+        return request<NoticeListPage>(`/notices?${query.toString()}`);
+      },
+      detail: (noticeId: string) => request<NoticeDetail>(`/notices/${noticeId}`),
+    },
+    /**
      * 질문하기(S4-C4 목록 / S4-C5 상세·작성). 전부 고객 로그인 필요(비로그인 401).
      * 상세·삭제는 본인 글만 — 남의 글·없는 글은 404(INQUIRY_NOT_FOUND).
      */
@@ -1226,6 +1300,30 @@ export function createApiClient(opts: ApiClientOptions = {}) {
      * 아이디가 겹치면(삭제된 계정 포함) 409(DUPLICATE_LOGIN_ID), 마지막 슈퍼어드민을 내리거나
      * 삭제하면 409(LAST_SUPER_ADMIN). 삭제는 소프트 삭제다.
      */
+    /**
+     * 공지사항·이벤트 관리(S4-A4). 목록은 **숨긴 글도 함께** 온다(화면이 토글로 다시 공개한다).
+     *
+     * 첨부 이미지 업로드는 이 네임스페이스가 하지 않는다 — `content.uploadImage` 로 올린 뒤
+     * 받은 주소를 `imageUrls` 에 담는다(배너와 같은 저장소를 쓴다).
+     */
+    notices: {
+      list: (params: { category?: NoticeCategory; page?: number; size?: number } = {}) => {
+        const query = new URLSearchParams({
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.category) query.set("category", params.category);
+        return request<NoticeListPage>(`/notices?${query.toString()}`);
+      },
+      detail: (noticeId: string) => request<NoticeDetail>(`/notices/${noticeId}`),
+      create: (body: NoticeInput) =>
+        request<NoticeDetail>("/notices", { method: "POST", body: JSON.stringify(body) }),
+      /** 통째로 교체한다. 첨부를 한 장 빼려면 나머지만 담아 보낸다. */
+      update: (noticeId: string, body: NoticeInput) =>
+        request<NoticeDetail>(`/notices/${noticeId}`, { method: "PUT", body: JSON.stringify(body) }),
+      /** 완전 삭제(복원 없음). 잠시 내리는 용도로는 published: false 를 쓴다. */
+      remove: (noticeId: string) => request<void>(`/notices/${noticeId}`, { method: "DELETE" }),
+    },
     /**
      * 관리자 대시보드(S1-A1). 지표·재고 초과 날짜·오늘 방문 예약을 한 번에 받는다 —
      * 예전에는 화면이 자산 목록을 받아 자산×월마다 재고 스냅샷을 따로 불렀다.

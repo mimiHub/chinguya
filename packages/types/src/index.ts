@@ -419,6 +419,20 @@ export interface DepositAccount {
 }
 
 /**
+ * 공지사항·이벤트 카테고리 — **2개 고정**이다(2026-09-21 결정).
+ *
+ * 관리자가 추가·수정할 수 없다. 고객 화면(S4-C6)의 캡슐 탭이 이 둘에 맞춰져 있어서,
+ * 값이 늘면 그 화면도 동적으로 바뀌어야 한다. 값 표기는 Core API 계약·DB CHECK 와 같다.
+ */
+export type NoticeCategoryKey = "NOTICE" | "EVENT";
+
+/** 카테고리의 화면 노출 라벨. 관리자·고객 두 앱이 같은 문구를 쓴다. */
+export const NOTICE_CATEGORY_LABEL: Record<NoticeCategoryKey, string> = {
+  NOTICE: "공지사항",
+  EVENT: "이벤트",
+};
+
+/**
  * 인보이스 정산(입금) 상태 라벨 — 관리자 목록(S2-A5)·상세(S2-A6) 공용.
  *
  * 인보이스 자체의 모양은 Core API 계약이 정한다(`@chinguya/api-client` 의 `AdminInvoiceSummary`·
