@@ -966,6 +966,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       list: () => request<CustomerFaq[]>("/faqs"),
     },
     /**
+     * 고객 랜딩 콘텐츠(안 A). 비로그인 열람 허용이고, 관리자 콘텐츠 관리(S4-A3)가 저장한
+     * 값을 그대로 받는다 — 응답 모양도 관리자와 같은 `HeroBanner` 다.
+     *
+     * 서비스 소개(S4-C2)는 없다 — 관리자 페이지에서 관리하지 않기로 했고(2026-09-21),
+     * 화면이 문구를 직접 들고 있다.
+     */
+    customerContent: {
+      /** 히어로 배너 3장(slot 오름차순). */
+      banners: () => request<HeroBanner[]>("/content/banners"),
+    },
+    /**
      * 고객 공지사항·이벤트(S4-C6). 비로그인 열람 허용이고 **공개 글만** 온다.
      * 숨긴 글은 상세도 404 다 — 주소를 직접 쳐도 보이지 않는다.
      */

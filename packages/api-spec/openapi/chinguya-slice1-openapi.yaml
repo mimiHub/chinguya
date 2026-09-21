@@ -315,6 +315,34 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /content/banners:
+    get:
+      tags: [content]
+      summary: 랜딩 히어로 배너 (안 A)
+      x-screens: [안 A]
+      description: |
+        관리자 콘텐츠 관리(S4-A3)에서 편집한 **랜딩 히어로 배너 3장**을 slot 순서로 돌려준다.
+        비로그인 열람 허용.
+
+        배너는 **3장 고정**이다(slot 1·2·3). 장마다 PC용·모바일용 이미지가 따로 있고, 화면 폭에
+        맞는 쪽만 보여준다 — 반응형으로 한 장을 늘려 쓰는 게 아니라 통째로 다른 이미지다.
+
+        이미지 주소는 두 가지가 섞여 온다. `/content/images/…` 는 관리자가 올린 파일이라
+        `GET /content/images/{fileName}` 으로 읽고, 그 밖의 `/…` 는 웹앱 정적 파일(초기값)이라
+        앱이 그대로 쓴다.
+
+        ⚠ 이 배너는 **여행사 로그인 배경**(S2-G1/G2)도 쓰는 값이다. 그쪽은 아직 이 API 를 읽지
+        않아 번들된 초기값을 보여준다 — 붙일 때 같은 계약을 쓰면 된다.
+      security: []
+      responses:
+        '200':
+          description: slot 오름차순 배너 3장
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HeroBanner' }
+
   /content/images/{fileName}:
     get:
       tags: [products]
@@ -1133,6 +1161,29 @@ components:
       type: integer
       minimum: 0
       description: KRW 정수(원).
+
+    HeroBanner:
+      type: object
+      required: [slot, title, pcImageUrl, mobileImageUrl]
+      description: 랜딩 히어로 배너 한 장. 관리자 편집(S4-A3)과 같은 모양이다.
+      properties:
+        slot:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: 표시 순서. 1·2·3 이 하나씩 온다.
+        title:
+          type: string
+          description: 줄바꿈(\n)이 보존돼 있다.
+        subtitle:
+          type: [string, 'null']
+          description: 없을 수 있다.
+        pcImageUrl:
+          type: string
+          description: 넓은 화면용. `/content/images/…`(관리자 업로드) 또는 `/…`(앱 정적 파일).
+        mobileImageUrl:
+          type: string
+          description: 좁은 화면용.
 
     NoticeCategory:
       type: string
