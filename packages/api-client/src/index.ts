@@ -284,6 +284,31 @@ export interface AgencyInvoice {
 /** 여행사 예약 상태. 입금 흐름이 없어 두 값뿐이다. */
 export type AgencyReservationStatus = "COMPLETED" | "CANCELLED";
 
+/**
+ * S2-G3 오늘 이용자 명단 한 줄 = 예약 1건.
+ *
+ * **이용자 이름이 없다.** 여행사 예약은 수량만 받고 이용자 개인을 식별하지 않는다 —
+ * 와이어프레임 g-dash 에 있던 '이용자 여권명' 열을 그래서 뺐다(계약 헤더 2026-09-21 참고).
+ */
+export interface AgencyDashboardUser {
+  reservationNumber: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  /** 명단은 완료만 내려오므로 사실상 고정값이다. 화면이 값을 지어내지 않게 서버가 준다. */
+  status: AgencyReservationStatus;
+}
+
+/** S2-G3 대시보드. 저장된 문서가 아니라 서버가 예약에서 집계한 값이다. */
+export interface AgencyDashboard {
+  /** 서버가 정한 '오늘'. 브라우저 시계를 쓰면 자정 근처에서 어제·내일 명단을 보게 된다. */
+  today: string;
+  /** 오늘 등록한 예약 수(취소된 것 포함). 0 이면 화면이 카드 문구·표정을 바꾼다. */
+  newReservationCount: number;
+  /** 오늘 이용 시작하는 완료 예약. 예약번호 오름차순. 비어 있으면 표에 '데이터 없음'. */
+  todayUsers: AgencyDashboardUser[];
+}
+
 /** S2-A6 인보이스 라인 1줄. 여행사 화면(S2-G7)의 라인과 같은 모양이다 — 같은 집계라서다. */
 export interface AdminInvoiceLineItem {
   useDate: string;
@@ -923,6 +948,15 @@ export function createApiClient(opts: ApiClientOptions = {}) {
        * 대상 예약이 없어도 200 이고, lineItems 가 빈 배열·totalAmount 가 0 으로 온다.
        */
       previousMonth: () => request<AgencyInvoice>("/agency/invoices"),
+    },
+    /**
+     * 여행사 대시보드(S2-G3). 계약: api-spec/openapi/chinguya-agency-api.yaml.
+     *
+     * 여행사명은 여기 없다 — 세션(`/agency/auth/me`)이 이미 주고 앱 셸이 그걸 쓴다.
+     */
+    agencyDashboard: {
+      /** 오늘 이용자 명단 + 신규 예약 건수. 오늘 이용 예정이 없어도 200(빈 배열)이다. */
+      get: () => request<AgencyDashboard>("/agency/dashboard"),
     },
     /**
      * 관리자 자산 관리(S1-A2). 관리자 앱의 프록시가 `/admin` 프리픽스를 붙이므로
