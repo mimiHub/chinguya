@@ -33,6 +33,14 @@ REMOTE_ROOT=/opt/chinguya/web-dev
 # 이 포트들은 보안그룹이 외부에 열지 않는다 — 접속은 nginx :80 을 통해서만 한다.
 declare -A PORTS=([customer]=3100 [admin]=3101 [agency]=3102)
 
+# 앱 → 접속 도메인. Route53 → ALB(*.1daybus.com 인증서로 TLS 종료) → 이 인스턴스 :80
+# → nginx(server_name 별) → 위 포트. 헬스체크가 Host 헤더로 쓰는 값이다.
+declare -A DOMAINS=(
+	[customer]=chinguya.1daybus.com
+	[admin]=chinguya-admin.1daybus.com
+	[agency]=chinguya-agency.1daybus.com
+)
+
 cd "$(dirname "$0")/.."
 
 APPS=("$@")
@@ -90,12 +98,16 @@ done
 echo "==> 5/5 헬스체크"
 # 3100~3102 는 보안그룹이 막고 있다(의도적 — 외부 노출은 nginx :80 하나뿐이다).
 # 그래서 포트를 직접 찌르지 않고 nginx 를 Host 헤더로 통과시켜 본다.
-DASHED=${HOST//./-}
+#
+# ALB 를 거치지 않고 EC2 :80 을 바로 찌르므로 X-Forwarded-Proto 가 없다. nginx conf 가 그
+# 값을 그대로 넘기게 돼 있어서(ALB 가 TLS 를 끝내므로) 비워 두면 앱이 평문으로 오인한다 —
+# ALB 가 넣어 주는 값을 흉내내 https 로 넣어 준다.
 FAILED=0
 for APP in "${APPS[@]}"; do
 	OK=0
 	for _ in $(seq 1 20); do
-		CODE=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Host: $APP.$DASHED.nip.io" "http://$HOST/" || true)
+		CODE=$(curl -s -m 5 -o /dev/null -w '%{http_code}' \
+			-H "Host: ${DOMAINS[$APP]}" -H 'X-Forwarded-Proto: https' "http://$HOST/" || true)
 		# 관리자·여행사는 미인증이면 로그인으로 307 을 낸다. 2xx/3xx 면 기동한 것이다.
 		case "$CODE" in
 			2??|3??) OK=1; break ;;
@@ -103,7 +115,7 @@ for APP in "${APPS[@]}"; do
 		sleep 3
 	done
 	if [ "$OK" = 1 ]; then
-		echo "    OK — $APP  http://$APP.$DASHED.nip.io ($CODE)"
+		echo "    OK — $APP  https://${DOMAINS[$APP]} ($CODE)"
 	else
 		echo "    실패 — $APP 가 60초 안에 기동하지 않았다 (마지막 응답 '$CODE')" >&2
 		# shellcheck disable=SC2086
