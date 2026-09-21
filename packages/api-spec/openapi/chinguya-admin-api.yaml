@@ -11,7 +11,7 @@ openapi: 3.1.0
 # 2026-09-21 변경(문의 관리 S4-A2-1/A2-2 — 고객 질문하기 S4-C5 실연동과 함께):
 #   1. `GET /admin/inquiries`·`GET /admin/inquiries/{inquiryId}`·`PUT /admin/inquiries/{inquiryId}/answer` 신설.
 #   2. 조회는 관리자 누구나, 답변 등록·수정은 슈퍼어드민만(403). 고객 쪽 본인 글 잠금은 관리자에게 적용하지 않는다.
-#   3. 답변은 질문당 하나 — 다시 보내면 덮어쓴다(답변 수정). 카카오 알림톡 발송은 이연(아직 안 보냄).
+#   3. 답변은 질문당 하나 — 다시 보내면 덮어쓴다(답변 수정). 카카오 알림톡은 첫 등록 때만, 실발송은 이연(로그만).
 #
 # 2026-09-18 변경(취소요청 처리 S1-A9 — 스펙 선행, 백엔드 미구현):
 #   1. `GET /admin/cancellations/{cancellationId}`·`POST /admin/cancellations/{cancellationId}/confirm` 신설.
@@ -1660,7 +1660,7 @@ paths:
       summary: 답변 등록·수정 (S4-A2-2)
       description: |
         답변은 질문당 하나다. 이미 있으면 덮어쓰고 `answeredAt`을 새로 찍는다. 앞뒤 공백은 서버가 제거한다.
-        카카오 알림톡 발송은 이연(아직 보내지 않는다).
+        고객 카카오 알림톡은 **첫 등록 때만** 보낸다(수정 시엔 보내지 않음). 실발송은 이연 — 지금은 서버 로그만 남긴다.
       requestBody:
         required: true
         content:
