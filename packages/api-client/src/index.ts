@@ -53,7 +53,7 @@ export interface InventoryDaySnapshot {
   /** max(totalStock − allocated, 0) */
   customerAvailable: number;
   closed: boolean;
-  /** ⚠ 예약 백엔드가 없어 항상 0(api-spec 헤더 TODO 7). */
+  /** 그날 이 자산을 점유하는 확정 고객 예약 수량(장바구니 홀드는 빼고). */
   reserved: number;
   remaining: number;
   hasAdjustment: boolean;
@@ -301,6 +301,34 @@ export interface AgencyInvoice {
   lineItems: AgencyInvoiceLineItem[];
   /** 완료 예약 금액 합 + 취소 예약의 취소 수수료 합. 대상이 없으면 0. */
   totalAmount: number;
+}
+
+/** S1-A1 오늘 방문 예약 카드 한 장. 누르면 예약 상세(S1-A7)로 간다. */
+export interface AdminDashboardVisit {
+  bookingId: string;
+  bookingNumber: string;
+  /** 카드에 한 줄로 적는 상품 요약. 항목이 여럿이면 `첫 상품명 외 N건` — 서버가 만들어 준다. */
+  productSummary: string;
+  useDate: string;
+  status: "AWAITING_DEPOSIT" | "RECEIVED" | "COMPLETED" | "CANCEL_REQUESTED" | "CANCELLED";
+  /** 입금 기한이 지났는지. 저장된 상태가 아니라 계산 결과다(S1-A6 의 unpaid 와 같은 규칙). */
+  unpaid: boolean;
+}
+
+/** S1-A1 대시보드. 저장된 문서가 아니라 서버가 예약·재고에서 집계한 값이다. */
+export interface AdminDashboard {
+  /** 서버가 정한 '오늘'(**일본 기준**). 화면은 다시 계산하지 않는다. */
+  today: string;
+  /** 입금대기 예약 수(기한 내). 0 이면 화면이 큰 카드의 표정을 슬픈 쪽으로 바꾼다. */
+  newBookingCount: number;
+  /** 접수 예약 수(기한 내) — 고객이 입금했다고 알려 확인이 필요한 건. */
+  depositRequestCount: number;
+  /** 처리 안 된 취소 요청이 있는 예약 수. */
+  cancelRequestCount: number;
+  /** 오늘 ~ +3개월 안의 재고 초과 날짜. 오름차순·중복 없음. */
+  overCapacityDates: string[];
+  /** 오늘 이용을 시작하는 예약. 예약번호 오름차순. */
+  todayVisits: AdminDashboardVisit[];
 }
 
 /** 여행사 예약 상태. 입금 흐름이 없어 두 값뿐이다. */
@@ -1198,6 +1226,13 @@ export function createApiClient(opts: ApiClientOptions = {}) {
      * 아이디가 겹치면(삭제된 계정 포함) 409(DUPLICATE_LOGIN_ID), 마지막 슈퍼어드민을 내리거나
      * 삭제하면 409(LAST_SUPER_ADMIN). 삭제는 소프트 삭제다.
      */
+    /**
+     * 관리자 대시보드(S1-A1). 지표·재고 초과 날짜·오늘 방문 예약을 한 번에 받는다 —
+     * 예전에는 화면이 자산 목록을 받아 자산×월마다 재고 스냅샷을 따로 불렀다.
+     */
+    dashboard: {
+      get: () => request<AdminDashboard>("/dashboard"),
+    },
     admins: {
       list: () => request<AdminAccount[]>("/admins"),
       create: (body: AdminAccountCreateInput) =>

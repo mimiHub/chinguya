@@ -3,7 +3,16 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
-# 범위: 관리자 인증(S0-A2 로그인), 관리자 계정 관리(S0-A5/A6), 자산 관리(S1-A2),
+# 2026-09-21 변경(대시보드 S1-A1 — 스펙 선행):
+#   1. `GET /admin/dashboard` 신설. 지표 3개·재고 초과 날짜·오늘 방문 예약을 한 번에 준다.
+#   2. **지표 3개를 입금 단계로 가른다** — 신규 예약 = 입금대기, 입금확인 요청 = 접수(고객이
+#      입금했다고 알린 건), 취소요청 = 미처리 취소 요청. 와이어프레임이 기준을 정하지 않아
+#      여기서 정했다. 셋이 겹치지 않고, 입금 기한이 지난 건은 앞의 둘에서 뺀다(미입금 탭 소관).
+#   3. **재고 초과 집계를 서버로 옮긴다.** 화면이 자산 목록을 받아 자산×월마다 스냅샷을 부르던
+#      것을 한 번의 호출로 바꾼다. 범위도 이번 달·다음 달에서 **오늘 ~ +3개월**로 넓혔다
+#      (예약 가능 기간과 같은 범위).
+#
+# 범위: 관리자 인증(S0-A2 로그인), 관리자 계정 관리(S0-A5/A6), 대시보드(S1-A1), 자산 관리(S1-A2),
 #       날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
 #       여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3), 예약 관리 목록·상세·
 #       입금확인·미입금 강제취소(S1-A6/A7/A8), 취소요청 처리(S1-A9),
@@ -329,6 +338,48 @@ paths:
           $ref: '#/components/responses/AdminNotFound'
         '409':
           $ref: '#/components/responses/LastSuperAdmin'
+
+  /admin/dashboard:
+    get:
+      tags: [admin-dashboard]
+      x-screens: [S1-A1]
+      summary: 관리자 대시보드 (S1-A1)
+      description: |
+        로그인 직후 보는 화면의 세 덩어리 — **지표 3개**, **재고 초과 날짜**, **오늘 방문 예약**.
+
+        **'오늘'은 서버가 일본 기준으로 정한다.** 예약 가능 기간·이용일 판정이 전부 JST 라
+        (공통 비즈니스 규칙), 브라우저 시계를 쓰면 자정 근처에서 어제·내일 목록을 보게 된다.
+        응답의 `today` 를 화면이 그대로 쓴다.
+
+        **지표 3개는 서로 겹치지 않는다** — 입금 단계로 가른다(2026-09-21 결정).
+        - `newBookingCount` — **입금대기**(`AWAITING_DEPOSIT`). 고객이 아직 '입금 확인 요청'을
+          누르지 않은, 기다리는 건.
+        - `depositRequestCount` — **접수**(`RECEIVED`). 고객이 입금했다고 알린 건이라 관리자가
+          확인해줘야 한다.
+        - `cancelRequestCount` — **처리 안 된 취소 요청**이 있는 예약 수(`pendingCancellationId`
+          가 있는 예약). 예약 관리(S1-A6)의 취소요청 탭과 같은 규칙이라 두 숫자가 어긋나지 않는다.
+
+        앞의 두 지표는 **입금 기한(생성 +24시간)이 지난 건을 뺀다.** 기한이 지나면 강제 취소
+        대상(미입금)이라 '기다리는 예약'도 '확인해줄 입금'도 아니기 때문이다. 미입금 건은
+        예약 관리의 미입금 탭에서 따로 다룬다.
+
+        **`overCapacityDates` = 오늘부터 +3개월** 안에서 다음 둘 중 하나인 날짜다(예약 가능
+        기간과 같은 범위 — 예약을 받을 수 있는 날만 본다. 지난 날짜는 손댈 수 없다).
+        - 그날 예약 수가 총 보유를 넘은 날(S1-A3 에서 재고를 낮춰 생긴다)
+        - 여행사 할당 합이 총 보유를 넘은 날(**할당 초과**)
+
+        여러 자산이 같은 날 초과해도 **날짜는 한 번만** 나오고, 오름차순이다. 화면은 앞의 4개만
+        보여주고 나머지는 '외 N건'으로 줄인다. 해소될 때까지 계속 내려간다.
+      responses:
+        '200':
+          description: |
+            대시보드 값. 오늘 방문 예약이 없으면 `todayVisits` 가 빈 배열이고, 초과가 없으면
+            `overCapacityDates` 가 빈 배열이다(둘 다 404 가 아니다 — 화면이 '0건'·'없습니다'를 쓴다).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDashboard' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /admin/assets:
     get:
@@ -3210,6 +3261,71 @@ components:
         imageUrl:
           type: string
           example: /content/images/3f1c2a9e-8d7b-4c6a-9e1f-2b3c4d5e6f70.png
+
+    # --- 대시보드 (S1-A1) ------------------------------------------------------
+    AdminDashboard:
+      type: object
+      required: [today, newBookingCount, depositRequestCount, cancelRequestCount, overCapacityDates, todayVisits]
+      description: S1-A1 대시보드. 저장된 문서가 아니라 예약·재고에서 집계한 값이다.
+      properties:
+        today:
+          type: string
+          format: date
+          description: 서버가 정한 '오늘'(**일본 기준**). 화면은 이 값을 다시 계산하지 않는다.
+        newBookingCount:
+          type: integer
+          minimum: 0
+          description: 입금대기 예약 수(기한 내). 0 이면 화면이 큰 카드의 표정을 슬픈 쪽으로 바꾼다.
+        depositRequestCount:
+          type: integer
+          minimum: 0
+          description: 접수 예약 수(기한 내) — 고객이 입금했다고 알려 관리자 확인이 필요한 건.
+        cancelRequestCount:
+          type: integer
+          minimum: 0
+          description: 처리 안 된 취소 요청이 있는 예약 수.
+        overCapacityDates:
+          type: array
+          description: |
+            오늘 ~ +3개월 안에서 예약 초과 또는 할당 초과인 날짜. 오름차순, 중복 없음.
+            비어 있으면 화면이 '재고 초과 날짜 0건'을 띄운다.
+          items: { type: string, format: date }
+        todayVisits:
+          type: array
+          description: |
+            오늘(JST) 이용하는 예약. 한 예약에 항목이 여럿이고 항목마다 이용일이 다를 수 있어
+            (S1-A7/A8), **취소되지 않은 항목 중 이용일이 오늘인 것이 하나라도 있는** 예약을 뽑는다.
+            전 항목이 취소된 예약은 방문하지 않으므로 자연히 빠진다. 예약번호 오름차순.
+          items: { $ref: '#/components/schemas/AdminDashboardVisit' }
+
+    AdminDashboardVisit:
+      type: object
+      required: [bookingId, bookingNumber, productSummary, useDate, status, unpaid]
+      description: 오늘 방문 예약 카드 한 장. 누르면 예약 상세(S1-A7)로 간다.
+      properties:
+        bookingId:
+          type: string
+          description: 예약 상세로 가는 키. 화면의 링크가 이 값을 쓴다.
+        bookingNumber: { type: string, example: FR-26092001 }
+        productSummary:
+          type: string
+          description: |
+            카드에 한 줄로 적는 상품 요약. 항목이 여럿이면 `첫 상품명 외 N건` 이다 —
+            화면이 항목 배열을 따로 받아 문자열을 조립하지 않게 서버가 만들어 준다.
+          example: 전기 자전거 · 1일 외 2건
+        useDate:
+          type: string
+          format: date
+          description: 오늘 이용하는 항목의 이용일. 정의상 `today` 와 같다(화면 표기용).
+        status:
+          type: string
+          enum: [AWAITING_DEPOSIT, RECEIVED, COMPLETED, CANCEL_REQUESTED, CANCELLED]
+          description: 예약 상태. 화면의 상태 태그가 이 값과 `unpaid` 를 함께 보고 문구를 고른다.
+        unpaid:
+          type: boolean
+          description: |
+            입금 기한이 지난 건인지. 저장된 상태값이 아니라 계산 결과라, 예약 관리 목록(S1-A6)의
+            `unpaid` 와 같은 규칙이다. true 면 화면이 상태 대신 '미입금' 태그를 쓴다.
 
     # --- 여행사 인보이스 (S2-A5/A6) -------------------------------------------
     AdminInvoiceList:

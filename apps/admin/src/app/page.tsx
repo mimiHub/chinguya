@@ -1,72 +1,95 @@
-import { Title, Stat, Stack, Button, IconFace } from "@chinguya/ui";
-import { adminReservations, getAdminTab, RESERVATION_STATUS_LABEL } from "@/data/reservationData";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Title, Stat, Stack, Button, IconFace, Alert } from "@chinguya/ui";
+import { createApiClient, ApiError, type AdminDashboard } from "@chinguya/api-client";
 import { InventoryOverCapacityToast } from "@/components/InventoryOverCapacityToast";
-import { TodayVisitList, type TodayVisitItem } from "@/components/TodayVisitList";
+import { TodayVisitList, type TodayVisitItem, type VisitAccent } from "@/components/TodayVisitList";
+
+const api = createApiClient();
 
 /**
- * S1-A1 대시보드. 와이어프레임 상단 지표(신규 예약/입금확인 요청/취소요청)를
- * adminReservations 목업으로부터 계산한다(원본 cafe-next는 이 세 숫자가 5/3/1로 고정된
- * 하드코딩 값이었는데, 여기서는 실제 데이터에서 파생시켜서 서로 값이 어긋나지 않게 했다).
+ * S1-A1 대시보드(`a-dash`). 계약: api-spec/openapi/chinguya-admin-api.yaml.
  *
- * 비동기 데일리 로그(2026-09-04, 커밋 94119af)로 와이어프레임이 갱신되면서 "미답변 문의"
- * 지표는 빠지고, 그 자리에 "재고 초과 알림"이 새로 생겼다 — 그 날짜의 예약 수가 총 보유를
- * 넘은 날을 알려주는 항목이다. 처음엔 본문의 알림 줄이었다가 지금은 하단에 항상 떠 있는 토스트
- * 팝업("재고 초과 날짜 N건")이다(상세: InventoryOverCapacityToast 컴포넌트 주석).
+ * 지표 3개(신규 예약/입금확인 요청/취소요청)·재고 초과 날짜·오늘 방문 예약을
+ * `GET /admin/dashboard` 한 번으로 받는다.
  *
- * 화면 이동(와이어프레임): 예약 카드 → 예약 상세, 지표 → 해당 목록, 재고 초과 알림 → 재고 세팅의
- * 해당 날짜.
+ * **지표 3개는 서로 겹치지 않는다** — 입금 단계로 가른다(2026-09-21 결정).
+ * 신규 예약 = 입금대기(아직 입금 확인 요청 전), 입금확인 요청 = 접수(고객이 입금했다고 알림).
+ * 둘 다 입금 기한이 지난 건은 빼므로, 미입금은 예약 관리의 미입금 탭에서 따로 본다.
+ *
+ * **'오늘'과 건수를 화면에서 계산하지 않는다.** 예전에는 브라우저 시계로 JST 오늘을 만들고
+ * 목업 배열을 세었는데, 이제 서버가 정한 값을 그대로 쓴다 — 자정 근처에서 어긋나지 않는다.
+ *
+ * 화면 이동(와이어프레임): 예약 카드 → 예약 상세, '예약 관리' 버튼 → 예약 목록(a-res),
+ * 지표 → 해당 목록, 재고 초과 토스트 [확인] → 재고 세팅(a-inv)의 해당 날짜.
  */
-/**
- * "오늘"은 일본 시간(JST) 기준이다(관리자_상세설명.md S1-A1: '오늘 방문 예약' = 오늘 날짜 이용 건,
- * 일본 기준 '오늘'). 서버가 어느 시간대에서 돌든 같은 값이 나오도록 시간대를 못 박아서 YYYY-MM-DD로
- * 만든다("sv-SE" 로케일이 이 형식으로 나온다).
- */
-const todayInJapan = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-
-/**
- * "오늘"과 "미입금(24시간 경과)" 판정이 요청 시점 기준이라, 빌드 시점에 굳지 않고 요청마다 새로
- * 계산되게 한다.
- */
-export const dynamic = "force-dynamic";
-
 export default function AdminDashboardPage() {
-  const newCount = adminReservations.filter((r) => r.status === "received").length;
-  const pendingDepositCount = adminReservations.filter((r) => getAdminTab(r) === "received").length;
-  const cancelRequestCount = adminReservations.filter((r) => r.status === "cancel_requested").length;
+  const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      const response = await api.dashboard.get();
+      setLoadError(null);
+      setDashboard(response);
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : "대시보드를 불러오지 못했습니다.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const newCount = dashboard?.newBookingCount ?? 0;
 
   const stats = [
-    { label: "신규 예약", value: newCount, href: "/reservations?tab=received", tone: "primary" as const, large: true, icon: <IconFace mood={newCount > 0 ? "happy" : "sad"} className="h-8 w-8" /> },
-    { label: "입금확인 요청", value: pendingDepositCount, href: "/reservations?tab=unpaid", tone: "warning" as const },
-    { label: "취소요청", value: cancelRequestCount, href: "/reservations?tab=cancel_requested", tone: "error" as const },
+    {
+      label: "신규 예약",
+      value: newCount,
+      href: "/reservations?tab=received",
+      tone: "primary" as const,
+      large: true,
+      icon: <IconFace mood={newCount > 0 ? "happy" : "sad"} className="h-8 w-8" />,
+    },
+    {
+      label: "입금확인 요청",
+      value: dashboard?.depositRequestCount ?? 0,
+      href: "/reservations?tab=received",
+      tone: "warning" as const,
+    },
+    {
+      label: "취소요청",
+      value: dashboard?.cancelRequestCount ?? 0,
+      href: "/reservations?tab=cancel_requested",
+      tone: "error" as const,
+    },
   ];
-
-  // '오늘 방문 예약' = 오늘(JST) 이용 건. 한 예약(1 예약번호)에 항목이 여러 개고 항목마다 이용일이
-  // 다를 수 있으므로(S1-A7/A8), 예약 대표 이용일이 아니라 "취소되지 않은 유효 항목 중 이용일이 오늘인
-  // 것"이 하나라도 있는 예약을 뽑는다. 전 항목이 취소된 예약은 방문하지 않으니 자연히 빠진다.
-  const today = todayInJapan();
-  const todayReservations = adminReservations.filter((r) =>
-    r.items.some((item) => item.status === "active" && item.useDate === today),
-  );
 
   // 예약 종류별 태그 색 — 위쪽 수치 카드(Stat)와 같은 계열로 맞췄다:
   //   접수=초록(신규 예약) / 미입금=노랑(입금확인 요청) / 취소요청=빨강(취소요청) / 완료=블루.
   // 카드 배경은 전부 같은 기본색이고 태그만 색이 다르다. 그 외(취소 등)는 회색 태그.
-  const cardAccent = (r: (typeof adminReservations)[number]) => {
-    if (getAdminTab(r) === "unpaid") return "warning" as const;
-    if (r.status === "received") return "primary" as const;
-    if (r.status === "cancel_requested") return "error" as const;
-    if (r.status === "completed") return "info" as const;
+  const cardAccent = (visit: AdminDashboard["todayVisits"][number]): VisitAccent | undefined => {
+    if (visit.unpaid) return "warning";
+    if (visit.status === "AWAITING_DEPOSIT" || visit.status === "RECEIVED") return "primary";
+    if (visit.status === "CANCEL_REQUESTED") return "error";
+    if (visit.status === "COMPLETED") return "info";
     return undefined;
   };
 
-  // 목록 컴포넌트(클라이언트)에는 판정이 끝난 값만 넘긴다 — "미입금"은 접수 후 24시간 경과 같은 시간
-  // 기준 계산이라 서버에서 한 번만 정하는 게 안전하다.
-  const todayVisitItems: TodayVisitItem[] = todayReservations.map((r) => ({
-    id: r.id,
-    product: r.product,
-    useDate: r.useDate,
-    accent: cardAccent(r),
-    tagLabel: getAdminTab(r) === "unpaid" ? "미입금" : RESERVATION_STATUS_LABEL[r.status],
+  /** 태그 문구 — '미입금'은 상태값이 아니라 입금 기한 계산 결과라 서버가 내려준 플래그를 먼저 본다. */
+  const tagLabel = (visit: AdminDashboard["todayVisits"][number]): string => {
+    if (visit.unpaid) return "미입금";
+    return STATUS_LABEL[visit.status];
+  };
+
+  const todayVisitItems: TodayVisitItem[] = (dashboard?.todayVisits ?? []).map((visit) => ({
+    id: visit.bookingNumber,
+    product: visit.productSummary,
+    useDate: visit.useDate,
+    accent: cardAccent(visit),
+    tagLabel: tagLabel(visit),
   }));
 
   return (
@@ -74,12 +97,16 @@ export default function AdminDashboardPage() {
     // 높이를 "오늘 방문 예약" 상자가 전부 차지하게 한다(flex-1). 상자 안에서는 예약 목록만 스크롤된다
     // (TodayVisitList). 화면이 아주 작아 상자가 min-h보다 줄어들 때만 페이지가 스크롤된다.
     <main className="mx-auto flex h-full max-w-2xl flex-col px-6 pt-6">
-      {/* 로고는 이제 모든 화면 공통 상단 헤더(TopHeader)에 떠 있어서, 대시보드 화면 안에는
-          따로 다시 넣지 않는다. */}
       <div className="flex min-h-0 flex-1 flex-col gap-6">
         <Stat items={stats} />
 
-        <InventoryOverCapacityToast />
+        {loadError && (
+          <Alert status="error" icon={true}>
+            {loadError}
+          </Alert>
+        )}
+
+        <InventoryOverCapacityToast dates={dashboard?.overCapacityDates ?? null} />
 
         {/* 제목과 목록을 테두리 있는 큰 상자 하나로 묶는다. 안쪽 예약 카드는 이 상자 안에서 한 단계 밝은 배경.
             상자는 아래로 계속 이어지는 시트 모양이라 모서리는 위쪽 두 곳만 둥글고 아래 테두리·모서리는 없다.
@@ -89,7 +116,9 @@ export default function AdminDashboardPage() {
           <div className="flex min-h-0 flex-1 flex-col gap-4">
             {/* 제목은 왼쪽, 예약 관리 화면으로 가는 버튼은 오른쪽 끝(between 정렬) */}
             <Stack justify="between" align="center">
-              <Title size="sm" leaf>오늘 방문 예약</Title>
+              <Title size="sm" leaf>
+                오늘 방문 예약
+              </Title>
               <Button href="/reservations" variant="subtle" size="sm">
                 예약 관리
               </Button>
@@ -101,3 +130,12 @@ export default function AdminDashboardPage() {
     </main>
   );
 }
+
+/** 카드 상태 태그 문구. '미입금'은 상태값이 아니라 계산 결과라 여기 없다. */
+const STATUS_LABEL: Record<AdminDashboard["todayVisits"][number]["status"], string> = {
+  AWAITING_DEPOSIT: "입금대기",
+  RECEIVED: "접수",
+  COMPLETED: "완료",
+  CANCEL_REQUESTED: "취소요청",
+  CANCELLED: "취소",
+};
