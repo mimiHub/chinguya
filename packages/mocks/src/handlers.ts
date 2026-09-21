@@ -9,7 +9,7 @@
 import { http, HttpResponse } from "msw";
 import type { components } from "./types.gen";
 import * as store from "./store";
-import { products, buildAvailability } from "./fixtures";
+import { products, faqs, buildAvailability } from "./fixtures";
 
 type S = components["schemas"];
 
@@ -126,6 +126,9 @@ export function makeHandlers(baseUrl = "https://api.chinguya.co.kr/v1") {
         ? HttpResponse.json(result.value)
         : HttpResponse.json(err(result.error.code, result.error.message), { status: result.error.status });
     }),
+
+    // ── S4-C3 FAQ ────────────────────────────────────────────────────────────
+    http.get(`${baseUrl}/faqs`, () => HttpResponse.json(faqs)),
   ];
 }
 

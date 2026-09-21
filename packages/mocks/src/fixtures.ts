@@ -42,6 +42,21 @@ export const products: S["ProductDetail"][] = [
 ];
 
 // ── 입금 안내 계좌(관리자 설정 1개) ──────────────────────────────────────────
+/** S4-C3 FAQ — 배열 순서가 곧 노출 순서. */
+export const faqs: S["Faq"][] = [
+  {
+    faqId: "1",
+    question: "대여 시간은 언제까지 연장할 수 있나요?",
+    answer:
+      "영업 종료 시간까지 매장에 방문해 반납 전 연장 요청을 주시면 됩니다. 예약된 다음 이용자가 있는 경우 연장이 어려울 수 있어요.",
+  },
+  {
+    faqId: "2",
+    question: "결제 수단은 어떤 게 있나요?",
+    answer: "예약 후 안내되는 계좌로 무통장 입금만 가능합니다. 현장 카드 결제는 아직 준비 중이에요.",
+  },
+];
+
 export const depositAccountBase = {
   bankName: "우리은행",
   accountNumber: "1002-000-000000",

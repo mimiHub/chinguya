@@ -12,6 +12,10 @@ openapi: 3.1.0
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
 #
+# v0.11 변경(2026-09-21 — FAQ S4-C3 실연동):
+#   1. `GET /faqs` 추가 — 관리자 FAQ 관리(S4-A1)에서 등록한 FAQ를 노출 순서대로 돌려준다.
+#      비로그인 열람 허용, 분류·검색·페이지네이션 없음. `x-screens: [S4-C3]`.
+#
 # v0.10 변경(2026-09-16 — 취소 요청 S1-C7 실연동):
 #   1. `GET /bookings/{bookingId}/cancellation-quote`·`POST /bookings/{bookingId}/cancel-request`에
 #      `x-screens: [S1-C7]` 부착.
@@ -118,7 +122,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.10.0-draft
+  version: 0.11.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -165,6 +169,8 @@ tags:
     description: 취소 견적·요청 (S1-C7, 항목 단위)
   - name: auth
     description: 고객 카카오 로그인·회원가입·세션 (S0-C1, S0-C2, S0-C3)
+  - name: faq
+    description: 자주 묻는 질문 (S4-C3)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -325,6 +331,24 @@ paths:
             image/webp:
               schema: { type: string, format: binary }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /faqs:
+    get:
+      tags: [faq]
+      summary: FAQ 목록 (S4-C3, v0.11)
+      x-screens: [S4-C3]
+      description: |
+        관리자 FAQ 관리(S4-A1)에서 등록한 FAQ 전체를 노출 순서대로 돌려준다.
+        비로그인 열람 허용. 분류·검색·페이지네이션 없음. 없으면 빈 배열.
+      security: []
+      responses:
+        '200':
+          description: 노출 순서(오름차순)대로 정렬된 FAQ
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Faq' }
 
   /cart:
     get:
@@ -955,6 +979,15 @@ components:
       type: integer
       minimum: 0
       description: KRW 정수(원).
+
+    Faq:
+      type: object
+      required: [faqId, question, answer]
+      description: FAQ 한 건(v0.11). 배열 순서가 곧 노출 순서다.
+      properties:
+        faqId: { type: string }
+        question: { type: string, maxLength: 200 }
+        answer: { type: string, maxLength: 2000 }
 
     ProductSummary:
       type: object

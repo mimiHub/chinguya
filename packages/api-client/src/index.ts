@@ -167,7 +167,7 @@ export interface AdminSettingsInput {
 /**
  * FAQ·콘텐츠 관리(S4-A1/A3) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
  *
- * 고객앱 FAQ 목업이 쓰는 도메인 타입(FaqEntry)과 필드명(id/order)이 달라 따로 둔다.
+ * 고객 FAQ(S4-C3)는 displayOrder 없이 순서대로 내려오므로 CustomerFaq를 따로 둔다.
  */
 export interface AdminFaq {
   faqId: string;
@@ -303,6 +303,13 @@ export interface CustomerProductSummary {
   thumbnailUrl?: string | null;
   /** 표출 중인 상품의 최저 고객가(원) */
   priceFrom: number;
+}
+
+/** 고객 FAQ(S4-C3). 계약: api-spec slice1 yaml 의 Faq. 배열 순서가 곧 노출 순서다. */
+export interface CustomerFaq {
+  faqId: string;
+  question: string;
+  answer: string;
 }
 
 export interface CustomerProductListPage {
@@ -705,6 +712,10 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         });
         return request<CustomerAvailability>(`/products/${productId}/availability?${query}`);
       },
+    },
+    /** 고객 FAQ(S4-C3). 관리자 FAQ 관리(S4-A1) 목록을 노출 순서대로 준다. 비로그인도 부를 수 있다. */
+    customerFaqs: {
+      list: () => request<CustomerFaq[]>("/faqs"),
     },
     /**
      * 장바구니 = 임시 홀드(S1-C2 담기 / S1-C3). 고객 로그인이 필요하다(비로그인 401).

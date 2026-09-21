@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, NoticeBox, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
+import { Banner, NoticeBox, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage, Alert, EmptyState } from "@chinguya/ui";
 import type { AssetCategory, InquiryEntry } from "@chinguya/types";
-import { faqEntries } from "@/data/faqData";
+import { ApiError, createApiClient, type CustomerFaq } from "@chinguya/api-client";
 import { initialInquiries } from "@/data/inquiryData";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { UsageGuideSteps } from "@/components/UsageGuideSteps";
@@ -18,13 +18,16 @@ const USAGE_CATEGORY_TABS: { key: AssetCategory; label: string }[] = [
 ];
 type QnaView = "list" | "write" | "detail";
 
+const api = createApiClient();
+
 
 /** packages/types의 InquiryEntry(S4-C4 문의)를 이 파일 안에서는 짧게 QnaEntry로 부른다. */
 type QnaEntry = InquiryEntry;
 
 /**
  * 고객지원(S4-C3 FAQ / 사용방법 / S4-C4 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ·사용방법·1:1
- * 질문하기를 한 화면에 묶었다. "사용방법"은 상품 상세의 "상품 사용방법" 탭과 같은 데이터(data/usageGuides.ts)를
+ * 질문하기를 한 화면에 묶었다. FAQ는 Core API(GET /v1/faqs)에 실연동돼 관리자 FAQ 관리(S4-A1) 순서 그대로 보여준다.
+ * "사용방법"은 상품 상세의 "상품 사용방법" 탭과 같은 데이터(data/usageGuides.ts)를
  * 그대로 보여준다 — 예약하기 전(상품 상세)에도, 예약한 뒤(대여 중)에도 여러 곳에서 쉽게 찾을 수 있게 하려는 것이다. 로그인 기능이 없어서 "이 브라우저 세션에서 쓴 글 전부"를
  * 본인 글로 취급한다(다른 목업 저장소들과 같은 한계) — 새로고침하면 처음 목업 데이터로
  * 되돌아간다.
@@ -41,8 +44,22 @@ function ContactContent() {
     searchParams.get("category") === "FISHING_ROD" ? "FISHING_ROD" : "BICYCLE";
   const [tab, setTab] = useState<ContactTab>(initialTab);
   const [usageCategory, setUsageCategory] = useState<AssetCategory>(initialUsageCategory);
-  const sortedFaqEntries = [...faqEntries].sort((a, b) => a.order - b.order);
-  const [openFaqId, setOpenFaqId] = useState<string | null>(sortedFaqEntries[0]?.id ?? null);
+  const [faqs, setFaqs] = useState<CustomerFaq[] | null>(null);
+  const [faqError, setFaqError] = useState<string | null>(null);
+  const [openFaqId, setOpenFaqId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.customerFaqs
+      .list()
+      .then((list) => {
+        setFaqs(list);
+        // 첫 질문은 펼친 채로 보여준다.
+        setOpenFaqId(list[0]?.faqId ?? null);
+      })
+      .catch((err: unknown) => {
+        setFaqError(err instanceof ApiError ? err.message : "FAQ를 불러오지 못했습니다.");
+      });
+  }, []);
 
   const [qnaItems, setQnaItems] = useState<QnaEntry[]>(initialInquiries);
   const [qnaView, setQnaView] = useState<QnaView>("list");
@@ -164,15 +181,21 @@ function ContactContent() {
                 자주 묻는 질문
               </Title>
 
+              {faqError && <Alert status="error">{faqError}</Alert>}
+
+              {faqs === null && !faqError && <Text variant="sub">불러오는 중…</Text>}
+
+              {faqs !== null && faqs.length === 0 && <EmptyState variant="card">등록된 질문이 없습니다.</EmptyState>}
+
               <Stack direction="column" gap="sm">
-                {sortedFaqEntries.map((faq, i) => {
-                  const open = openFaqId === faq.id;
+                {(faqs ?? []).map((faq, i) => {
+                  const open = openFaqId === faq.faqId;
                   return (
-                    <ScrollReveal key={faq.id} delay={i * 60}>
+                    <ScrollReveal key={faq.faqId} delay={i * 60}>
                     <Card padding="sm" tint="primary">
                       <button
                         type="button"
-                        onClick={() => setOpenFaqId(open ? null : faq.id)}
+                        onClick={() => setOpenFaqId(open ? null : faq.faqId)}
                         className="flex w-full items-center gap-3 bg-transparent text-left focus:outline-none"
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >

@@ -429,18 +429,6 @@ export interface Invoice {
 }
 
 /**
- * FAQ 항목(S4-C3 고객 노출 / S4-A1·A3 관리자 CMS-lite 편집). 카테고리·검색 없이
- * 노출 순서(order, 오름차순)로만 정렬해서 보여준다.
- */
-export interface FaqEntry {
-  id: string;
-  question: string;
-  answer: string;
-  /** 노출 순서(오름차순). 관리자가 순서를 바꾸면 이 값을 다시 매긴다. */
-  order: number;
-}
-
-/**
  * 고객 1:1 문의(S4-C4 질문하기 / S4-A2 문의 관리). 로그인 기능이 없어 비공개 글은
  * 4자리 비밀번호로 열람을 제한한다 — 이 잠금은 고객앱에서만 적용하고, 관리자는 답변을
  * 위해 항상 전체 내용을 볼 수 있어야 하므로 관리자 화면에는 적용하지 않는다.
