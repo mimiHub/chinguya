@@ -5,8 +5,21 @@ openapi: 3.1.0
 #
 # 범위: 관리자 인증(S0-A2 로그인), 자산 관리(S1-A2), 날짜별 재고 세팅(S1-A3, 여행사 할당 포함),
 #       여행사 관리(S2-A1/A2/A3), FAQ·콘텐츠 관리(S4-A1/A3), 예약 관리 목록·상세·
-#       입금확인·미입금 강제취소(S1-A6/A7/A8), 취소요청 처리(S1-A9). 나머지 관리자 운영
-#       API(인보이스)는 아직 이 문서에 없다 — 구현되는 대로 이어 붙인다.
+#       입금확인·미입금 강제취소(S1-A6/A7/A8), 취소요청 처리(S1-A9),
+#       여행사 인보이스(S2-A5/A6).
+#
+# 2026-09-21 변경(여행사 인보이스 S2-A5/A6 — 스펙 선행):
+#   1. `GET /admin/invoices`·`GET /admin/invoices/{invoiceId}`·
+#      `POST /admin/invoices/{invoiceId}/settle` 신설.
+#   2. 인보이스는 **헤더만 저장**한다(여행사·대상월·발행일·정산일). 라인아이템과 금액은
+#      `agency_reservation` 에서 매번 집계한다 — S2-G7 이 이미 쓰는 방식이라 여행사가 보는
+#      합계와 관리자가 보는 합계가 구조적으로 같아진다.
+#   3. **취소 예약도 인보이스 라인에 넣고, 금액은 취소 수수료로 반영**한다
+#      (와이어프레임 a-invoicedetail: "합계 = 완료 예약 금액 합 + 취소 예약의 취소 수수료 합").
+#      이 결정에 맞춰 chinguya-agency-api.yaml 의 S2-G7 도 함께 고쳤다 — 예전에는 취소를
+#      아예 빼고 줬다. 수수료율은 고객과 공용(`cancellation_policy`)이고, 금액은 **취소
+#      시점에 예약 행에 박는 스냅샷**(`agency_reservation.cancel_fee`)이라 요율을 나중에
+#      바꿔도 지난 인보이스가 흔들리지 않는다.
 #
 # 2026-09-21 변경(문의 관리 S4-A2-1/A2-2 — 고객 질문하기 S4-C5 실연동과 함께):
 #   1. `GET /admin/inquiries`·`GET /admin/inquiries/{inquiryId}`·`PUT /admin/inquiries/{inquiryId}/answer` 신설.
@@ -1856,6 +1869,113 @@ paths:
                 code: CONTENT_IMAGE_NOT_FOUND
                 message: 이미지를 찾을 수 없습니다.
 
+  # ---------------------------------------------------------------------------
+  # 여행사 인보이스 (S2-A5/A6)
+  #
+  # 인보이스는 **헤더만 저장한다**(`invoice` 테이블 = 여행사·대상월·발행일·정산일).
+  # 라인아이템과 금액은 저장하지 않고 `agency_reservation` 에서 매번 집계한다 —
+  # 여행사 인보이스(S2-G7)가 이미 쓰는 방식이라 두 화면의 합계가 구조적으로 같아진다.
+  # 값이 흔들리지 않는 근거는 취소 마감이 D-3 이라는 점이다. 발행일(매월 1일)에는
+  # 전월 이용일 예약이 전부 취소 불가라 집계 결과가 더는 변하지 않는다.
+  #
+  # 발행은 **자동·멱등**이다. 수동 등록 버튼이 없고(와이어프레임 a-invoice),
+  # 목록을 조회할 때 발행 시점이 지난 달의 헤더가 없으면 그 자리에서 만든다.
+  # 배치 스케줄러가 없어서 택한 방식이라, 나중에 배치가 생기면 같은 멱등 로직을 부른다.
+  # ---------------------------------------------------------------------------
+  /admin/invoices:
+    get:
+      tags: [admin-invoice]
+      x-screens: [S2-A5]
+      summary: 인보이스 목록 (S2-A5)
+      description: |
+        여행사·월별 인보이스를 **전량** 반환한다(관리자 목록의 기본 관례 — 페이지네이션은
+        S1-A6 예약 관리에만 있다). 여행사 수 × 운영 개월 수라 증가가 완만하다.
+
+        응답은 두 덩어리다.
+        - `invoices` — **이미 발행된** 인보이스. 최근 월 먼저, 같은 월이면 여행사명 순.
+          호출 시점에 발행 시점(대상월 다음 달 1일)이 지난 달의 헤더가 없으면 **여기서
+          만들어 넣는다**(멱등). 그래서 배치 없이도 목록이 스스로 최신이 된다.
+        - `pending` — **아직 발행 전인 이번 달** 사용액. 사용 가능 여행사마다 1건이고,
+          발행되지 않았으므로 `issuedAt`·정산 상태가 없다. 와이어프레임의 '예정' 태그다.
+
+        대상 월(`period`)·이번 달 판단은 **서버가 한다**. 브라우저 시계를 쓰면 월초에
+        하루 어긋난다(S2-G7 과 같은 이유).
+      parameters:
+        - name: agencyId
+          in: query
+          required: false
+          schema: { type: string }
+          description: |
+            특정 여행사만. 비우면 전체다. 없는 여행사 id 면 빈 목록(404 아님) —
+            화면의 필터가 삭제된 여행사를 들고 있을 수 있어서다.
+      responses:
+        '200':
+          description: 인보이스 목록
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminInvoiceList' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/invoices/{invoiceId}:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceIdPath'
+    get:
+      tags: [admin-invoice]
+      x-screens: [S2-A6]
+      summary: 인보이스 상세 (S2-A6)
+      description: |
+        발행된 인보이스 1건의 라인아이템과 합계를 반환한다. **발행 전(`pending`) 건에는
+        id 가 없으므로 이 엔드포인트로 들어올 수 없다** — 목록의 '예정' 카드는 링크가 아니다.
+
+        라인아이템 = 그 달에 **이용일**이 든 **완료·취소** 예약 1건. 여행사 인보이스(S2-G7)와
+        같은 집계라 두 화면의 합계가 항상 일치한다.
+
+        화면은 `settleable` 로 '입금 확인' 버튼 노출을 가른다(S1-A7 의 `depositConfirmable`
+        과 같은 관례 — 상태값을 화면이 해석하지 않는다).
+      responses:
+        '200':
+          description: 인보이스 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminInvoiceDetail' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InvoiceNotFound'
+
+  /admin/invoices/{invoiceId}/settle:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceIdPath'
+    post:
+      tags: [admin-invoice]
+      x-screens: [S2-A6]
+      summary: 입금(정산) 확인 (S2-A6)
+      description: |
+        인보이스를 **정산 완료**로 바꾼다. 실제 입금은 시스템 밖에서 받으므로, 이 호출은
+        "돈이 들어온 걸 확인했다"는 관리자의 선언이다. 되돌리는 엔드포인트는 없다
+        (필요해지면 그때 만든다 — 취소요청 확정 S1-A9 와 같은 판단).
+
+        이미 정산된 건이면 409 `INVOICE_ALREADY_SETTLED`. 조건부 UPDATE 로 막으므로
+        두 관리자가 동시에 눌러도 한 번만 성공한다. 슈퍼어드민 전용.
+      responses:
+        '200':
+          description: 정산 처리된 인보이스
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminInvoiceDetail' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/InvoiceNotFound'
+        '409':
+          description: 이미 정산 완료된 인보이스(`INVOICE_ALREADY_SETTLED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 # -----------------------------------------------------------------------------
 components:
 
@@ -1879,6 +1999,11 @@ components:
       schema: { type: string }
     CancellationIdPath:
       name: cancellationId
+      in: path
+      required: true
+      schema: { type: string }
+    InvoiceIdPath:
+      name: invoiceId
       in: path
       required: true
       schema: { type: string }
@@ -1914,6 +2039,11 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     CancellationNotFound:
       description: 존재하지 않는 취소 요청(`CANCELLATION_NOT_FOUND`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InvoiceNotFound:
+      description: 존재하지 않는 인보이스(`INVOICE_NOT_FOUND`).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -2903,6 +3033,145 @@ components:
           type: string
           example: /content/images/3f1c2a9e-8d7b-4c6a-9e1f-2b3c4d5e6f70.png
 
+    # --- 여행사 인보이스 (S2-A5/A6) -------------------------------------------
+    AdminInvoiceList:
+      type: object
+      required: [invoices, pending]
+      description: |
+        S2-A5 목록 응답. 발행된 것과 아직 발행 전인 이번 달을 **나눠서** 준다 —
+        발행 전 건은 id·발행일·정산 상태가 없어서 같은 배열에 섞으면 화면이
+        매번 null 을 확인해야 한다.
+      properties:
+        invoices:
+          type: array
+          description: 발행된 인보이스. 최근 월 먼저, 같은 월이면 여행사명 오름차순.
+          items: { $ref: '#/components/schemas/AdminInvoiceSummary' }
+        pending:
+          type: array
+          description: |
+            아직 발행 전인 **이번 달** 사용액. 사용 가능(`active`) 여행사마다 1건이며,
+            대상 예약이 없으면 `amount` 가 0 이다(줄 자체는 준다 — 화면이 여행사 목록을
+            따로 부르지 않아도 되도록).
+          items: { $ref: '#/components/schemas/AdminInvoicePending' }
+
+    AdminInvoiceSummary:
+      type: object
+      required: [invoiceId, agencyId, agencyName, period, issuedAt, amount, settled]
+      description: 발행된 인보이스 1건. 카드 한 장에 대응한다.
+      properties:
+        invoiceId: { type: string, example: '12' }
+        agencyId: { type: string, example: '1' }
+        agencyName: { type: string, example: 제주바다여행사 }
+        period:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: '2026-08'
+          description: 대상 월.
+        issuedAt:
+          type: string
+          format: date
+          example: '2026-09-01'
+          description: 발행일. 대상 월 다음 달 1일이다.
+        amount:
+          type: integer
+          minimum: 0
+          description: 정산 반영액 합계(상세의 `totalAmount` 와 같은 값).
+        settled:
+          type: boolean
+          description: 정산(입금) 완료 여부. 화면의 `정산완료`/`미정산` 태그.
+
+    AdminInvoicePending:
+      type: object
+      required: [agencyId, agencyName, period, amount]
+      description: |
+        아직 발행되지 않은 이번 달 사용액. **id 가 없다** — 저장된 인보이스가 아니라
+        집계값이라서다. 그래서 상세(S2-A6)로 들어갈 수 없고, 화면도 링크로 만들지 않는다.
+      properties:
+        agencyId: { type: string, example: '1' }
+        agencyName: { type: string, example: 제주바다여행사 }
+        period:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: '2026-09'
+          description: 이번 달. 서버가 정한다.
+        amount:
+          type: integer
+          minimum: 0
+          description: |
+            현재까지의 정산 반영액. **아직 확정이 아니다** — 이 달 예약은 아직 취소될 수
+            있어서 발행일까지 값이 움직인다.
+
+    AdminInvoiceDetail:
+      type: object
+      required: [invoiceId, agencyId, agencyName, period, issuedAt, currency, lineItems, totalAmount, settled, settleable]
+      description: S2-A6 상세. 라인아이템은 저장돼 있지 않고 예약에서 집계한 값이다.
+      properties:
+        invoiceId: { type: string, example: '12' }
+        agencyId: { type: string, example: '1' }
+        agencyName: { type: string, example: 제주바다여행사 }
+        period:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: '2026-08'
+        issuedAt: { type: string, format: date, example: '2026-09-01' }
+        currency:
+          type: string
+          enum: [KRW]
+          description: KRW 고정. 세금 라인은 없다.
+        lineItems:
+          type: array
+          description: 이용일 오름차순, 같은 날은 예약번호 오름차순(S2-G7 과 같은 정렬).
+          items: { $ref: '#/components/schemas/AdminInvoiceLineItem' }
+        totalAmount:
+          type: integer
+          minimum: 0
+          description: |
+            화면의 '합계(정산 반영액)'. **완료 예약 금액 합 + 취소 예약의 취소 수수료 합**이다.
+            여행사 인보이스(S2-G7)의 `totalAmount` 와 같은 값이라 두 화면이 어긋나지 않는다.
+        settled:
+          type: boolean
+        settledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 정산 확인 시각. 미정산이면 null.
+        settleable:
+          type: boolean
+          description: |
+            '입금 확인' 버튼을 띄울지. 지금은 `settled == false` 와 같지만, 화면이 상태를
+            해석하지 않도록 서버가 내려준다(S1-A7 `depositConfirmable` 과 같은 관례).
+            STAFF 에게도 true 로 내려간다 — 버튼 숨김은 화면이 권한으로 따로 판단하고,
+            최종 차단은 서버 403 이다.
+
+    AdminInvoiceLineItem:
+      type: object
+      required: [useDate, reservationNumber, assetName, optionType, quantity, unitPrice, status, amount]
+      description: |
+        완료 또는 취소 예약 1건. 여행사 인보이스(S2-G7)의 `AgencyInvoiceLineItem` 과
+        같은 모양이다 — 같은 집계를 두 화면이 나눠 보는 것이라 일부러 맞췄다.
+      properties:
+        useDate: { type: string, format: date }
+        reservationNumber: { type: string, example: AG-26080001 }
+        assetName: { type: string }
+        optionType:
+          type: string
+          enum: [HOURS_2, DAY_1, DAY_2, NIGHT]
+        quantity: { type: integer, minimum: 1 }
+        unitPrice:
+          type: integer
+          minimum: 0
+          description: 예약 시점 여행사가 스냅샷(KRW).
+        status:
+          type: string
+          enum: [COMPLETED, CANCELLED]
+        amount:
+          type: integer
+          minimum: 0
+          description: |
+            정산 반영액. `COMPLETED` 면 `unitPrice × quantity`, `CANCELLED` 면
+            **취소 수수료**(취소 시점 스냅샷)다. 화면의 '예약 금액 반영'/'취소 수수료만 반영'
+            문구가 이 갈림을 그대로 쓴다.
+
     Error:
       type: object
       required: [code, message]
@@ -2941,6 +3210,10 @@ components:
             취소요청 처리(S1-A9):
             - `CANCELLATION_NOT_FOUND` — 존재하지 않는 취소 요청.
             - `CANCELLATION_ALREADY_PROCESSED` — 이미 확정한 취소 요청을 또 확정하려 했다.
+
+            여행사 인보이스(S2-A5/A6):
+            - `INVOICE_NOT_FOUND` — 존재하지 않는 인보이스.
+            - `INVOICE_ALREADY_SETTLED` — 이미 정산 완료된 인보이스를 또 확인하려 했다.
 
             FAQ·콘텐츠 관리(S4-A1/A3):
             - `FAQ_NOT_FOUND` — 존재하지 않는 FAQ.

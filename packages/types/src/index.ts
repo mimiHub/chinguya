@@ -282,7 +282,7 @@ export interface CustomerReservation {
 export type AgencyInvitationStatus = "NONE" | "PENDING" | "EXPIRED" | "ACCEPTED";
 
 /**
- * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, Invoice.agencyId가 이 agencyId를 참조한다.
+ * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, 인보이스의 agencyId가 이 agencyId를 참조한다.
  *
  * 여행사와 로그인 계정은 생애주기가 다르다 — 관리자가 여행사를 등록하면(S2-A2) 초대 메일만
  * 나가고, 담당자가 링크로 아이디·비밀번호를 직접 정할 때(S2-G1) 비로소 계정이 생긴다.
@@ -418,15 +418,21 @@ export interface DepositAccount {
   accountHolder: string;
 }
 
-/** 인보이스: 매월 1일 전월 기준 발행, KRW, 세금 라인 없음, 정산 수동 확인 */
-export interface Invoice {
-  id: string;
-  agencyId: string;
-  /** 대상 월 (YYYY-MM) */
-  period: string;
-  amountKrw: number;
-  settled: boolean;
-}
+/**
+ * 인보이스 정산(입금) 상태 라벨 — 관리자 목록(S2-A5)·상세(S2-A6) 공용.
+ *
+ * 인보이스 자체의 모양은 Core API 계약이 정한다(`@chinguya/api-client` 의 `AdminInvoiceSummary`·
+ * `AdminInvoiceDetail`). 여기 남는 건 화면 문구뿐이다 — 두 화면이 각자 삼항식으로 쓰면
+ * 한쪽만 고쳐져서 어긋난다.
+ *
+ * 규칙: 매월 1일 전월 기준 자동 발행, KRW(세금 라인 없음), 정산은 수동 확인.
+ */
+export const INVOICE_SETTLEMENT_LABEL = {
+  settled: "정산완료",
+  unsettled: "미정산",
+  /** 아직 발행 전인 이번 달 사용액(와이어프레임 a-invoice 의 '예정' 태그). */
+  pending: "발행예정",
+} as const;
 
 /**
  * 랜딩 히어로 배너 한 장(S4-A1/A3 관리자 콘텐츠 관리에서 편집 / 고객앱 홈 캐러셀·여행사앱

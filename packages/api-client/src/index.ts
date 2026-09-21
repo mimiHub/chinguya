@@ -240,13 +240,13 @@ export interface AgencyReservationResult {
   /** 예약 시점 여행사가 */
   unitPrice: number;
   amount: number;
-  status: "COMPLETED" | "CANCELLED";
+  status: AgencyReservationStatus;
   createdAt: string;
 }
 
 /**
- * S2-G7 인보이스 라인아이템 1줄 = 그 달에 이용일이 든 완료 예약 1건.
- * 단가·금액은 예약 시점 여행사가 스냅샷이라 나중에 가격이 바뀌어도 흔들리지 않는다.
+ * S2-G7 인보이스 라인아이템 1줄 = 그 달에 이용일이 든 **완료 또는 취소** 예약 1건.
+ * 단가는 예약 시점 여행사가 스냅샷이라 나중에 가격이 바뀌어도 흔들리지 않는다.
  */
 export interface AgencyInvoiceLineItem {
   useDate: string;
@@ -255,6 +255,11 @@ export interface AgencyInvoiceLineItem {
   optionType: RentalOptionKey;
   quantity: number;
   unitPrice: number;
+  status: AgencyReservationStatus;
+  /**
+   * **정산 반영액**이라 status 에 따라 뜻이 다르다 — 완료면 `unitPrice × quantity`,
+   * 취소면 **취소 수수료**(취소 시점 스냅샷)다. 화면은 둘을 함께 읽어야 한다.
+   */
   amount: number;
 }
 
@@ -262,8 +267,8 @@ export interface AgencyInvoiceLineItem {
  * S2-G7 전월 인보이스. 저장된 문서가 아니라 서버가 예약에서 집계한 값이다 —
  * 취소 마감이 이용일 D-3 이라 전월 집계는 더 이상 변하지 않는다.
  *
- * 발행 상태·정산 완료(packages/types 의 `Invoice.settled`)는 여기 없다. 그건 관리자
- * 인보이스 화면(S2-A5/A6)이 쓸 값이라 그때 계약에 넣는다.
+ * 발행 상태·정산 완료는 여기 없다. 그건 관리자 인보이스 화면(S2-A5/A6)이 쓰는 값이라
+ * `AdminInvoiceSummary`·`AdminInvoiceDetail` 에 있다.
  */
 export interface AgencyInvoice {
   /** 대상 월(YYYY-MM). 서버가 정한다 — 브라우저 시계로 정하면 월초에 어긋난다. */
@@ -272,8 +277,75 @@ export interface AgencyInvoice {
   currency: "KRW";
   /** 이용일 오름차순 */
   lineItems: AgencyInvoiceLineItem[];
-  /** lineItems 의 amount 합. 대상이 없으면 0. */
+  /** 완료 예약 금액 합 + 취소 예약의 취소 수수료 합. 대상이 없으면 0. */
   totalAmount: number;
+}
+
+/** 여행사 예약 상태. 입금 흐름이 없어 두 값뿐이다. */
+export type AgencyReservationStatus = "COMPLETED" | "CANCELLED";
+
+/** S2-A6 인보이스 라인 1줄. 여행사 화면(S2-G7)의 라인과 같은 모양이다 — 같은 집계라서다. */
+export interface AdminInvoiceLineItem {
+  useDate: string;
+  reservationNumber: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  unitPrice: number;
+  status: AgencyReservationStatus;
+  /** 정산 반영액 — 완료면 예약 금액 전액, 취소면 취소 수수료. */
+  amount: number;
+}
+
+/** S2-A5 목록의 발행된 인보이스 카드 한 장. */
+export interface AdminInvoiceSummary {
+  invoiceId: string;
+  agencyId: string;
+  agencyName: string;
+  /** 대상 월(YYYY-MM) */
+  period: string;
+  /** 발행일(YYYY-MM-DD). 대상 월 다음 달 1일이다. */
+  issuedAt: string;
+  amount: number;
+  /** 정산(입금) 완료 여부. */
+  settled: boolean;
+}
+
+/**
+ * S2-A5 목록의 '예정' 카드 — 아직 발행 전인 이번 달 사용액.
+ *
+ * `invoiceId` 가 없는 것이 의도다. 저장된 인보이스가 아니라 집계값이라 상세(S2-A6)로 들어갈
+ * 수 없다 — 화면도 이 카드를 링크로 만들지 않는다.
+ */
+export interface AdminInvoicePending {
+  agencyId: string;
+  agencyName: string;
+  period: string;
+  /** 현재까지의 정산 반영액. 이 달 예약은 아직 취소될 수 있어 발행일까지 움직인다. */
+  amount: number;
+}
+
+export interface AdminInvoiceList {
+  invoices: AdminInvoiceSummary[];
+  pending: AdminInvoicePending[];
+}
+
+/** S2-A6 상세. 라인아이템은 저장돼 있지 않고 서버가 예약에서 집계한 값이다. */
+export interface AdminInvoiceDetail {
+  invoiceId: string;
+  agencyId: string;
+  agencyName: string;
+  period: string;
+  issuedAt: string;
+  currency: "KRW";
+  lineItems: AdminInvoiceLineItem[];
+  /** 화면의 '합계(정산 반영액)'. 여행사 화면(S2-G7)의 totalAmount 와 같은 값이다. */
+  totalAmount: number;
+  settled: boolean;
+  /** 정산 확인 시각. 미정산이면 null. */
+  settledAt: string | null;
+  /** '입금 확인' 버튼을 띄울지. 화면이 상태를 해석하지 않도록 서버가 내려준다. */
+  settleable: boolean;
 }
 
 /**
@@ -982,6 +1054,25 @@ export function createApiClient(opts: ApiClientOptions = {}) {
        */
       confirm: (cancellationId: string) =>
         request<AdminCancellationDetail>(`/cancellations/${cancellationId}/confirm`, { method: "POST" }),
+    },
+    /**
+     * 관리자 여행사 인보이스(S2-A5/A6). 여행사가 자기 것을 보는 `invoices` 와 다른 계약이다 —
+     * 이쪽만 발행 상태·정산 완료를 가진다.
+     *
+     * 발행은 자동·멱등이라 등록 호출이 없다. `list()` 를 부르면 서버가 밀린 달을 그 자리에서
+     * 발행한다(와이어프레임 a-invoice: 수동 등록 없음).
+     */
+    adminInvoices: {
+      /** `agencyId` 를 비우면 전체. 없는 여행사 id 면 빈 목록이다(404 아님). */
+      list: (agencyId?: string) =>
+        request<AdminInvoiceList>(`/invoices${agencyId ? `?agencyId=${encodeURIComponent(agencyId)}` : ""}`),
+      detail: (invoiceId: string) => request<AdminInvoiceDetail>(`/invoices/${invoiceId}`),
+      /**
+       * 입금(정산) 확인 → 정산 완료. 되돌리는 호출은 없다. 이미 정산된 건이면
+       * 409(INVOICE_ALREADY_SETTLED). 슈퍼어드민 전용.
+       */
+      settle: (invoiceId: string) =>
+        request<AdminInvoiceDetail>(`/invoices/${invoiceId}/settle`, { method: "POST" }),
     },
     /**
      * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.
