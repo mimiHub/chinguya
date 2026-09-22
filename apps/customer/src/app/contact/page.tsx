@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, NoticeBox, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
+import { Banner, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
 import type { AssetCategory, InquiryEntry } from "@chinguya/types";
 import { faqEntries } from "@/data/faqData";
 import { initialInquiries } from "@/data/inquiryData";
@@ -202,12 +202,6 @@ function ContactContent() {
                   );
                 })}
               </Stack>
-
-              <NoticeBox tone="none" className="mt-1">
-                <Text variant="sub" size="xs">
-                  검색·카테고리 분류는 제공하지 않아요. 원하는 답변이 없으면 질문하기 탭에서 직접 물어봐 주세요.
-                </Text>
-              </NoticeBox>
             </Stack>
           ) : tab === "usage" ? (
             <Stack direction="column" gap="md">

@@ -330,7 +330,8 @@ export default function RentalDetailPage() {
                 </Text>
               </Card>
             ) : (
-              <EmptyState variant="card">등록된 상품 설명이 없습니다.</EmptyState>
+              <EmptyState variant="card">등록된 상품 설명이 없습니다.
+              </EmptyState>
             )
           ) : (
             <UsageGuideSteps category={product.category} />
