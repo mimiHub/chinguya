@@ -77,8 +77,11 @@ const PROVIDER_STYLE: Record<
   },
 };
 
-/** S0-C1 화면에 소셜 버튼을 그리는 순서(참고 디자인 기준: 네이버 → 카카오 → Google). */
-const SOCIAL_PROVIDER_ORDER: SocialProvider[] = ["네이버", "카카오", "구글"];
+/**
+ * S0-C1 화면에 소셜 버튼을 그리는 순서(참고 디자인 기준: 네이버 → 카카오 → Google).
+ * 지금은 실제로 연동된 카카오만 노출한다. 네이버·구글을 연동하면 이 배열에 다시 넣는다.
+ */
+const SOCIAL_PROVIDER_ORDER: SocialProvider[] = ["카카오"];
 
 interface SocialLoginButtonProps {
   provider: SocialProvider;
@@ -112,8 +115,8 @@ function SocialLoginButton({ provider, onClick }: SocialLoginButtonProps) {
  *
  * 카카오만 실제로 연동돼 있다. 카카오 버튼은 BFF(/api/customer/kakao/start)로 페이지 전체를
  * 이동시키고, 카카오 동의 → 콜백에서 가입 여부에 따라 로그인 완료 또는 아이디 입력(S0-C2)으로
- * 갈린다. 그래서 로그인·회원가입 어느 화면에서 눌러도 결과가 같다. 네이버·구글은 버튼만 두고
- * "준비 중" 안내를 띄운다.
+ * 갈린다. 그래서 로그인·회원가입 어느 화면에서 눌러도 결과가 같다. 네이버·구글은 연동 전이라
+ * 버튼을 노출하지 않는다(SOCIAL_PROVIDER_ORDER). 다시 노출하면 "준비 중" 안내가 뜬다.
  *
  * @param redirect 로그인(또는 가입) 후 돌아갈 경로
  */

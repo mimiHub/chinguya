@@ -2,10 +2,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, Tab, Title, Text, Stack, Card, Button, Input, Toggle, Popup, ConfirmPopup, Badge, IconX, FormMessage } from "@chinguya/ui";
-import type { AssetCategory, InquiryEntry } from "@chinguya/types";
-import { faqEntries } from "@/data/faqData";
-import { initialInquiries } from "@/data/inquiryData";
+import { Banner, Tab, Title, Text, Stack, Card, Button, Input, ConfirmPopup, Badge, IconX, Alert, EmptyState } from "@chinguya/ui";
+import type { AssetCategory } from "@chinguya/types";
+import {
+  ApiError,
+  createApiClient,
+  type CustomerFaq,
+  type InquiryDetail,
+  type InquirySummary,
+} from "@chinguya/api-client";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { UsageGuideSteps } from "@/components/UsageGuideSteps";
 
@@ -18,123 +24,123 @@ const USAGE_CATEGORY_TABS: { key: AssetCategory; label: string }[] = [
 ];
 type QnaView = "list" | "write" | "detail";
 
+const api = createApiClient();
 
-/** packages/types의 InquiryEntry(S4-C4 문의)를 이 파일 안에서는 짧게 QnaEntry로 부른다. */
-type QnaEntry = InquiryEntry;
 
 /**
- * 고객지원(S4-C3 FAQ / 사용방법 / S4-C4 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ·사용방법·1:1
- * 질문하기를 한 화면에 묶었다. "사용방법"은 상품 상세의 "상품 사용방법" 탭과 같은 데이터(data/usageGuides.ts)를
- * 그대로 보여준다 — 예약하기 전(상품 상세)에도, 예약한 뒤(대여 중)에도 여러 곳에서 쉽게 찾을 수 있게 하려는 것이다. 로그인 기능이 없어서 "이 브라우저 세션에서 쓴 글 전부"를
- * 본인 글로 취급한다(다른 목업 저장소들과 같은 한계) — 새로고침하면 처음 목업 데이터로
- * 되돌아간다.
+ * 고객지원(S4-C3 FAQ / 사용방법 / S4-C4·C5 질문하기) — 캡슐형 탭(Tab variant="capsule")으로 FAQ·사용방법·1:1
+ * 질문하기를 한 화면에 묶었다. FAQ는 Core API(GET /v1/faqs)에 실연동돼 관리자 FAQ 관리(S4-A1) 순서 그대로 보여준다.
+ * "사용방법"은 상품 상세의 "상품 사용방법" 탭과 같은 데이터(data/usageGuides.ts)를
+ * 그대로 보여준다 — 예약하기 전(상품 상세)에도, 예약한 뒤(대여 중)에도 여러 곳에서 쉽게 찾을 수 있게 하려는 것이다.
  *
- * 비공개 글은 목록에서 제목만 보이고(🔒) 상세를 보려면 비밀번호가 맞아야 한다 — 기획서
- * 작성 화면엔 비밀번호 입력칸이 따로 안 보였지만, 그 비밀번호를 어딘가에서는 정해야 열람
- * 검증이 성립하기 때문에 "비공개로 등록"을 껐을 때만 비밀번호 입력칸이 나오게 추가했다.
+ * 질문하기는 Core API(/v1/inquiries)에 실연동돼 있고 로그인 고객만 쓸 수 있다. 목록은 모든 고객 글의
+ * 제목·상태만 보이고, 남의 글은 🔒로 잠겨 열리지 않는다. 본문·관리자 답변은 본인 글 상세에서만 보인다
+ * (서버도 남의 글 상세를 404로 막는다). 질문은 등록·삭제만 되고 수정은 안 된다.
  */
 function ContactContent() {
   // 예약 상세 등 다른 화면에서 /contact?tab=usage&category=FISHING_ROD 로 오면 사용방법 탭·해당 상품 종류가 먼저 선택된 채로 열린다.
   const searchParams = useSearchParams();
-  const initialTab: ContactTab = searchParams.get("tab") === "usage" ? "usage" : "faq";
+  const tabParam = searchParams.get("tab");
+  const initialTab: ContactTab = tabParam === "usage" || tabParam === "qna" ? tabParam : "faq";
   const initialUsageCategory: AssetCategory =
     searchParams.get("category") === "FISHING_ROD" ? "FISHING_ROD" : "BICYCLE";
   const [tab, setTab] = useState<ContactTab>(initialTab);
   const [usageCategory, setUsageCategory] = useState<AssetCategory>(initialUsageCategory);
-  const sortedFaqEntries = [...faqEntries].sort((a, b) => a.order - b.order);
-  const [openFaqId, setOpenFaqId] = useState<string | null>(sortedFaqEntries[0]?.id ?? null);
+  const [faqs, setFaqs] = useState<CustomerFaq[] | null>(null);
+  const [faqError, setFaqError] = useState<string | null>(null);
+  const [openFaqId, setOpenFaqId] = useState<string | null>(null);
 
-  const [qnaItems, setQnaItems] = useState<QnaEntry[]>(initialInquiries);
+  useEffect(() => {
+    api.customerFaqs
+      .list()
+      .then((list) => {
+        setFaqs(list);
+        // 첫 질문은 펼친 채로 보여준다.
+        setOpenFaqId(list[0]?.faqId ?? null);
+      })
+      .catch((err: unknown) => {
+        setFaqError(err instanceof ApiError ? err.message : "FAQ를 불러오지 못했습니다.");
+      });
+  }, []);
+
+  const { session, loading: authLoading } = useCustomerAuth();
+  const [qnaItems, setQnaItems] = useState<InquirySummary[] | null>(null);
+  const [qnaError, setQnaError] = useState<string | null>(null);
   const [qnaView, setQnaView] = useState<QnaView>("list");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
-
-  const [pinTargetId, setPinTargetId] = useState<string | null>(null);
-  const [pinValue, setPinValue] = useState("");
-  const [pinError, setPinError] = useState(false);
-
+  const [selected, setSelected] = useState<InquiryDetail | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [writeTitle, setWriteTitle] = useState("");
   const [writeContent, setWriteContent] = useState("");
-  const [writePublic, setWritePublic] = useState(true);
-  const [writePin, setWritePin] = useState("");
 
-  const [replyContent, setReplyContent] = useState("");
-
-  const selected = qnaItems.find((q) => q.id === selectedId) ?? null;
-
-  // 상세로 들어온 글이 바뀌면(다른 질문을 열면) 이전 글에 쓰던 답글 입력값이 남아있지 않게 비운다.
-  useEffect(() => {
-    setReplyContent("");
-  }, [selectedId]);
-
-  const openQna = (item: QnaEntry) => {
-    if (!item.isPublic && !unlockedIds.has(item.id)) {
-      setPinTargetId(item.id);
-      setPinValue("");
-      setPinError(false);
-      return;
-    }
-    setSelectedId(item.id);
-    setQnaView("detail");
+  const loadQna = () => {
+    setQnaError(null);
+    api.customerInquiries
+      .list()
+      .then(setQnaItems)
+      .catch((err: unknown) => {
+        setQnaError(err instanceof ApiError ? err.message : "질문 목록을 불러오지 못했습니다.");
+      });
   };
 
-  const confirmPin = () => {
-    const target = qnaItems.find((q) => q.id === pinTargetId);
-    if (!target) return;
-    if (pinValue === target.pin) {
-      setUnlockedIds((prev) => new Set(prev).add(target.id));
-      setSelectedId(target.id);
-      setQnaView("detail");
-      setPinTargetId(null);
-    } else {
-      setPinError(true);
-    }
+  // 질문하기 탭은 로그인 고객만 쓴다 — 로그인 확인이 끝난 뒤에 목록을 부른다.
+  useEffect(() => {
+    if (tab !== "qna" || authLoading || !session) return;
+    loadQna();
+  }, [tab, authLoading, session]);
+
+  const openQna = (item: InquirySummary) => {
+    if (!item.mine) return;
+    setQnaError(null);
+    api.customerInquiries
+      .detail(item.inquiryId)
+      .then((detail) => {
+        setSelected(detail);
+        setQnaView("detail");
+      })
+      .catch((err: unknown) => {
+        setQnaError(err instanceof ApiError ? err.message : "질문을 불러오지 못했습니다.");
+      });
   };
 
   const resetWriteForm = () => {
     setWriteTitle("");
     setWriteContent("");
-    setWritePublic(true);
-    setWritePin("");
   };
 
-  const canSubmit =
-    writeTitle.trim().length > 0 && writeContent.trim().length > 0 && (writePublic || writePin.trim().length > 0);
+  const canSubmit = writeTitle.trim().length > 0 && writeContent.trim().length > 0 && !submitting;
 
   const submitQna = () => {
     if (!canSubmit) return;
-    const entry: QnaEntry = {
-      id: `qna-${Date.now()}`,
-      title: writeTitle.trim(),
-      content: writeContent.trim(),
-      isPublic: writePublic,
-      pin: writePublic ? undefined : writePin.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    setQnaItems((prev) => [entry, ...prev]);
-    resetWriteForm();
-    setQnaView("list");
+    setSubmitting(true);
+    setQnaError(null);
+    api.customerInquiries
+      .create({ title: writeTitle.trim(), content: writeContent.trim() })
+      .then(() => {
+        resetWriteForm();
+        setQnaView("list");
+        loadQna();
+      })
+      .catch((err: unknown) => {
+        setQnaError(err instanceof ApiError ? err.message : "질문을 등록하지 못했습니다.");
+      })
+      .finally(() => setSubmitting(false));
   };
 
   const deleteQna = () => {
     if (!deleteTargetId) return;
-    setQnaItems((prev) => prev.filter((q) => q.id !== deleteTargetId));
-    setDeleteTargetId(null);
-    setQnaView("list");
-    setSelectedId(null);
-  };
-
-  // 상세 화면에서 같은 글에 이어서 새 질문(답글)을 남긴다 — 관리자 답변을 보고도 궁금한 게
-  // 남아 있으면 목록으로 돌아가지 않고 바로 이어서 물어볼 수 있게 한다.
-  const submitReply = () => {
-    if (!selected || !replyContent.trim()) return;
-    const content = replyContent.trim();
-    setQnaItems((prev) =>
-      prev.map((q) => (q.id === selected.id ? { ...q, followUps: [...(q.followUps ?? []), content] } : q)),
-    );
-    setReplyContent("");
+    api.customerInquiries
+      .remove(deleteTargetId)
+      .then(() => {
+        setSelected(null);
+        setQnaView("list");
+        loadQna();
+      })
+      .catch((err: unknown) => {
+        setQnaError(err instanceof ApiError ? err.message : "질문을 삭제하지 못했습니다.");
+      })
+      .finally(() => setDeleteTargetId(null));
   };
 
   return (
@@ -164,15 +170,21 @@ function ContactContent() {
                 자주 묻는 질문
               </Title>
 
+              {faqError && <Alert status="error">{faqError}</Alert>}
+
+              {faqs === null && !faqError && <Text variant="sub">불러오는 중…</Text>}
+
+              {faqs !== null && faqs.length === 0 && <EmptyState variant="card">등록된 질문이 없습니다.</EmptyState>}
+
               <Stack direction="column" gap="sm">
-                {sortedFaqEntries.map((faq, i) => {
-                  const open = openFaqId === faq.id;
+                {(faqs ?? []).map((faq, i) => {
+                  const open = openFaqId === faq.faqId;
                   return (
-                    <ScrollReveal key={faq.id} delay={i * 60}>
+                    <ScrollReveal key={faq.faqId} delay={i * 60}>
                     <Card padding="sm" tint="primary">
                       <button
                         type="button"
-                        onClick={() => setOpenFaqId(open ? null : faq.id)}
+                        onClick={() => setOpenFaqId(open ? null : faq.faqId)}
                         className="flex w-full items-center gap-3 bg-transparent text-left focus:outline-none"
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
@@ -216,25 +228,43 @@ function ContactContent() {
               />
               <UsageGuideSteps category={usageCategory} />
             </Stack>
+          ) : authLoading ? null : !session ? (
+            <Stack direction="column" gap="md">
+              <Title size="lg" subtitle="궁금하신 점을 알려주시면, 답변을 보내드릴게요.">
+                질문 목록
+              </Title>
+              <Text tone="secondary">질문하기는 로그인 후 이용할 수 있습니다.</Text>
+              <Button href={`/login?redirect=${encodeURIComponent("/contact?tab=qna")}`}>로그인</Button>
+            </Stack>
           ) : qnaView === "list" ? (
             <Stack direction="column" gap="sm">
               <Title size="lg" subtitle="궁금하신 점을 알려주시면, 답변을 보내드릴게요.">
                 질문 목록
               </Title>
 
+              {qnaError && <Alert status="error">{qnaError}</Alert>}
+
+              {qnaItems === null && !qnaError && <Text variant="sub">불러오는 중…</Text>}
+
+              {qnaItems !== null && qnaItems.length === 0 && (
+                <EmptyState variant="card">등록된 질문이 없습니다.</EmptyState>
+              )}
+
+              {/* 목록은 전체 공개(제목·상태). 남의 글은 🔒 — 눌러도 열리지 않는다. */}
               <Stack direction="column" gap="sm">
-                {qnaItems.map((item, i) => (
-                  <ScrollReveal key={item.id} delay={i * 60}>
-                  <Card padding="sm" onClick={() => openQna(item)}>
+                {(qnaItems ?? []).map((item, i) => (
+                  <ScrollReveal key={item.inquiryId} delay={i * 60}>
+                  <Card padding="sm" onClick={item.mine ? () => openQna(item) : undefined}>
                     <Stack justify="between" align="center">
-                      <Text as="span" weight="medium">
+                      <Text as="span" weight="medium" variant={item.mine ? undefined : "sub"}>
+                        {!item.mine && (
+                          <span aria-label="다른 고객의 글" className="mr-1">
+                            🔒
+                          </span>
+                        )}
                         {item.title}
                       </Text>
-                      {!item.isPublic ? (
-                        <span aria-hidden="true" className="text-muted">
-                          🔒
-                        </span>
-                      ) : item.answer ? (
+                      {item.status === "ANSWERED" ? (
                         <Badge variant="success">답변완료</Badge>
                       ) : (
                         <Badge variant="gray">대기</Badge>
@@ -243,12 +273,13 @@ function ContactContent() {
                   </Card>
                   </ScrollReveal>
                 ))}
-              </Stack>             
+              </Stack>
 
               <Stack justify="center" className="mt-6">
                 <Button
                   onClick={() => {
                     resetWriteForm();
+                    setQnaError(null);
                     setQnaView("write");
                   }}
                 >
@@ -268,37 +299,21 @@ function ContactContent() {
               </button>
               <Title size="lg">내 질문</Title>
 
-              <Input placeholder="제목" value={writeTitle} onChange={(e) => setWriteTitle(e.target.value)} />
+              {qnaError && <Alert status="error">{qnaError}</Alert>}
+
+              <Input placeholder="제목" value={writeTitle} maxLength={100} onChange={(e) => setWriteTitle(e.target.value)} />
               <Input
                 as="textarea"
                 rows={5}
                 placeholder="새 질문 입력..."
                 value={writeContent}
+                maxLength={2000}
                 onChange={(e) => setWriteContent(e.target.value)}
               />
 
-              <Toggle
-                on={writePublic}
-                onChange={setWritePublic}
-                className="w-full justify-between"
-                label={
-                  <Text as="span" weight="medium">
-                    공개로 등록
-                  </Text>
-                }
-              />
-
-              {!writePublic && (
-                <Stack direction="column" gap="xs">
-                  <Input
-                    placeholder="비밀번호(4자리)"
-                    value={writePin}
-                    onChange={(e) => setWritePin(e.target.value)}
-                    maxLength={4}
-                  />
-                  <FormMessage type="helper">비공개 글은 이 비밀번호로만 다시 열람할 수 있어요.</FormMessage>
-                </Stack>
-              )}
+              <Text variant="sub" size="xs">
+                등록한 질문은 수정할 수 없어요(삭제는 가능). 내용과 답변은 작성한 본인만 볼 수 있어요.
+              </Text>
 
               <Button fullWidth disabled={!canSubmit} onClick={submitQna}>
                 등록
@@ -316,78 +331,48 @@ function ContactContent() {
               </button>
               <Title size="lg">내 질문</Title>
 
+              {qnaError && <Alert status="error">{qnaError}</Alert>}
+
               <ScrollReveal>
               <Card tint="secondary">
                 <Stack direction="column" gap="sm">
                   <Stack justify="between" align="start">
                     <Text weight="bold">{selected.title}</Text>
-                    <IconX aria-label="질문 삭제" onClick={() => setDeleteTargetId(selected.id)} />
-                  </Stack>                  
+                    <IconX aria-label="질문 삭제" onClick={() => setDeleteTargetId(selected.inquiryId)} />
+                  </Stack>
                   <Badge variant="error" className="w-fit">
                       수정 불가
                   </Badge>
-                  <Text>{selected.content}</Text>
-                
+                  <Text className="whitespace-pre-line">{selected.content}</Text>
+
                   <Card shadow={false}>
                     <Stack direction="column" gap="sm">
                       <Badge variant="info" className="w-fit">
                         관리자 답변
                       </Badge>
-                      <Text variant="sub">{selected.answer ?? "아직 답변이 등록되지 않았어요. 조금만 기다려 주세요."}</Text>
+                      <Text variant="sub" className="whitespace-pre-line">
+                        {selected.answer ?? "아직 답변이 등록되지 않았어요. 조금만 기다려 주세요."}
+                      </Text>
                     </Stack>
                   </Card>
                 </Stack>
               </Card>
               </ScrollReveal>
 
-              {(selected.followUps ?? []).map((msg, i) => (
-                <ScrollReveal key={i}>
-                <Card padding="sm" tint="secondary">          
-                  <Stack justify="end">
-                    <IconX aria-label="질문 삭제" onClick={() => setDeleteTargetId(selected.id)} />   </Stack>     
-                  <Text className="mt-1">{msg}</Text>
-                </Card>
-                </ScrollReveal>
-              ))}
-
-              {/* 답변을 보고도 궁금한 게 남았으면 목록으로 돌아가지 않고 이 스레드에 바로
-                  이어서 물어볼 수 있게 한다(기획서 S4-C4 상세/작성 화면 참고). */}
-              <Stack direction="column" gap="sm">
-                <Input
-                  as="textarea"
-                  rows={3}
-                  placeholder="새 질문 입력..."
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                />
-                <Button fullWidth disabled={!replyContent.trim()} onClick={submitReply}>
-                  등록
-                </Button>
-              </Stack>
+              <Button
+                fullWidth
+                variant="outline"
+                onClick={() => {
+                  resetWriteForm();
+                  setQnaView("write");
+                }}
+              >
+                새 질문 작성
+              </Button>
             </Stack>
           ) : null}
         </Stack>
       </div>
-
-      <Popup open={Boolean(pinTargetId)} onClose={() => setPinTargetId(null)} title="비공개 질문">
-        <Stack direction="column" gap="sm">
-          <Text variant="sub">비밀번호를 입력하면 질문 내용을 볼 수 있어요. (답변은 작성 본인만 열람 가능합니다)</Text>
-          <Input
-            value={pinValue}
-            onChange={(e) => {
-              setPinValue(e.target.value);
-              setPinError(false);
-            }}
-            placeholder="비밀번호"
-            maxLength={4}
-            error={pinError}
-          />
-          {pinError && <FormMessage type="error">비밀번호가 올바르지 않아요.</FormMessage>}
-          <Button fullWidth onClick={confirmPin}>
-            확인
-          </Button>
-        </Stack>
-      </Popup>
 
       <ConfirmPopup
         open={Boolean(deleteTargetId)}

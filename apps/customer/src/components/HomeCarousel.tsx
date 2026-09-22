@@ -3,13 +3,53 @@
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { heroBannerSlides } from "@chinguya/catalog-data";
+import { createApiClient, type HeroBanner } from "@chinguya/api-client";
 
-// PC/모바일용 이미지가 세트로 준비돼 있어서, 화면 폭에 맞는 쪽만 보여준다(참고 사이트와 동일한
-// 방식) — 아래 슬라이드에서 두 버전을 겹쳐놓고 Tailwind 반응형 클래스(md:hidden/hidden md:block)로
-// 하나만 보이게 한다. 슬라이드 목록(이미지·title/subtitle)은 admin 콘텐츠 관리 화면(S4-A1/A3)에서
-// 편집하는 것과 같은 값이라 여기서 하드코딩하지 않고 @chinguya/catalog-data의 heroBannerSlides를
-// 그대로 쓴다 — agency 로그인 배경(AuthBackgroundSlides.tsx)도 같은 배열을 쓴다.
-const SLIDES = heroBannerSlides;
+const api = createApiClient();
+
+/**
+ * PC/모바일용 이미지가 세트로 준비돼 있어서, 화면 폭에 맞는 쪽만 보여준다(참고 사이트와 동일한
+ * 방식) — 두 버전을 겹쳐놓고 Tailwind 반응형 클래스(md:hidden/hidden md:block)로 하나만 보이게 한다.
+ *
+ * 값은 **관리자 콘텐츠 관리(S4-A3)가 저장한 것을 API 로 읽는다**(GET /v1/content/banners).
+ * 번들된 `heroBannerSlides` 는 **첫 페인트와 API 실패 대비용 기본값**으로만 남겼다 — 히어로가
+ * 화면을 꽉 채우는 요소라, 응답을 기다리며 빈 화면을 보여주는 것보다 초기값을 띄우고 교체하는
+ * 편이 낫다고 판단했다.
+ *
+ * 여행사 로그인 배경(agency/AuthBackgroundSlides.tsx)도 같은 API 를 읽는다 — 관리자가 배너를
+ * 바꾸면 두 화면이 같이 바뀐다.
+ */
+interface Slide {
+  title: string;
+  subtitle?: string;
+  pcImage: string;
+  mobileImage: string;
+}
+
+/** 번들 초기값 → 슬라이드. API 응답이 오기 전까지 이걸 보여준다. */
+const FALLBACK_SLIDES: Slide[] = heroBannerSlides.map((s) => ({
+  title: s.title,
+  subtitle: s.subtitle,
+  pcImage: s.pcImage,
+  mobileImage: s.mobileImage,
+}));
+
+/**
+ * 관리자가 올린 이미지는 Core 의 `/content/images/…` 에 있어서 자기 오리진 프록시를 거쳐야 한다.
+ * 앱 정적 파일(`/banner-pc-1.png` 등 초기값)은 그대로 쓴다.
+ */
+function imageSrc(url: string): string {
+  return url.startsWith("/content/images/") ? `/api/core${url}` : url;
+}
+
+function toSlides(banners: HeroBanner[]): Slide[] {
+  return banners.map((b) => ({
+    title: b.title,
+    subtitle: b.subtitle ?? undefined,
+    pcImage: imageSrc(b.pcImageUrl),
+    mobileImage: imageSrc(b.mobileImageUrl),
+  }));
+}
 
 const AUTOPLAY_MS = 5000;
 
@@ -22,18 +62,37 @@ const AUTOPLAY_MS = 5000;
  */
 export function HomeCarousel() {
   const [index, setIndex] = useState(0);
+  const [slides, setSlides] = useState<Slide[]>(FALLBACK_SLIDES);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % SLIDES.length);
-    }, AUTOPLAY_MS);
-    return () => clearInterval(timer);
+    let active = true;
+    api.publicContent
+      .banners()
+      .then((banners) => {
+        // 배너가 비어 있으면(운영 초기) 초기값을 그대로 둔다 — 빈 히어로를 띄우지 않는다.
+        if (active && banners.length > 0) {
+          setSlides(toSlides(banners));
+          setIndex(0);
+        }
+      })
+      // 실패하면 번들 초기값을 그대로 보여준다. 히어로가 안 뜨는 것보다 낫다.
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const goPrev = () => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length);
-  const goNext = () => setIndex((i) => (i + 1) % SLIDES.length);
-  const slide = SLIDES[index] ?? SLIDES[0]!;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % slides.length);
+    }, AUTOPLAY_MS);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const goPrev = () => setIndex((i) => (i - 1 + slides.length) % slides.length);
+  const goNext = () => setIndex((i) => (i + 1) % slides.length);
+  const slide = slides[index] ?? slides[0]!;
 
   // 화살표를 누르면 배너 바로 아래(다음 섹션)까지 부드럽게 스크롤한다. 배너 실제 높이만큼만
   // 내려가면 되니까 rootRef의 offsetHeight를 그대로 스크롤 목표로 쓴다.
@@ -50,7 +109,7 @@ export function HomeCarousel() {
     // 뷰포트 100% 높이로 두면 배너 하단(화살표·점)이 그 탭바에 가려진다. 탭바 높이만큼 빼준다
     // (md 이상은 BottomNav가 없어져서 다시 뷰포트 전체를 채운다).
     <div className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-gray-200 md:h-dvh">
-      {SLIDES.map((s, i) => (
+      {slides.map((s, i) => (
         <div
           key={i}
           className={`absolute inset-0 transition-opacity duration-500 ${i === index ? "opacity-100" : "opacity-0"}`}
@@ -114,7 +173,7 @@ export function HomeCarousel() {
 
       {/* 점 인디케이터 — 항상 화면 정가운데 */}
       <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
-        {SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             type="button"

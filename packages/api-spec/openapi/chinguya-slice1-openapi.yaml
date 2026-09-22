@@ -12,6 +12,17 @@ openapi: 3.1.0
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
 #
+# v0.12 변경(2026-09-21 — 질문하기 S4-C4/C5 실연동):
+#   1. `/inquiries` 추가 — 고객 1:1 질문. **전부 고객 로그인 필수**(비로그인 401).
+#   2. 목록(`GET /inquiries`)은 전체 고객 글의 **제목·상태만** 준다. 본인 글이면 `mine: true`.
+#      본문·답변은 상세(`GET /inquiries/{inquiryId}`)로만 받고, **본인 글만** 열린다.
+#      남의 글·없는 글은 구분 없이 404 `INQUIRY_NOT_FOUND`(존재 여부를 흘리지 않는다).
+#   3. 질문은 등록·삭제만 된다(수정 불가). 삭제도 본인 글만. 답변은 관리자 문의 관리(S4-A2)가 단다.
+#
+# v0.11 변경(2026-09-21 — FAQ S4-C3 실연동):
+#   1. `GET /faqs` 추가 — 관리자 FAQ 관리(S4-A1)에서 등록한 FAQ를 노출 순서대로 돌려준다.
+#      비로그인 열람 허용, 분류·검색·페이지네이션 없음. `x-screens: [S4-C3]`.
+#
 # v0.10 변경(2026-09-16 — 취소 요청 S1-C7 실연동):
 #   1. `GET /bookings/{bookingId}/cancellation-quote`·`POST /bookings/{bookingId}/cancel-request`에
 #      `x-screens: [S1-C7]` 부착.
@@ -118,7 +129,7 @@ openapi: 3.1.0
 
 info:
   title: 친구야 Core API — Slice 1 (자전거 예약 MVP)
-  version: 0.10.0-draft
+  version: 0.11.0-draft
   description: |
     고객 자전거 예약 MVP의 Core API.
     - 통화: KRW 정수(원). 소수점 없음.
@@ -165,6 +176,10 @@ tags:
     description: 취소 견적·요청 (S1-C7, 항목 단위)
   - name: auth
     description: 고객 카카오 로그인·회원가입·세션 (S0-C1, S0-C2, S0-C3)
+  - name: faq
+    description: 자주 묻는 질문 (S4-C3)
+  - name: inquiries
+    description: 1:1 질문하기 — 목록·작성·상세·삭제 (S4-C4, S4-C5)
 
 # -----------------------------------------------------------------------------
 paths:
@@ -300,6 +315,35 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /content/banners:
+    get:
+      tags: [content]
+      summary: 랜딩 히어로 배너 (안 A)
+      x-screens: [안 A, S2-G1, S2-G2]
+      description: |
+        관리자 콘텐츠 관리(S4-A3)에서 편집한 **랜딩 히어로 배너 3장**을 slot 순서로 돌려준다.
+        비로그인 열람 허용.
+
+        배너는 **3장 고정**이다(slot 1·2·3). 장마다 PC용·모바일용 이미지가 따로 있고, 화면 폭에
+        맞는 쪽만 보여준다 — 반응형으로 한 장을 늘려 쓰는 게 아니라 통째로 다른 이미지다.
+
+        이미지 주소는 두 가지가 섞여 온다. `/content/images/…` 는 관리자가 올린 파일이라
+        `GET /content/images/{fileName}` 으로 읽고, 그 밖의 `/…` 는 웹앱 정적 파일(초기값)이라
+        앱이 그대로 쓴다.
+
+        이 배너는 **고객 랜딩(안 A) 히어로와 여행사 로그인 배경**(S2-G1/G2)이 함께 쓴다 —
+        관리자가 배너를 바꾸면 두 화면이 같이 바뀐다. 여행사 앱은 데스크톱 전용이라
+        `pcImageUrl` 만 쓰고 `title`·`subtitle` 은 쓰지 않는다(배경일 뿐이다).
+      security: []
+      responses:
+        '200':
+          description: slot 오름차순 배너 3장
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HeroBanner' }
+
   /content/images/{fileName}:
     get:
       tags: [products]
@@ -325,6 +369,161 @@ paths:
             image/webp:
               schema: { type: string, format: binary }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /notices:
+    get:
+      tags: [notice]
+      summary: 공지사항·이벤트 목록 (S4-C6)
+      x-screens: [S4-C6]
+      description: |
+        관리자(S4-A4)가 등록한 글 중 **공개 글만** 돌려준다(숨긴 글은 빠진다). 비로그인 열람 허용.
+
+        정렬은 **고정 글 먼저, 그다음 작성일 내림차순**(같으면 id 내림차순) — 관리자 목록과 같은 순서다.
+
+        화면이 **무한 스크롤**이라 페이지를 이어 붙인다. 본문·첨부는 담지 않는다 — 목록이
+        무거워지고 첫 화면이 늦어지기 때문이다. 상세는 `GET /notices/{noticeId}` 로 받는다.
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/NoticeCategory' }
+          description: 비우면 전체. 화면은 탭에 맞춰 항상 하나를 보낸다.
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 공개 글 한 페이지. 없으면 `content` 가 빈 배열이다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoticeListPage' }
+        '400':
+          description: 카테고리 값이 올바르지 않거나 page·size 범위를 벗어났다(`VALIDATION_ERROR`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /notices/{noticeId}:
+    get:
+      tags: [notice]
+      summary: 공지사항·이벤트 상세 (S4-C6)
+      x-screens: [S4-C6]
+      description: |
+        글 1건의 본문과 첨부 이미지. 비로그인 열람 허용.
+
+        **숨긴 글은 404** 다 — 목록에서 빠졌는데 주소를 직접 치면 보이는 일이 없어야 한다.
+
+        본문의 `![설명](주소)` 표기는 **화면이 이미지로 렌더한다**. 그 외 마크다운 문법은 서버도
+        화면도 해석하지 않고 글자 그대로 둔다(관리자 S4-A4와 같은 범위).
+      security: []
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 글 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoticeDetail' }
+        '404':
+          description: 존재하지 않거나 **숨겨진** 글(`NOTICE_NOT_FOUND`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /faqs:
+    get:
+      tags: [faq]
+      summary: FAQ 목록 (S4-C3, v0.11)
+      x-screens: [S4-C3]
+      description: |
+        관리자 FAQ 관리(S4-A1)에서 등록한 FAQ 전체를 노출 순서대로 돌려준다.
+        비로그인 열람 허용. 분류·검색·페이지네이션 없음. 없으면 빈 배열.
+      security: []
+      responses:
+        '200':
+          description: 노출 순서(오름차순)대로 정렬된 FAQ
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Faq' }
+
+  /inquiries:
+    get:
+      tags: [inquiries]
+      summary: 질문 목록 (S4-C4, v0.12)
+      x-screens: [S4-C4]
+      description: |
+        모든 고객의 질문을 최신순으로 돌려준다. **제목·상태만** 담는다 — 본문·답변은 상세에서 본인 글만.
+        본인 글은 `mine: true`(화면은 남의 글을 잠금 표시). 페이지네이션 없음. 없으면 빈 배열.
+      responses:
+        '200':
+          description: 최신순 질문 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/InquirySummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [inquiries]
+      summary: 질문 등록 (S4-C5, v0.12)
+      x-screens: [S4-C5]
+      description: 제목·본문 앞뒤 공백은 서버가 제거한다. 등록 후 수정할 수 없다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InquiryCreateRequest' }
+      responses:
+        '201':
+          description: 등록됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InquiryDetail' }
+        '400':
+          description: 제목·본문 누락 또는 길이 초과(`VALIDATION_ERROR`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /inquiries/{inquiryId}:
+    parameters:
+      - name: inquiryId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [inquiries]
+      summary: 내 질문 상세 (S4-C5, v0.12)
+      x-screens: [S4-C5]
+      description: 본인 글만. 남의 글·없는 글은 404 `INQUIRY_NOT_FOUND`.
+      responses:
+        '200':
+          description: 질문 본문과 관리자 답변
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InquiryDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InquiryNotFound' }
+    delete:
+      tags: [inquiries]
+      summary: 내 질문 삭제 (S4-C5, v0.12)
+      x-screens: [S4-C5]
+      description: 본인 글만 완전 삭제(답변 포함). 남의 글·없는 글은 404 `INQUIRY_NOT_FOUND`.
+      responses:
+        '204':
+          description: 삭제됨
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InquiryNotFound' }
 
   /cart:
     get:
@@ -679,7 +878,7 @@ paths:
         비교한다(CSRF 방지). 서버는 받은 값을 URL에 넣기만 한다.
 
         `redirectUri`는 BFF가 **자기 오리진**으로 채워 보낸다. 고객 앱이 여러 주소에서 뜨기
-        때문이다(로컬 `localhost:3000`, 개발 EC2 의 nip.io 주소). 서버에 하나로 박아 두면
+        때문이다(로컬 `localhost:3000`, 개발 서버 `https://chinguya.1daybus.com`). 서버에 하나로 박아 두면
         한쪽이 반드시 깨진다. 서버는 **허용 목록에 있는 값만** 받는다(없으면 400
         `REDIRECT_URI_NOT_ALLOWED`) — 이 값이 카카오가 인가 코드를 실어 보낼 주소라,
         아무 값이나 받으면 남의 인가 코드를 가로챌 수 있기 때문이다.
@@ -900,6 +1099,14 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    InquiryNotFound:
+      description: 없는 질문이거나 남의 질문(v0.12)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: INQUIRY_NOT_FOUND
+            message: 질문을 찾을 수 없습니다.
 
   schemas:
 
@@ -955,6 +1162,133 @@ components:
       type: integer
       minimum: 0
       description: KRW 정수(원).
+
+    HeroBanner:
+      type: object
+      required: [slot, title, pcImageUrl, mobileImageUrl]
+      description: 랜딩 히어로 배너 한 장. 관리자 편집(S4-A3)과 같은 모양이다.
+      properties:
+        slot:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: 표시 순서. 1·2·3 이 하나씩 온다.
+        title:
+          type: string
+          description: 줄바꿈(\n)이 보존돼 있다.
+        subtitle:
+          type: [string, 'null']
+          description: 없을 수 있다.
+        pcImageUrl:
+          type: string
+          description: 넓은 화면용. `/content/images/…`(관리자 업로드) 또는 `/…`(앱 정적 파일).
+        mobileImageUrl:
+          type: string
+          description: 좁은 화면용.
+
+    NoticeCategory:
+      type: string
+      enum: [NOTICE, EVENT]
+      description: 공지사항·이벤트 **2개 고정**. 화면의 캡슐 탭이 이 둘이다.
+
+    NoticeSummary:
+      type: object
+      required: [noticeId, category, title, createdAt, pinned]
+      description: 목록 한 줄(S4-C6). 본문·첨부는 상세에서 받는다.
+      properties:
+        noticeId: { type: string, example: '12' }
+        category: { $ref: '#/components/schemas/NoticeCategory' }
+        title: { type: string }
+        createdAt:
+          type: string
+          format: date
+          description: 작성일. 화면이 카드 오른쪽에 표시한다.
+        pinned:
+          type: boolean
+          description: true 면 목록 맨 위에 붙는다. 화면이 따로 표시하지 않아도 순서로 드러난다.
+        eventStartDate: { type: string, format: date, nullable: true }
+        eventEndDate:
+          type: string
+          format: date
+          nullable: true
+          description: 이 날짜가 지난 이벤트는 화면이 '종료'로 표시한다.
+
+    NoticeListPage:
+      type: object
+      required: [content, page, size, totalElements]
+      description: 무한 스크롤이 이어 붙이는 한 페이지.
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/NoticeSummary' }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, minimum: 0 }
+
+    NoticeDetail:
+      allOf:
+        - $ref: '#/components/schemas/NoticeSummary'
+        - type: object
+          required: [content, imageUrls]
+          properties:
+            content:
+              type: string
+              description: |
+                줄바꿈이 보존돼 있다. `![설명](주소)` 표기는 화면이 이미지로 바꿔 보여준다.
+                다른 마크다운 문법은 글자 그대로다.
+            imageUrls:
+              type: array
+              description: 첨부 이미지. 본문 아래에 순서대로 보여준다.
+              items: { type: string }
+
+    Faq:
+      type: object
+      required: [faqId, question, answer]
+      description: FAQ 한 건(v0.11). 배열 순서가 곧 노출 순서다.
+      properties:
+        faqId: { type: string }
+        question: { type: string, maxLength: 200 }
+        answer: { type: string, maxLength: 2000 }
+
+    InquiryStatus:
+      type: string
+      enum: [WAITING, ANSWERED]
+      description: 답변이 없으면 `WAITING`(대기), 있으면 `ANSWERED`(답변완료). v0.12.
+
+    InquirySummary:
+      type: object
+      required: [inquiryId, title, status, mine, createdAt]
+      description: 질문 목록 한 줄(v0.12). 본문·답변은 담지 않는다.
+      properties:
+        inquiryId: { type: string }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/InquiryStatus' }
+        mine:
+          type: boolean
+          description: 로그인한 고객이 쓴 글이면 true. false면 화면은 잠금 표시하고 상세를 열지 않는다.
+        createdAt: { type: string, format: date-time }
+
+    InquiryDetail:
+      type: object
+      required: [inquiryId, title, content, status, createdAt]
+      description: 내 질문 상세(v0.12).
+      properties:
+        inquiryId: { type: string }
+        title: { type: string }
+        content: { type: string }
+        status: { $ref: '#/components/schemas/InquiryStatus' }
+        answer:
+          type: [string, 'null']
+          description: 관리자 답변. 없으면 null.
+        answeredAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    InquiryCreateRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        content: { type: string, minLength: 1, maxLength: 2000 }
 
     ProductSummary:
       type: object

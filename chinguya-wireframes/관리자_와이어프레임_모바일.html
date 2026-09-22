@@ -127,7 +127,7 @@
     <a href="#a-prod">상품 목록</a><a href="#a-prodedit">상품 등록</a><a href="#a-res">예약 목록</a><a href="#a-resdetail">예약 상세·입금</a>
     <a href="#a-cancel">취소 처리</a><a href="#a-set">계좌·정책</a><a href="#a-admins">관리자 관리</a>
     <a href="#a-agency">여행사 관리</a><a href="#a-agencyadd">여행사 등록</a><a href="#a-alloc">할당 세팅(통합됨)</a><a href="#a-invoice">인보이스</a><a href="#a-invoicedetail">인보이스 상세</a>
-    <a href="#a-qnalist">문의 목록</a><a href="#a-qna">문의 상세·답변</a><a href="#a-cms">FAQ·콘텐츠</a>
+    <a href="#a-qnalist">문의 목록</a><a href="#a-qna">문의 상세·답변</a><a href="#a-cms">FAQ·콘텐츠</a><a href="#a-notice">공지·이벤트</a><a href="#a-noticeedit">공지 글 작성/수정</a>
   </nav>
 </header>
 
@@ -762,7 +762,7 @@
     </div>
 
     <div class="screen" id="a-cms">
-      <div class="cap"><span class="id">S4-A1/A3</span><span class="nm">FAQ · 콘텐츠 관리</span><span class="dsc">CMS-lite</span></div>
+      <div class="cap"><span class="id">S4-A1/A3</span><span class="nm">FAQ · 콘텐츠 관리</span><span class="dsc">FAQ · 랜딩 배너</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>CMS</span></div><div class="vp">
         <div class="abar"><span class="mn">≡</span><span class="ti">FAQ · 콘텐츠</span><span class="sp"></span><span class="btn sm sec">+ FAQ</span></div>
         <div class="card2"><div class="row" style="align-items:center"><span style="color:var(--muted)">⋮⋮</span><div style="flex:1" class="line w7"></div><span class="tag">순서</span></div></div>
@@ -794,18 +794,87 @@
         <div class="note">권장 이미지 사이즈 안내는 기본 접힘 — 사이즈 숫자(<b>PC: 1920×1080px(16:9)</b> · <b>모바일: 1080×1920px(9:16)</b>)까지만 보이고, 우측 상단 <b>+</b> 버튼을 누르면 왜 이 비율이어야 하는지(화면을 꽉 채우도록 잘라서 보여주는 방식이라 이 비율과 다르면 중요한 부분이 잘릴 수 있다 — <b>PC는 가운데</b>, <b>모바일은 위쪽</b> 기준으로 잘림) 설명이 펼쳐지고 버튼이 <b>−</b>로 바뀐다. 다시 누르면 접힌다. +/− 버튼에는 <b>더보기/접기</b> 툴팁(마우스 올리면 표시, 키보드로 포커스해도 표시)이 붙어 있다 — 브라우저 기본 툴팁이 아니라 디자인 시스템 전용 <b>Tooltip 컴포넌트</b>(packages/ui/src/components/tooltip.tsx)로, 라이트·다크 테마 어디서든 항상 어두운 말풍선으로 보인다. 실 구현(apps/admin/src/app/content/page.tsx의 BannerSizeGuide) 화면에 그대로 노출됨(실 구현과 동기화).</div>
         <a class="btn pri">배너 저장</a>
 
-        <div class="h s" style="margin:12px 0 6px"></div>
-        <div class="card2">랜딩 · 서비스 소개 콘텐츠 편집 <div class="imgph wide" style="margin-top:8px"></div></div>
-        <div class="note blue">FAQ 등록/수정/삭제·노출 순서. 분류·검색 없음. 랜딩 히어로 배너(3장, PC/모바일 이미지 각각) 편집. 소개 텍스트·이미지 편집.</div>
+        <div class="note blue">FAQ 등록/수정/삭제·노출 순서. 분류·검색 없음. 랜딩 히어로 배너(3장, PC/모바일 이미지 각각) 편집.</div>
+        <div class="note">⚠ <b>서비스 소개(S4-C2) 본문 편집 영역은 2026-09-21 결정으로 빠졌다</b> — 서비스 소개는 관리자 페이지에서 관리하지 않고, 화면이 직접 들고 있다(바꿀 일이 생기면 배포로 바꾼다). 실 구현에서도 그 구역을 숨겼고 서버 API는 되돌릴 수 있게 남겨 뒀다.</div>
       </div></div>
       <div class="desc">
         <h4>화면 상세 정의</h4>
         <dl>
-          <dt>목적</dt><dd><b>FAQ·랜딩 히어로 배너·서비스 소개</b> 콘텐츠 편집(CMS-lite)</dd>
+          <dt>목적</dt><dd><b>FAQ·랜딩 히어로 배너</b> 콘텐츠 편집(CMS-lite)</dd>
           <dt>진입</dt><dd>메뉴 → FAQ·콘텐츠</dd>
-          <dt>주요 요소</dt><dd>FAQ 항목(순서 드래그), + FAQ 버튼, <b>랜딩 히어로 배너 3장(탭으로 전환)</b> — 탭당 제목·부제(선택 입력)·PC/모바일 이미지 각각 첨부, 서비스 소개 콘텐츠 편집 영역</dd>
-          <dt>규칙·로직</dt><dd>FAQ 등록/수정/삭제·<b>노출 순서</b> 관리, <b>분류·검색 없음</b>. 배너는 <b>3장 고정</b>이며 장마다 <b>PC용·모바일용 이미지가 각각</b> 필요하다(고객앱 홈 캐러셀과 동일 방식) — 3장을 한 화면에 다 펼치면 스크롤이 너무 길어져 <b>탭으로 하나씩만</b> 편집한다. 이미지는 <b>선택 시 미리보기</b>까지만 되고 실제 업로드·저장 연동은 이연 상태. <b>이미지 권장 사이즈</b>: PC 1920×1080px(16:9) · 모바일 1080×1920px(9:16) — 안내는 기본 접힘 상태이며 우측 상단 <b>+</b>/<b>−</b> 버튼으로 펼치고 접는다. 버튼에는 브라우저 기본 툴팁이 아닌 디자인 시스템 <b>Tooltip 컴포넌트</b>(packages/ui)가 붙는다(실 구현 BannerSizeGuide와 동기화). 랜딩/소개 텍스트·이미지 편집</dd>
-          <dt>화면 이동</dt><dd>편집 → 고객 FAQ·랜딩·서비스 소개·<b>여행사 로그인 배경</b>(S2-G1/G2)에 반영</dd>
+          <dt>주요 요소</dt><dd>FAQ 항목(순서 드래그), + FAQ 버튼, <b>랜딩 히어로 배너 3장(탭으로 전환)</b> — 탭당 제목·부제(선택 입력)·PC/모바일 이미지 각각 첨부</dd>
+          <dt>규칙·로직</dt><dd>FAQ 등록/수정/삭제·<b>노출 순서</b> 관리, <b>분류·검색 없음</b>. 배너는 <b>3장 고정</b>이며 장마다 <b>PC용·모바일용 이미지가 각각</b> 필요하다(고객앱 홈 캐러셀과 동일 방식) — 3장을 한 화면에 다 펼치면 스크롤이 너무 길어져 <b>탭으로 하나씩만</b> 편집한다. 이미지는 <b>선택 시 미리보기</b>까지만 되고 실제 업로드·저장 연동은 이연 상태. <b>이미지 권장 사이즈</b>: PC 1920×1080px(16:9) · 모바일 1080×1920px(9:16) — 안내는 기본 접힘 상태이며 우측 상단 <b>+</b>/<b>−</b> 버튼으로 펼치고 접는다. 버튼에는 브라우저 기본 툴팁이 아닌 디자인 시스템 <b>Tooltip 컴포넌트</b>(packages/ui)가 붙는다(실 구현 BannerSizeGuide와 동기화). <b>서비스 소개(S4-C2)는 관리 대상에서 제외</b>(2026-09-21 결정) — 그 편집 구역은 숨김 처리했다</dd>
+          <dt>화면 이동</dt><dd>편집 → 고객 FAQ·랜딩·<b>여행사 로그인 배경</b>(S2-G1/G2)에 반영</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="screen" id="a-notice">
+      <div class="cap"><span class="id">S4-A4</span><span class="nm">공지사항 · 이벤트 관리</span><span class="dsc">목록 · 공개 · 고정</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>NOTICE ADMIN</span></div><div class="vp">
+        <div class="abar"><span class="mn">≡</span><span class="ti">공지 · 이벤트</span><span class="sp"></span><span class="btn sm sec">+ 등록</span></div>
+        <div class="tabs"><span class="on">공지사항</span><span>이벤트</span></div>
+        <div class="card2"><div class="row" style="align-items:center">
+          <span class="tag k" style="flex:0 0 auto;align-self:center">고정</span>
+          <div style="flex:1">매장 오픈 안내<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">2026-07-01</div></div>
+          <span class="toggle on" style="flex:0 0 auto;align-self:center"></span></div></div>
+        <div class="card2"><div class="row" style="align-items:center">
+          <div style="flex:1">여름 휴무 안내<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">2026-06-20</div></div>
+          <span class="toggle on" style="flex:0 0 auto;align-self:center"></span></div></div>
+        <div class="card2"><div class="row" style="align-items:center">
+          <div style="flex:1">작성 중인 글<div style="font-family:var(--mono);font-size:9px;color:var(--muted)">2026-06-18</div></div>
+          <span class="toggle" style="flex:0 0 auto;align-self:center"></span></div></div>
+        <div class="note">카테고리 <b>탭으로 전환</b>(공지사항/이벤트 <b>2개 고정</b> — 관리자가 추가·수정 못 함). 카드 = <b>고정 태그 · 제목 · 작성일 · 공개 토글</b>. 토글을 카드에서 바로 끄면 고객앱에서 숨겨진다(<b>숨김 글도 관리자 목록에는 계속 보인다</b> — 위 3번째 카드). 글이 없으면 '등록된 글이 없습니다.'</div>
+        <div class="note">정렬 = <b>고정 글이 맨 위</b>, 그다음 <b>작성일 내림차순</b>. 고정끼리도 작성일 내림차순. 목록은 <b>무한 스크롤</b>(페이지 버튼·더보기 없음).</div>
+        <div class="note blue">쓰기(등록·수정·삭제·토글)는 <b>슈퍼어드민만</b>. 일반 관리자는 목록·상세를 볼 수만 있고 토글과 + 등록 버튼이 보이지 않는다.</div>
+        <div class="bnav"><div><div class="d"></div>홈</div><div><div class="d"></div>예약</div><div><div class="d"></div>상품</div><div class="on"><div class="d"></div>더보기</div></div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>고객앱 <b>공지사항 · 이벤트 글</b> 목록 관리(공개/숨김 · 상단 고정 · 삭제)</dd>
+          <dt>진입</dt><dd>메뉴 → 공지 · 이벤트</dd>
+          <dt>주요 요소</dt><dd>카테고리 탭(공지사항/이벤트), + 등록 버튼, 글 카드(<b>고정 태그 · 제목 · 작성일 · 공개 토글</b>)</dd>
+          <dt>규칙·로직</dt><dd>카테고리는 <b>공지사항 · 이벤트 2개 고정</b> · 카드의 <b>공개 토글</b>로 고객앱 노출을 바로 끄고 켠다(숨김 글도 관리자 목록에는 남는다) · 정렬은 <b>고정 글 우선 + 작성일 내림차순</b> · 목록은 <b>무한 스크롤</b> · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>화면 이동</dt><dd>+ 등록 → 글 작성·수정(<b>S4-A4-M1</b>), 카드 → 글 작성·수정(수정 모드)</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="screen" id="a-noticeedit">
+      <div class="cap"><span class="id">S4-A4-M1</span><span class="nm">공지 · 이벤트 글 작성/수정</span><span class="dsc">본문 이미지 · 기간</span></div>
+      <div class="phone"><div class="bar"><i></i><i></i><i></i><span>NOTICE EDIT</span></div><div class="vp">
+        <div class="abar"><span class="mn">←</span><span class="ti">글 수정</span><span class="sp"></span><span class="btn sm dgr">삭제</span></div>
+        <div class="lbl">카테고리</div>
+        <div><span class="chip on">공지사항</span><span class="chip">이벤트</span></div>
+        <div class="lbl">제목</div><div class="field">매장 오픈 안내</div>
+        <div class="lbl">이벤트 기간 <span class="tag b">이벤트만</span></div>
+        <div class="row"><div class="field" style="flex:1">2026-07-01</div><span style="align-self:center;color:var(--muted)">~</span><div class="field" style="flex:1">2026-07-31</div></div>
+        <div class="lbl">본문</div>
+        <div class="field" style="height:64px;line-height:1.5">친구야가 오픈했습니다.<br>![매장 사진](/content/images/a1.png)<br>편리한 여행 되세요.</div>
+        <span class="btn sm sec">이미지 올려 본문에 넣기</span>
+        <div class="lbl">첨부 이미지 (최대 5장)</div>
+        <div class="row">
+          <div><div class="imgph" style="height:34px;width:46px"></div></div>
+          <div><div class="imgph" style="height:34px;width:46px"></div></div>
+          <span class="btn sm sec" style="align-self:center">파일 선택</span>
+        </div>
+        <div class="kv" style="margin-top:10px"><span class="k">공개</span><span class="v"><span class="toggle on"></span></span></div>
+        <div class="kv"><span class="k">상단 고정</span><span class="v"><span class="toggle"></span></span></div>
+        <a class="btn pri">저장</a>
+        <div class="note"><b>본문에 이미지를 글 중간에 넣을 수 있다</b> — '이미지 올려 본문에 넣기'를 누르면 이미지를 올린 뒤 그 주소로 <code>![설명](주소)</code> 표기를 커서 위치에 끼워 넣는다. <b>이 이미지 표기 외의 마크다운 문법은 지원하지 않는다</b>(굵게·목록 등은 고객 화면에서 글자 그대로 보인다). 줄바꿈은 그대로 유지한다.</div>
+        <div class="note"><b>이벤트 기간은 카테고리가 '이벤트'일 때만</b> 보인다(공지사항이면 이 줄이 사라진다). 선택 입력이라 비우면 '상시'이고, 넣으면 시작일 ≤ 종료일. 고객 화면은 <b>종료일이 지나면 '종료'</b>로 표시한다.</div>
+        <div class="note">날짜는 <b>작성일 자동</b> — 관리자가 지정하거나 고치지 않는다. 첨부는 <b>이미지만</b>(PNG · JPG · WEBP, 1장당 10MB, 글당 최대 5장)이고 PDF · 문서는 범위 밖이다.</div>
+        <div class="note blue">삭제는 <b>완전 삭제</b>로 복원할 수 없다(확인 팝업 후 진행). 잠시 내리고 싶을 때는 삭제가 아니라 <b>공개 토글</b>을 쓴다 — 두 기능의 용도가 다르다.</div>
+      </div></div>
+      <div class="desc">
+        <h4>화면 상세 정의</h4>
+        <dl>
+          <dt>목적</dt><dd>공지사항 · 이벤트 글 <b>작성 · 수정 · 삭제</b></dd>
+          <dt>진입</dt><dd>공지 · 이벤트 관리(S4-A4)의 + 등록 버튼 또는 글 카드</dd>
+          <dt>주요 요소</dt><dd>카테고리 칩(공지사항/이벤트), 제목, <b>이벤트 기간</b>(이벤트일 때만), 본문 + <b>이미지 올려 본문에 넣기</b>, 첨부 이미지(최대 5장), 공개 토글, 상단 고정 토글, 저장 · 삭제</dd>
+          <dt>규칙·로직</dt><dd>본문 이미지는 <b>마크다운 이미지 표기</b>로 글 중간에 삽입(그 외 문법 미지원) · 첨부는 <b>이미지만</b>(PNG · JPG · WEBP, 10MB, 최대 5장, 콘텐츠 이미지 업로드와 같은 저장소) · 날짜는 <b>작성일 자동</b> · <b>이벤트에만 기간</b>(선택 입력, 넣으면 시작일 ≤ 종료일) · 삭제는 <b>완전 삭제</b>(숨김은 공개 토글) · 쓰기는 <b>슈퍼어드민만</b></dd>
+          <dt>화면 이동</dt><dd>저장 · 삭제 → 공지 · 이벤트 관리(S4-A4) 목록 반영 및 고객 공지사항(<b>S4-C6</b>)에 즉시 반영</dd>
         </dl>
       </div>
     </div>

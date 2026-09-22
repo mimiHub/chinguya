@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Title, Text, EmptyState, Table, Stack, Card, Alert } from "@chinguya/ui";
+import { Title, Text, EmptyState, Table, Stack, Card, Alert, Badge } from "@chinguya/ui";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 import { createApiClient, ApiError, type AgencyInvoice } from "@chinguya/api-client";
 import { ScrollReveal } from "@/components/ScrollReveal";
@@ -14,8 +14,12 @@ function errorMessage(err: unknown, fallback: string): string {
 
 /**
  * S2-G7 여행사 인보이스(`g-invoice`). 매월 1일 전월 기준으로 발행되며, 라인아이템은 그 달에
- * 이용일이 든 완료 예약 건이다. KRW 고정·세금 라인 없음이고, 실제 정산(입금)은 시스템 밖
- * 수동 확인이라 이 화면은 조회 전용이다.
+ * 이용일이 든 **완료·취소** 예약 건이다. 취소 건의 '정산 반영액'은 예약 금액이 아니라
+ * **취소 수수료**라, 상태 열을 함께 봐야 금액의 뜻이 정해진다. KRW 고정·세금 라인 없음이고,
+ * 실제 정산(입금)은 시스템 밖 수동 확인이라 이 화면은 조회 전용이다.
+ *
+ * 관리자 인보이스(S2-A5/A6)와 같은 집계라 합계가 항상 일치한다 — 서버 쪽 단일 출처는
+ * chinguya-api 의 InvoiceLines 다.
  *
  * Core API(GET /v1/agency/invoices)에 실연동돼 있다 — 계약은
  * packages/api-spec/openapi/chinguya-agency-api.yaml.
@@ -80,7 +84,8 @@ export default function AgencyInvoicePage() {
           { key: "product", label: "상품·옵션" },
           { key: "qty", label: "수량", width: "8%", align: "center" },
           { key: "unitPrice", label: "단가", width: "14%", align: "right" },
-          { key: "amount", label: "금액", width: "14%", align: "right" },
+          { key: "status", label: "상태", width: "10%", align: "center" },
+          { key: "amount", label: "정산 반영액", width: "14%", align: "right" },
         ]}
         rows={(invoice?.lineItems ?? []).map((line) => ({
           date: line.useDate.slice(5),
@@ -88,6 +93,12 @@ export default function AgencyInvoicePage() {
           product: `${line.assetName} · ${RENTAL_OPTION_LABEL[line.optionType]}`,
           qty: line.quantity,
           unitPrice: line.unitPrice.toLocaleString(),
+          status:
+            line.status === "CANCELLED" ? (
+              <Badge variant="error">취소</Badge>
+            ) : (
+              <Badge variant="success">완료</Badge>
+            ),
           amount: line.amount.toLocaleString(),
         }))}
         emptyMessage={tableEmptyMessage}

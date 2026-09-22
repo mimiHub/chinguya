@@ -9,7 +9,7 @@
 import { http, HttpResponse } from "msw";
 import type { components } from "./types.gen";
 import * as store from "./store";
-import { products, buildAvailability } from "./fixtures";
+import { products, faqs, buildAvailability } from "./fixtures";
 
 type S = components["schemas"];
 
@@ -126,6 +126,27 @@ export function makeHandlers(baseUrl = "https://api.chinguya.co.kr/v1") {
         ? HttpResponse.json(result.value)
         : HttpResponse.json(err(result.error.code, result.error.message), { status: result.error.status });
     }),
+
+    // ── S4-C3 FAQ ────────────────────────────────────────────────────────────
+    http.get(`${baseUrl}/faqs`, () => HttpResponse.json(faqs)),
+
+    // ── S4-C4/C5 질문하기 (남의 글·없는 글 상세·삭제는 404) ──────────────────
+    http.get(`${baseUrl}/inquiries`, () => HttpResponse.json(store.listInquiries())),
+    http.post(`${baseUrl}/inquiries`, async ({ request }) => {
+      const dto = (await request.json()) as S["InquiryCreateRequest"];
+      return HttpResponse.json(store.createInquiry(dto), { status: 201 });
+    }),
+    http.get(`${baseUrl}/inquiries/:inquiryId`, ({ params }) => {
+      const q = store.getMyInquiry(String(params.inquiryId));
+      return q
+        ? HttpResponse.json(q)
+        : HttpResponse.json(err("INQUIRY_NOT_FOUND", "질문을 찾을 수 없습니다."), { status: 404 });
+    }),
+    http.delete(`${baseUrl}/inquiries/:inquiryId`, ({ params }) =>
+      store.deleteMyInquiry(String(params.inquiryId))
+        ? new HttpResponse(null, { status: 204 })
+        : HttpResponse.json(err("INQUIRY_NOT_FOUND", "질문을 찾을 수 없습니다."), { status: 404 }),
+    ),
   ];
 }
 

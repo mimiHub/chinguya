@@ -282,7 +282,7 @@ export interface CustomerReservation {
 export type AgencyInvitationStatus = "NONE" | "PENDING" | "EXPIRED" | "ACCEPTED";
 
 /**
- * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, Invoice.agencyId가 이 agencyId를 참조한다.
+ * 여행사 계정(거래처) 정보. AgencyReservation.agencyId, 인보이스의 agencyId가 이 agencyId를 참조한다.
  *
  * 여행사와 로그인 계정은 생애주기가 다르다 — 관리자가 여행사를 등록하면(S2-A2) 초대 메일만
  * 나가고, 담당자가 링크로 아이디·비밀번호를 직접 정할 때(S2-G1) 비로소 계정이 생긴다.
@@ -418,47 +418,35 @@ export interface DepositAccount {
   accountHolder: string;
 }
 
-/** 인보이스: 매월 1일 전월 기준 발행, KRW, 세금 라인 없음, 정산 수동 확인 */
-export interface Invoice {
-  id: string;
-  agencyId: string;
-  /** 대상 월 (YYYY-MM) */
-  period: string;
-  amountKrw: number;
-  settled: boolean;
-}
+/**
+ * 공지사항·이벤트 카테고리 — **2개 고정**이다(2026-09-21 결정).
+ *
+ * 관리자가 추가·수정할 수 없다. 고객 화면(S4-C6)의 캡슐 탭이 이 둘에 맞춰져 있어서,
+ * 값이 늘면 그 화면도 동적으로 바뀌어야 한다. 값 표기는 Core API 계약·DB CHECK 와 같다.
+ */
+export type NoticeCategoryKey = "NOTICE" | "EVENT";
+
+/** 카테고리의 화면 노출 라벨. 관리자·고객 두 앱이 같은 문구를 쓴다. */
+export const NOTICE_CATEGORY_LABEL: Record<NoticeCategoryKey, string> = {
+  NOTICE: "공지사항",
+  EVENT: "이벤트",
+};
 
 /**
- * FAQ 항목(S4-C3 고객 노출 / S4-A1·A3 관리자 CMS-lite 편집). 카테고리·검색 없이
- * 노출 순서(order, 오름차순)로만 정렬해서 보여준다.
+ * 인보이스 정산(입금) 상태 라벨 — 관리자 목록(S2-A5)·상세(S2-A6) 공용.
+ *
+ * 인보이스 자체의 모양은 Core API 계약이 정한다(`@chinguya/api-client` 의 `AdminInvoiceSummary`·
+ * `AdminInvoiceDetail`). 여기 남는 건 화면 문구뿐이다 — 두 화면이 각자 삼항식으로 쓰면
+ * 한쪽만 고쳐져서 어긋난다.
+ *
+ * 규칙: 매월 1일 전월 기준 자동 발행, KRW(세금 라인 없음), 정산은 수동 확인.
  */
-export interface FaqEntry {
-  id: string;
-  question: string;
-  answer: string;
-  /** 노출 순서(오름차순). 관리자가 순서를 바꾸면 이 값을 다시 매긴다. */
-  order: number;
-}
-
-/**
- * 고객 1:1 문의(S4-C4 질문하기 / S4-A2 문의 관리). 로그인 기능이 없어 비공개 글은
- * 4자리 비밀번호로 열람을 제한한다 — 이 잠금은 고객앱에서만 적용하고, 관리자는 답변을
- * 위해 항상 전체 내용을 볼 수 있어야 하므로 관리자 화면에는 적용하지 않는다.
- */
-export interface InquiryEntry {
-  id: string;
-  title: string;
-  content: string;
-  isPublic: boolean;
-  /** 비공개 글의 열람용 비밀번호(4자리). 공개 글이면 없음. */
-  pin?: string;
-  /** 관리자 답변. 없으면 "답변 대기". 답변 등록 시 고객에게 카카오 알림톡 발송(알림 인터페이스, 실발송 이연). */
-  answer?: string;
-  answeredAt?: string;
-  /** 답변을 본 뒤 같은 글에 이어서 남긴 추가 질문들. */
-  followUps?: string[];
-  createdAt: string;
-}
+export const INVOICE_SETTLEMENT_LABEL = {
+  settled: "정산완료",
+  unsettled: "미정산",
+  /** 아직 발행 전인 이번 달 사용액(와이어프레임 a-invoice 의 '예정' 태그). */
+  pending: "발행예정",
+} as const;
 
 /**
  * 랜딩 히어로 배너 한 장(S4-A1/A3 관리자 콘텐츠 관리에서 편집 / 고객앱 홈 캐러셀·여행사앱

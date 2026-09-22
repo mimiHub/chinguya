@@ -154,13 +154,26 @@ function BannerSizeGuide() {
 }
 
 /**
- * S4-A1/A3 FAQ · 콘텐츠 관리(CMS-lite, a-cms). 세 구역으로 나뉜다:
+ * 서비스 소개(S4-C2) 본문 편집 구역을 화면에 띄울지.
+ *
+ * **2026-09-21 결정: S4-C2 는 관리자 페이지에서 관리하지 않는다.** 그래서 이 구역을 숨긴다.
+ * 고객 화면의 소개 문구·이미지는 그 화면이 직접 들고 있고, 바꿀 일이 생기면 배포로 바꾼다.
+ *
+ * 지우지 않고 플래그로 둔 것은 되돌릴 수 있게 하려는 것이다 — 서버의 소개글 API
+ * (`GET·PUT /admin/content/intro`)와 저장 로직은 그대로 살아 있으므로, 다시 관리하기로
+ * 정해지면 이 값만 true 로 바꾸면 된다.
+ */
+const SHOW_INTRO_SECTION: boolean = false;
+
+/**
+ * S4-A1/A3 FAQ · 콘텐츠 관리(CMS-lite, a-cms). 두 구역으로 나뉜다:
  *  1) FAQ 등록/수정/삭제·노출 순서 관리 — 분류·검색 없음(기획서 명시)
  *  2) 랜딩(안 A) 히어로 배너 편집 — 배너 3장, 배너마다 PC/모바일 이미지가 따로 필요하다
- *  3) 서비스 소개(S4-C2) 본문 편집
+ *
+ * 서비스 소개(S4-C2) 본문 편집 구역도 있었지만 지금은 숨겨져 있다({@link SHOW_INTRO_SECTION}).
  *
  * Core API에 실연동돼 있다(GET·POST·PUT·DELETE /admin/faqs, /admin/content/*) — 계약은
- * packages/api-spec/openapi/chinguya-admin-api.yaml. 다만 고객앱 FAQ·홈 배너·서비스 소개와
+ * packages/api-spec/openapi/chinguya-admin-api.yaml. 다만 고객앱 FAQ·홈 배너와
  * 여행사 로그인 배경은 아직 이 API를 읽지 않아서, 여기서 저장해도 그 화면들엔 아직 반영되지
  * 않는다(api-spec 헤더 TODO 11).
  *
@@ -217,12 +230,20 @@ export default function AdminContentPage() {
   };
 
   useEffect(() => {
-    Promise.all([api.faqs.list(), api.content.banners(), api.content.intro()])
+    // 소개글은 구역이 숨겨져 있으면 부르지 않는다 — 안 보여줄 값을 받으려고 요청을 하나 더
+    // 낼 이유가 없다. 다시 켜면(SHOW_INTRO_SECTION) 이 호출도 같이 살아난다.
+    Promise.all([
+      api.faqs.list(),
+      api.content.banners(),
+      SHOW_INTRO_SECTION ? api.content.intro() : Promise.resolve(null),
+    ])
       .then(([faqList, bannerList, intro]) => {
         setFaqs(faqList);
         setBanners(bannerList);
         setActiveBannerSlot(bannerList[0]?.slot ?? 1);
-        setIntroBody(intro.body);
+        if (intro) {
+          setIntroBody(intro.body);
+        }
         setLoaded(true);
       })
       .catch((err) => setLoadError(errorMessage(err, "콘텐츠를 불러오지 못했습니다.")));
@@ -514,27 +535,28 @@ export default function AdminContentPage() {
             )}
           </Stack>
 
-          <Stack direction="column" gap="sm">
-            <Text weight="bold" leaf>
-              서비스 소개 본문
-            </Text>
-            <LabeledBox label="본문" emphasis>
-              <Input
-                as="textarea"
-                rows={6}
-                value={introBody}
-                disabled={!isSuperAdmin}
-                onChange={(e) => setIntroBody(e.target.value)}
-              />
-            </LabeledBox>
+          {SHOW_INTRO_SECTION && (
+            <Stack direction="column" gap="sm">
+              <Text weight="bold" leaf>
+                서비스 소개 본문
+              </Text>
+              <LabeledBox label="본문" emphasis>
+                <Input
+                  as="textarea"
+                  rows={6}
+                  value={introBody}
+                  disabled={!isSuperAdmin}
+                  onChange={(e) => setIntroBody(e.target.value)}
+                />
+              </LabeledBox>
 
-
-            {isSuperAdmin && (
-              <Button fullWidth disabled={introSaving} onClick={() => void handleSaveIntro()}>
-                {introSaving ? "저장 중…" : "본문 저장"}
-              </Button>
-            )}
-          </Stack>
+              {isSuperAdmin && (
+                <Button fullWidth disabled={introSaving} onClick={() => void handleSaveIntro()}>
+                  {introSaving ? "저장 중…" : "본문 저장"}
+                </Button>
+              )}
+            </Stack>
+          )}
         </Stack>
       )}
 

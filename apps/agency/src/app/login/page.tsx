@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Title, Text, Stack, LabeledBox, Input, Button, Alert, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
-import { AUTH_SLIDES, AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides } from "@/components/AuthBackgroundSlides";
+import { AUTH_SLIDES_AUTOPLAY_MS, AuthBackgroundSlides, useAuthSlides } from "@/components/AuthBackgroundSlides";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 /**
@@ -87,18 +87,21 @@ interface HeroMessage {
 }
 
 function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; heroMessage?: HeroMessage }) {
+  // 배경 배너는 관리자 콘텐츠 관리(S4-A3)가 저장한 값을 읽는다. 장수가 바뀔 수 있으므로
+  // 자동재생 주기와 점 인디케이터도 이 목록 길이를 따라간다.
+  const slides = useAuthSlides();
   const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setSlideIndex((i) => (i + 1) % AUTH_SLIDES.length);
+      setSlideIndex((i) => (i + 1) % slides.length);
     }, AUTH_SLIDES_AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden">
-      <AuthBackgroundSlides index={slideIndex} />
+      <AuthBackgroundSlides slides={slides} index={slideIndex} />
 
       {/* 배경 사진 위 로고·히어로 문구 글자색(흰색)과의 명도 대비를 확보하기 위한 어두운
           오버레이 — 사진이 밝은 톤이라 drop-shadow만으로는 부족했다. */}
@@ -143,7 +146,7 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
           콘텐츠 레이어(위 div)보다 뒤에 그려서 그 위에 깔리지만, inset-x-0/bottom-6일
           뿐 높이가 없어 카드 클릭을 가리지는 않는다. */}
       <div className="absolute inset-x-0 bottom-6 z-10 flex justify-center gap-1.5">
-        {AUTH_SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             type="button"

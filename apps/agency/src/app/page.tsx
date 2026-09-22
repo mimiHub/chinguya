@@ -1,30 +1,64 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, EmptyState, Table, StatusBadge, Card, Stack, IconFace } from "@chinguya/ui";
-import { findRentalProductById } from "@/data/rentalData";
-import { RENTAL_OPTION_LABEL } from "@chinguya/types";
-import { listReservations } from "@/data/reservationData";
-import { CURRENT_AGENCY } from "@/data/authData";
+import { Title, Text, EmptyState, Table, StatusBadge, Card, Stack, IconFace, Alert } from "@chinguya/ui";
+import { RENTAL_OPTION_LABEL, type CustomerReservationStatus } from "@chinguya/types";
+import { createApiClient, ApiError, type AgencyDashboard } from "@chinguya/api-client";
+import { useAgencyAuth } from "@/context/AgencyAuthContext";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const api = createApiClient();
 
 /**
- * S2-G3 여행사 대시보드. 신규 예약 지표와 오늘 이용자 명단을 보여준다.
+ * S2-G3 여행사 대시보드(`g-dash`). 신규 예약 지표와 오늘 이용자 명단을 보여준다.
  *
- * 레이아웃은 직접 마진(mt-4/mt-6/mb-2)을 주는 대신, 어드민 대시보드(apps/admin/src/app/page.tsx)와
- * 같은 규칙으로 Stack을 써서 정렬한다 — 큰 구획(제목/지표/목록 묶음) 사이는 바깥 Stack
- * gap="lg", "오늘 이용자 명단" 라벨과 그 아래 표처럼 한 묶음으로 붙어 있어야 하는 것들은
- * 안쪽 Stack gap="sm"으로 좁게 붙인다. ScrollReveal 각각의 delay는 그대로 둬서 순서대로
- * 나타나는 애니메이션은 유지한다.
+ * Core API(GET /v1/agency/dashboard)에 실연동돼 있다 — 계약은
+ * packages/api-spec/openapi/chinguya-agency-api.yaml.
+ *
+ * '오늘'과 건수를 화면에서 계산하지 않고 서버 값을 그대로 쓴다. 브라우저 시계로 정하면
+ * 자정 근처에서 어제·내일 명단을 보게 된다(예약 목록 S2-G6 과 같은 이유).
+ *
+ * 와이어프레임에 있던 **'이용자 여권명' 열은 뺐다.** 여행사 예약은 수량만 받고 이용자 개인을
+ * 식별하지 않아 채울 값이 없다(2026-09-21 결정, 계약 문서 헤더 참고).
+ *
+ * 여행사명은 이 API가 아니라 세션(useAgencyAuth)에서 온다 — 앱 셸이 화면 이동마다 세션을
+ * 다시 부르므로 관리자가 명칭을 바꾸면(S2-A3) 그쪽이 먼저 최신이 된다.
+ *
+ * 레이아웃은 어드민 대시보드(apps/admin/src/app/page.tsx)와 같은 규칙이다 — 큰 구획 사이는
+ * 바깥 Stack gap="lg", "오늘 이용자 명단" 라벨과 그 아래 표처럼 한 묶음인 것들은 안쪽
+ * Stack gap="sm"으로 좁게 붙인다.
  */
 export default function AgencyDashboardPage() {
-  const reservations = listReservations();
-  const today = todayKey();
-  const todayReservations = reservations.filter((r) => r.useDate === today);
-  const newCount = reservations.filter((r) => r.status === "completed").length;
+  const { session } = useAgencyAuth();
+  const [dashboard, setDashboard] = useState<AgencyDashboard | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      const response = await api.agencyDashboard.get();
+      setLoadError(null);
+      setDashboard(response);
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : "대시보드를 불러오지 못했습니다.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const newCount = dashboard?.newReservationCount ?? 0;
+
+  const tableEmptyMessage = loadError ? (
+    <Alert status="error" icon={true}>
+      {loadError}
+    </Alert>
+  ) : dashboard === null ? (
+    <EmptyState>오늘 이용자 명단을 불러오는 중입니다.</EmptyState>
+  ) : (
+    <EmptyState>오늘 이용 예정인 예약이 없습니다.</EmptyState>
+  );
 
   return (
     <main className="flex h-full min-h-0 flex-col">
@@ -34,7 +68,7 @@ export default function AgencyDashboardPage() {
             신규가 있으면 웃는 얼굴, 없으면 시무룩한 얼굴. 누르면 예약 목록으로 이동한다. */}
         <ScrollReveal className="shrink-0">
           <Stack justify="between" align="center">
-            <Title size="lg">{CURRENT_AGENCY.name}</Title>
+            <Title size="lg">{session?.agencyName ?? ""}</Title>
             <NextLink
               href="/reservations"
               className="flex shrink-0 items-center gap-3 rounded-lg bg-surface py-2.5 pl-3 pr-5 text-ink transition-colors hover:bg-bg-light"
@@ -73,23 +107,18 @@ export default function AgencyDashboardPage() {
                 <Table
                   className="min-h-0 flex-1 overflow-y-auto"
                   columns={[
-                    { key: "id", label: "예약번호", width: "16%" },
+                    { key: "id", label: "예약번호", width: "20%" },
                     { key: "product", label: "상품·옵션" },
-                    { key: "qty", label: "수량", width: "10%", align: "center" },
-                    { key: "passport", label: "이용자 여권명", width: "20%" },
-                    { key: "status", label: "상태", width: "12%", align: "center" },
+                    { key: "qty", label: "수량", width: "12%", align: "center" },
+                    { key: "status", label: "상태", width: "14%", align: "center" },
                   ]}
-                  rows={todayReservations.map((r) => {
-                    const product = findRentalProductById(r.productId);
-                    return {
-                      id: r.id,
-                      product: `${product?.title ?? r.productId} · ${RENTAL_OPTION_LABEL[r.rentalOption]}`,
-                      qty: r.quantity,
-                      passport: r.passportName,
-                      status: <StatusBadge status={r.status} />,
-                    };
-                  })}
-                  emptyMessage={<EmptyState>오늘 이용 예정인 예약이 없습니다.</EmptyState>}
+                  rows={(dashboard?.todayUsers ?? []).map((user) => ({
+                    id: user.reservationNumber,
+                    product: `${user.assetName} · ${RENTAL_OPTION_LABEL[user.optionType]}`,
+                    qty: user.quantity,
+                    status: <StatusBadge status={user.status.toLowerCase() as CustomerReservationStatus} />,
+                  }))}
+                  emptyMessage={tableEmptyMessage}
                 />
               </div>
             </Card>

@@ -1,4 +1,5 @@
 import type {
+  AdminRole,
   CustomerReservation,
   AdminProduct,
   AdminProductCreate,
@@ -52,7 +53,7 @@ export interface InventoryDaySnapshot {
   /** max(totalStock − allocated, 0) */
   customerAvailable: number;
   closed: boolean;
-  /** ⚠ 예약 백엔드가 없어 항상 0(api-spec 헤더 TODO 7). */
+  /** 그날 이 자산을 점유하는 확정 고객 예약 수량(장바구니 홀드는 빼고). */
   reserved: number;
   remaining: number;
   hasAdjustment: boolean;
@@ -165,9 +166,30 @@ export interface AdminSettingsInput {
 }
 
 /**
+ * 관리자 계정 관리(S0-A5/A6) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
+ */
+export interface AdminAccount {
+  adminId: string;
+  loginId: string;
+  role: AdminRole;
+}
+
+export interface AdminAccountCreateInput {
+  loginId: string;
+  password: string;
+  role: AdminRole;
+}
+
+export interface AdminAccountUpdateInput {
+  role: AdminRole;
+  /** 생략하면 기존 비밀번호를 유지한다. 아이디는 바꿀 수 없다. */
+  password?: string;
+}
+
+/**
  * FAQ·콘텐츠 관리(S4-A1/A3) API 타입. 계약 원본은 api-spec/openapi/chinguya-admin-api.yaml.
  *
- * 고객앱 FAQ 목업이 쓰는 도메인 타입(FaqEntry)과 필드명(id/order)이 달라 따로 둔다.
+ * 고객 FAQ(S4-C3)는 displayOrder 없이 순서대로 내려오므로 CustomerFaq를 따로 둔다.
  */
 export interface AdminFaq {
   faqId: string;
@@ -240,13 +262,13 @@ export interface AgencyReservationResult {
   /** 예약 시점 여행사가 */
   unitPrice: number;
   amount: number;
-  status: "COMPLETED" | "CANCELLED";
+  status: AgencyReservationStatus;
   createdAt: string;
 }
 
 /**
- * S2-G7 인보이스 라인아이템 1줄 = 그 달에 이용일이 든 완료 예약 1건.
- * 단가·금액은 예약 시점 여행사가 스냅샷이라 나중에 가격이 바뀌어도 흔들리지 않는다.
+ * S2-G7 인보이스 라인아이템 1줄 = 그 달에 이용일이 든 **완료 또는 취소** 예약 1건.
+ * 단가는 예약 시점 여행사가 스냅샷이라 나중에 가격이 바뀌어도 흔들리지 않는다.
  */
 export interface AgencyInvoiceLineItem {
   useDate: string;
@@ -255,6 +277,11 @@ export interface AgencyInvoiceLineItem {
   optionType: RentalOptionKey;
   quantity: number;
   unitPrice: number;
+  status: AgencyReservationStatus;
+  /**
+   * **정산 반영액**이라 status 에 따라 뜻이 다르다 — 완료면 `unitPrice × quantity`,
+   * 취소면 **취소 수수료**(취소 시점 스냅샷)다. 화면은 둘을 함께 읽어야 한다.
+   */
   amount: number;
 }
 
@@ -262,8 +289,8 @@ export interface AgencyInvoiceLineItem {
  * S2-G7 전월 인보이스. 저장된 문서가 아니라 서버가 예약에서 집계한 값이다 —
  * 취소 마감이 이용일 D-3 이라 전월 집계는 더 이상 변하지 않는다.
  *
- * 발행 상태·정산 완료(packages/types 의 `Invoice.settled`)는 여기 없다. 그건 관리자
- * 인보이스 화면(S2-A5/A6)이 쓸 값이라 그때 계약에 넣는다.
+ * 발행 상태·정산 완료는 여기 없다. 그건 관리자 인보이스 화면(S2-A5/A6)이 쓰는 값이라
+ * `AdminInvoiceSummary`·`AdminInvoiceDetail` 에 있다.
  */
 export interface AgencyInvoice {
   /** 대상 월(YYYY-MM). 서버가 정한다 — 브라우저 시계로 정하면 월초에 어긋난다. */
@@ -272,8 +299,186 @@ export interface AgencyInvoice {
   currency: "KRW";
   /** 이용일 오름차순 */
   lineItems: AgencyInvoiceLineItem[];
-  /** lineItems 의 amount 합. 대상이 없으면 0. */
+  /** 완료 예약 금액 합 + 취소 예약의 취소 수수료 합. 대상이 없으면 0. */
   totalAmount: number;
+}
+
+/** S1-A1 오늘 방문 예약 카드 한 장. 누르면 예약 상세(S1-A7)로 간다. */
+export interface AdminDashboardVisit {
+  bookingId: string;
+  bookingNumber: string;
+  /** 카드에 한 줄로 적는 상품 요약. 항목이 여럿이면 `첫 상품명 외 N건` — 서버가 만들어 준다. */
+  productSummary: string;
+  useDate: string;
+  status: "AWAITING_DEPOSIT" | "RECEIVED" | "COMPLETED" | "CANCEL_REQUESTED" | "CANCELLED";
+  /** 입금 기한이 지났는지. 저장된 상태가 아니라 계산 결과다(S1-A6 의 unpaid 와 같은 규칙). */
+  unpaid: boolean;
+}
+
+/** S1-A1 대시보드. 저장된 문서가 아니라 서버가 예약·재고에서 집계한 값이다. */
+export interface AdminDashboard {
+  /** 서버가 정한 '오늘'(**일본 기준**). 화면은 다시 계산하지 않는다. */
+  today: string;
+  /** 입금대기 예약 수(기한 내). 0 이면 화면이 큰 카드의 표정을 슬픈 쪽으로 바꾼다. */
+  newBookingCount: number;
+  /** 접수 예약 수(기한 내) — 고객이 입금했다고 알려 확인이 필요한 건. */
+  depositRequestCount: number;
+  /** 처리 안 된 취소 요청이 있는 예약 수. */
+  cancelRequestCount: number;
+  /** 오늘 ~ +3개월 안의 재고 초과 날짜. 오름차순·중복 없음. */
+  overCapacityDates: string[];
+  /** 오늘 이용을 시작하는 예약. 예약번호 오름차순. */
+  todayVisits: AdminDashboardVisit[];
+}
+
+/**
+ * 공지사항·이벤트 카테고리 — **2개 고정**이다. 관리자가 추가할 수 없고, 고객 화면(S4-C6)의
+ * 캡슐 탭이 이 둘에 맞춰져 있다.
+ */
+export type NoticeCategory = "NOTICE" | "EVENT";
+
+/** 목록 한 줄. 본문·첨부는 없다 — 목록이 무거워지지 않게 상세에서 따로 받는다. */
+export interface NoticeSummary {
+  noticeId: string;
+  category: NoticeCategory;
+  title: string;
+  /** 작성일(YYYY-MM-DD). 서버가 정하고 관리자가 고치지 않는다. */
+  createdAt: string;
+  /** 관리자 목록에만 의미가 있다 — 고객 목록에는 공개 글만 와서 늘 true 다. */
+  published: boolean;
+  /** true 면 목록 맨 위. 순서로 드러나므로 화면이 따로 표시하지 않아도 된다. */
+  pinned: boolean;
+  /** 이벤트에만 값이 있다. 비우면 '상시'. */
+  eventStartDate: string | null;
+  /** 이 날짜가 지난 이벤트는 화면이 '종료'로 표시한다. */
+  eventEndDate: string | null;
+}
+
+/** 글 상세. 관리자 수정 폼(S4-A4)과 고객 상세(S4-C6)가 같이 쓴다. */
+export interface NoticeDetail extends NoticeSummary {
+  /**
+   * 줄바꿈이 보존돼 있다. `![설명](주소)` 표기는 **화면이 이미지로 렌더한다** —
+   * 그 외 마크다운 문법은 서버도 화면도 해석하지 않고 글자 그대로 둔다.
+   */
+  content: string;
+  /** 첨부 이미지. 본문 아래에 순서대로 보여준다. */
+  imageUrls: string[];
+  updatedAt: string;
+}
+
+/** 무한 스크롤이 이어 붙이는 한 페이지. 관리자·고객이 같은 모양을 쓴다. */
+export interface NoticeListPage {
+  content: NoticeSummary[];
+  page: number;
+  size: number;
+  /** 화면이 "더 받을 게 남았는지"를 이 값과 지금까지 받은 개수로 판단한다. */
+  totalElements: number;
+}
+
+/** 등록·수정 요청. 수정은 이 값으로 **통째로 교체**한다(첨부 배열도 덮어쓴다). */
+export interface NoticeInput {
+  category: NoticeCategory;
+  title: string;
+  content: string;
+  published: boolean;
+  pinned: boolean;
+  /** 이벤트에만. 공지사항에 값을 보내면 400. */
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  /** 업로드는 `content.uploadImage` 가 하고, 여기엔 그 주소만 담는다. 최대 5장. */
+  imageUrls?: string[];
+}
+
+/** 여행사 예약 상태. 입금 흐름이 없어 두 값뿐이다. */
+export type AgencyReservationStatus = "COMPLETED" | "CANCELLED";
+
+/**
+ * S2-G3 오늘 이용자 명단 한 줄 = 예약 1건.
+ *
+ * **이용자 이름이 없다.** 여행사 예약은 수량만 받고 이용자 개인을 식별하지 않는다 —
+ * 와이어프레임 g-dash 에 있던 '이용자 여권명' 열을 그래서 뺐다(계약 헤더 2026-09-21 참고).
+ */
+export interface AgencyDashboardUser {
+  reservationNumber: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  /** 명단은 완료만 내려오므로 사실상 고정값이다. 화면이 값을 지어내지 않게 서버가 준다. */
+  status: AgencyReservationStatus;
+}
+
+/** S2-G3 대시보드. 저장된 문서가 아니라 서버가 예약에서 집계한 값이다. */
+export interface AgencyDashboard {
+  /** 서버가 정한 '오늘'. 브라우저 시계를 쓰면 자정 근처에서 어제·내일 명단을 보게 된다. */
+  today: string;
+  /** 오늘 등록한 예약 수(취소된 것 포함). 0 이면 화면이 카드 문구·표정을 바꾼다. */
+  newReservationCount: number;
+  /** 오늘 이용 시작하는 완료 예약. 예약번호 오름차순. 비어 있으면 표에 '데이터 없음'. */
+  todayUsers: AgencyDashboardUser[];
+}
+
+/** S2-A6 인보이스 라인 1줄. 여행사 화면(S2-G7)의 라인과 같은 모양이다 — 같은 집계라서다. */
+export interface AdminInvoiceLineItem {
+  useDate: string;
+  reservationNumber: string;
+  assetName: string;
+  optionType: RentalOptionKey;
+  quantity: number;
+  unitPrice: number;
+  status: AgencyReservationStatus;
+  /** 정산 반영액 — 완료면 예약 금액 전액, 취소면 취소 수수료. */
+  amount: number;
+}
+
+/** S2-A5 목록의 발행된 인보이스 카드 한 장. */
+export interface AdminInvoiceSummary {
+  invoiceId: string;
+  agencyId: string;
+  agencyName: string;
+  /** 대상 월(YYYY-MM) */
+  period: string;
+  /** 발행일(YYYY-MM-DD). 대상 월 다음 달 1일이다. */
+  issuedAt: string;
+  amount: number;
+  /** 정산(입금) 완료 여부. */
+  settled: boolean;
+}
+
+/**
+ * S2-A5 목록의 '예정' 카드 — 아직 발행 전인 이번 달 사용액.
+ *
+ * `invoiceId` 가 없는 것이 의도다. 저장된 인보이스가 아니라 집계값이라 상세(S2-A6)로 들어갈
+ * 수 없다 — 화면도 이 카드를 링크로 만들지 않는다.
+ */
+export interface AdminInvoicePending {
+  agencyId: string;
+  agencyName: string;
+  period: string;
+  /** 현재까지의 정산 반영액. 이 달 예약은 아직 취소될 수 있어 발행일까지 움직인다. */
+  amount: number;
+}
+
+export interface AdminInvoiceList {
+  invoices: AdminInvoiceSummary[];
+  pending: AdminInvoicePending[];
+}
+
+/** S2-A6 상세. 라인아이템은 저장돼 있지 않고 서버가 예약에서 집계한 값이다. */
+export interface AdminInvoiceDetail {
+  invoiceId: string;
+  agencyId: string;
+  agencyName: string;
+  period: string;
+  issuedAt: string;
+  currency: "KRW";
+  lineItems: AdminInvoiceLineItem[];
+  /** 화면의 '합계(정산 반영액)'. 여행사 화면(S2-G7)의 totalAmount 와 같은 값이다. */
+  totalAmount: number;
+  settled: boolean;
+  /** 정산 확인 시각. 미정산이면 null. */
+  settledAt: string | null;
+  /** '입금 확인' 버튼을 띄울지. 화면이 상태를 해석하지 않도록 서버가 내려준다. */
+  settleable: boolean;
 }
 
 /**
@@ -303,6 +508,56 @@ export interface CustomerProductSummary {
   thumbnailUrl?: string | null;
   /** 표출 중인 상품의 최저 고객가(원) */
   priceFrom: number;
+}
+
+/** 고객 FAQ(S4-C3). 계약: api-spec slice1 yaml 의 Faq. 배열 순서가 곧 노출 순서다. */
+export interface CustomerFaq {
+  faqId: string;
+  question: string;
+  answer: string;
+}
+
+/**
+ * 질문하기(S4-C4/C5)·문의 관리(S4-A2) 타입. 계약: slice1 yaml 의 Inquiry*, admin yaml 의 AdminInquiry.
+ * 답변이 없으면 WAITING(대기), 있으면 ANSWERED(답변완료).
+ */
+export type InquiryStatus = "WAITING" | "ANSWERED";
+
+/** 고객 질문 목록 한 줄 — 제목·상태만(전체 공개). mine=false면 화면은 잠금 표시하고 상세를 열지 않는다. */
+export interface InquirySummary {
+  inquiryId: string;
+  title: string;
+  status: InquiryStatus;
+  mine: boolean;
+  createdAt: string;
+}
+
+/** 내 질문 상세 — 본인 글에만 내려온다. */
+export interface InquiryDetail {
+  inquiryId: string;
+  title: string;
+  content: string;
+  status: InquiryStatus;
+  answer?: string | null;
+  answeredAt?: string | null;
+  createdAt: string;
+}
+
+export interface InquiryInput {
+  title: string;
+  content: string;
+}
+
+/** 관리자 문의 한 건 — 본인 글 잠금 없이 본문·답변을 모두 담는다. */
+export interface AdminInquiry {
+  inquiryId: string;
+  title: string;
+  content: string;
+  status: InquiryStatus;
+  customerLoginId: string;
+  answer?: string | null;
+  answeredAt?: string | null;
+  createdAt: string;
 }
 
 export interface CustomerProductListPage {
@@ -706,6 +961,52 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         return request<CustomerAvailability>(`/products/${productId}/availability?${query}`);
       },
     },
+    /** 고객 FAQ(S4-C3). 관리자 FAQ 관리(S4-A1) 목록을 노출 순서대로 준다. 비로그인도 부를 수 있다. */
+    customerFaqs: {
+      list: () => request<CustomerFaq[]>("/faqs"),
+    },
+    /**
+     * 비로그인 열람이 허용된 공용 콘텐츠. 관리자 콘텐츠 관리(S4-A3)가 저장한 값을 그대로
+     * 받는다 — 응답 모양도 관리자와 같은 `HeroBanner` 다.
+     *
+     * `customer*`/`agency*` 와 달리 앱 이름을 붙이지 않은 것은 **고객 랜딩(안 A)과 여행사
+     * 로그인 배경(S2-G1/G2)이 같은 배너를 함께 쓰기** 때문이다. 두 앱 프록시 모두 `/v1`
+     * 프리픽스를 붙이므로 경로도 같다.
+     *
+     * 서비스 소개(S4-C2)는 없다 — 관리자 페이지에서 관리하지 않기로 했고(2026-09-21),
+     * 화면이 문구를 직접 들고 있다.
+     */
+    publicContent: {
+      /** 히어로 배너 3장(slot 오름차순). */
+      banners: () => request<HeroBanner[]>("/content/banners"),
+    },
+    /**
+     * 고객 공지사항·이벤트(S4-C6). 비로그인 열람 허용이고 **공개 글만** 온다.
+     * 숨긴 글은 상세도 404 다 — 주소를 직접 쳐도 보이지 않는다.
+     */
+    customerNotices: {
+      /** 무한 스크롤이 page 를 올려 가며 이어 붙인다. */
+      list: (params: { category?: NoticeCategory; page?: number; size?: number } = {}) => {
+        const query = new URLSearchParams({
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.category) query.set("category", params.category);
+        return request<NoticeListPage>(`/notices?${query.toString()}`);
+      },
+      detail: (noticeId: string) => request<NoticeDetail>(`/notices/${noticeId}`),
+    },
+    /**
+     * 질문하기(S4-C4 목록 / S4-C5 상세·작성). 전부 고객 로그인 필요(비로그인 401).
+     * 상세·삭제는 본인 글만 — 남의 글·없는 글은 404(INQUIRY_NOT_FOUND).
+     */
+    customerInquiries: {
+      list: () => request<InquirySummary[]>("/inquiries"),
+      create: (body: InquiryInput) =>
+        request<InquiryDetail>("/inquiries", { method: "POST", body: JSON.stringify(body) }),
+      detail: (inquiryId: string) => request<InquiryDetail>(`/inquiries/${inquiryId}`),
+      remove: (inquiryId: string) => request<void>(`/inquiries/${inquiryId}`, { method: "DELETE" }),
+    },
     /**
      * 장바구니 = 임시 홀드(S1-C2 담기 / S1-C3). 고객 로그인이 필요하다(비로그인 401).
      * 잔여가 모자라면 409(OUT_OF_STOCK), 예약 가능 기간 밖이면 400(DATE_NOT_BOOKABLE).
@@ -786,6 +1087,15 @@ export function createApiClient(opts: ApiClientOptions = {}) {
        * 대상 예약이 없어도 200 이고, lineItems 가 빈 배열·totalAmount 가 0 으로 온다.
        */
       previousMonth: () => request<AgencyInvoice>("/agency/invoices"),
+    },
+    /**
+     * 여행사 대시보드(S2-G3). 계약: api-spec/openapi/chinguya-agency-api.yaml.
+     *
+     * 여행사명은 여기 없다 — 세션(`/agency/auth/me`)이 이미 주고 앱 셸이 그걸 쓴다.
+     */
+    agencyDashboard: {
+      /** 오늘 이용자 명단 + 신규 예약 건수. 오늘 이용 예정이 없어도 200(빈 배열)이다. */
+      get: () => request<AgencyDashboard>("/agency/dashboard"),
     },
     /**
      * 관리자 자산 관리(S1-A2). 관리자 앱의 프록시가 `/admin` 프리픽스를 붙이므로
@@ -919,6 +1229,25 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<AdminCancellationDetail>(`/cancellations/${cancellationId}/confirm`, { method: "POST" }),
     },
     /**
+     * 관리자 여행사 인보이스(S2-A5/A6). 여행사가 자기 것을 보는 `invoices` 와 다른 계약이다 —
+     * 이쪽만 발행 상태·정산 완료를 가진다.
+     *
+     * 발행은 자동·멱등이라 등록 호출이 없다. `list()` 를 부르면 서버가 밀린 달을 그 자리에서
+     * 발행한다(와이어프레임 a-invoice: 수동 등록 없음).
+     */
+    adminInvoices: {
+      /** `agencyId` 를 비우면 전체. 없는 여행사 id 면 빈 목록이다(404 아님). */
+      list: (agencyId?: string) =>
+        request<AdminInvoiceList>(`/invoices${agencyId ? `?agencyId=${encodeURIComponent(agencyId)}` : ""}`),
+      detail: (invoiceId: string) => request<AdminInvoiceDetail>(`/invoices/${invoiceId}`),
+      /**
+       * 입금(정산) 확인 → 정산 완료. 되돌리는 호출은 없다. 이미 정산된 건이면
+       * 409(INVOICE_ALREADY_SETTLED). 슈퍼어드민 전용.
+       */
+      settle: (invoiceId: string) =>
+        request<AdminInvoiceDetail>(`/invoices/${invoiceId}/settle`, { method: "POST" }),
+    },
+    /**
      * 날짜별 재고 세팅(S1-A3, 여행사 할당 포함). 계약: api-spec/openapi/chinguya-admin-api.yaml.
      *
      * preview 계열(previewAdd/previewEdit)은 아무것도 저장하지 않는 계산 전용이라
@@ -982,6 +1311,50 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<AdminSettings>("/settings", { method: "PUT", body: JSON.stringify(body) }),
     },
     /**
+     * 관리자 계정 관리(S0-A5/A6). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).
+     * 아이디가 겹치면(삭제된 계정 포함) 409(DUPLICATE_LOGIN_ID), 마지막 슈퍼어드민을 내리거나
+     * 삭제하면 409(LAST_SUPER_ADMIN). 삭제는 소프트 삭제다.
+     */
+    /**
+     * 공지사항·이벤트 관리(S4-A4). 목록은 **숨긴 글도 함께** 온다(화면이 토글로 다시 공개한다).
+     *
+     * 첨부 이미지 업로드는 이 네임스페이스가 하지 않는다 — `content.uploadImage` 로 올린 뒤
+     * 받은 주소를 `imageUrls` 에 담는다(배너와 같은 저장소를 쓴다).
+     */
+    notices: {
+      list: (params: { category?: NoticeCategory; page?: number; size?: number } = {}) => {
+        const query = new URLSearchParams({
+          page: String(params.page ?? 0),
+          size: String(params.size ?? 20),
+        });
+        if (params.category) query.set("category", params.category);
+        return request<NoticeListPage>(`/notices?${query.toString()}`);
+      },
+      detail: (noticeId: string) => request<NoticeDetail>(`/notices/${noticeId}`),
+      create: (body: NoticeInput) =>
+        request<NoticeDetail>("/notices", { method: "POST", body: JSON.stringify(body) }),
+      /** 통째로 교체한다. 첨부를 한 장 빼려면 나머지만 담아 보낸다. */
+      update: (noticeId: string, body: NoticeInput) =>
+        request<NoticeDetail>(`/notices/${noticeId}`, { method: "PUT", body: JSON.stringify(body) }),
+      /** 완전 삭제(복원 없음). 잠시 내리는 용도로는 published: false 를 쓴다. */
+      remove: (noticeId: string) => request<void>(`/notices/${noticeId}`, { method: "DELETE" }),
+    },
+    /**
+     * 관리자 대시보드(S1-A1). 지표·재고 초과 날짜·오늘 방문 예약을 한 번에 받는다 —
+     * 예전에는 화면이 자산 목록을 받아 자산×월마다 재고 스냅샷을 따로 불렀다.
+     */
+    dashboard: {
+      get: () => request<AdminDashboard>("/dashboard"),
+    },
+    admins: {
+      list: () => request<AdminAccount[]>("/admins"),
+      create: (body: AdminAccountCreateInput) =>
+        request<AdminAccount>("/admins", { method: "POST", body: JSON.stringify(body) }),
+      update: (adminId: string, body: AdminAccountUpdateInput) =>
+        request<AdminAccount>(`/admins/${adminId}`, { method: "PUT", body: JSON.stringify(body) }),
+      remove: (adminId: string) => request<void>(`/admins/${adminId}`, { method: "DELETE" }),
+    },
+    /**
      * FAQ 관리(S4-A1). 조회는 관리자 누구나, 쓰기는 슈퍼어드민만(403).
      * 새 항목은 맨 뒤에 붙고, 순서는 reorder로만 바꾼다.
      */
@@ -995,6 +1368,16 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       /** 전체 id를 원하는 순서대로 보낸다. 그 사이 등록·삭제가 있었으면 409(FAQ_ORDER_MISMATCH). */
       reorder: (faqIds: string[]) =>
         request<AdminFaq[]>("/faqs/order", { method: "PUT", body: JSON.stringify({ faqIds }) }),
+    },
+    /**
+     * 문의 관리(S4-A2-1 목록 / S4-A2-2 상세·답변). 조회는 관리자 누구나, 답변은 슈퍼어드민만(403).
+     * 답변은 질문당 하나라 다시 보내면 덮어쓴다.
+     */
+    inquiries: {
+      list: () => request<AdminInquiry[]>("/inquiries"),
+      detail: (inquiryId: string) => request<AdminInquiry>(`/inquiries/${inquiryId}`),
+      answer: (inquiryId: string, answer: string) =>
+        request<AdminInquiry>(`/inquiries/${inquiryId}/answer`, { method: "PUT", body: JSON.stringify({ answer }) }),
     },
     /**
      * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
