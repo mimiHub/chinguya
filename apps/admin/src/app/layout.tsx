@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TopHeader } from "@/components/TopHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { ContentArea } from "@/components/ContentArea";
 import { AdminAuthProvider } from "@/context/AdminAuthContext";
 import "./globals.css";
 
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex h-full flex-col overflow-hidden">
         <AdminAuthProvider>
           <TopHeader />
-          <div className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0">{children}</div>
+          <ContentArea>{children}</ContentArea>
           <BottomNav />
         </AdminAuthProvider>
       </body>
