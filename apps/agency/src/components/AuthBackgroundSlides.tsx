@@ -42,9 +42,12 @@ export function useAuthSlides(): string[] {
     api.publicContent
       .banners()
       .then((banners) => {
+        // 관리자가 끈 배너(visible: false)는 서버가 빼서 주지만(v0.13), 백엔드 반영 전에도 맞게
+        // 보이도록 한 번 더 거른다 — 고객 랜딩 히어로(HomeCarousel)와 같은 규칙.
+        const visible = banners.filter((banner) => banner.visible !== false);
         // 배너가 비어 있으면(운영 초기) 초기값을 그대로 둔다 — 빈 배경을 띄우지 않는다.
-        if (active && banners.length > 0) {
-          setSlides(banners.map((banner) => imageSrc(banner.pcImageUrl)));
+        if (active && visible.length > 0) {
+          setSlides(visible.map((banner) => imageSrc(banner.pcImageUrl)));
         }
       })
       // 실패하면 번들 초기값을 그대로 보여준다. 배경이 안 뜨는 것보다 낫다.

@@ -216,6 +216,14 @@ export interface HeroBanner {
    */
   pcImageUrl: string;
   mobileImageUrl: string;
+  /**
+   * 노출 여부(2026-09-23 추가 — 관리자 S4-A3 스위치). false = 숨김(값은 남아 있어 다시 켜면 돌아온다).
+   * 3장 중 최소 1장은 true. 공개 조회(publicContent.banners)는 true 인 배너만 준다.
+   *
+   * ⚠ 백엔드가 이 필드를 아직 안 내려줄 수 있다(스펙 선행). 그래서 화면은 `visible !== false` 로
+   *   판단한다 — 필드가 없으면(undefined) "켜짐"으로 보는 것이 기존 동작과 같다.
+   */
+  visible: boolean;
 }
 
 /**
@@ -977,7 +985,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
      * 화면이 문구를 직접 들고 있다.
      */
     publicContent: {
-      /** 히어로 배너 3장(slot 오름차순). */
+      /** 히어로 배너 — 관리자가 켜 둔 것만(1~3장, slot 오름차순). */
       banners: () => request<HeroBanner[]>("/content/banners"),
     },
     /**

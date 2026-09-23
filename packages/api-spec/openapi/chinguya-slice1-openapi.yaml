@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.9]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.13]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,11 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.13 변경(2026-09-23 — 히어로 배너 노출 ON/OFF, 스펙 선행·백엔드 미구현):
+#   1. `GET /content/banners` 는 관리자(S4-A3)가 **켜 둔 배너만** slot 순서로 준다(1~3장 — 최소 1장은
+#      항상 켜져 있다). 끈 배너는 응답에서 빠지므로 `slot` 이 1·2·3 연속이 아닐 수 있다(예: 1·3).
+#   2. `HeroBanner.visible` 추가 — 이 응답에서는 항상 true 다(관리자 응답과 모양을 맞추려고 둔다).
 #
 # v0.12 변경(2026-09-21 — 질문하기 S4-C4/C5 실연동):
 #   1. `/inquiries` 추가 — 고객 1:1 질문. **전부 고객 로그인 필수**(비로그인 401).
@@ -321,10 +326,11 @@ paths:
       summary: 랜딩 히어로 배너 (안 A)
       x-screens: [안 A, S2-G1, S2-G2]
       description: |
-        관리자 콘텐츠 관리(S4-A3)에서 편집한 **랜딩 히어로 배너 3장**을 slot 순서로 돌려준다.
-        비로그인 열람 허용.
+        관리자 콘텐츠 관리(S4-A3)에서 편집한 랜딩 히어로 배너 중 **켜 둔 것(`visible`)만** slot 순서로
+        돌려준다(v0.13). 비로그인 열람 허용.
 
-        배너는 **3장 고정**이다(slot 1·2·3). 장마다 PC용·모바일용 이미지가 따로 있고, 화면 폭에
+        관리자 쪽 배너는 **3장 고정**(slot 1·2·3)이지만 장마다 끌 수 있어서, 이 응답은 1~3장이다(최소
+        1장은 항상 켜져 있다). 끈 배너가 빠지므로 slot 이 연속이 아닐 수 있다 — 화면은 받은 순서대로 쓴다. 장마다 PC용·모바일용 이미지가 따로 있고, 화면 폭에
         맞는 쪽만 보여준다 — 반응형으로 한 장을 늘려 쓰는 게 아니라 통째로 다른 이미지다.
 
         이미지 주소는 두 가지가 섞여 온다. `/content/images/…` 는 관리자가 올린 파일이라
@@ -337,7 +343,7 @@ paths:
       security: []
       responses:
         '200':
-          description: slot 오름차순 배너 3장
+          description: slot 오름차순, 켜진 배너만(1~3장)
           content:
             application/json:
               schema:
@@ -1172,7 +1178,7 @@ components:
           type: integer
           minimum: 1
           maximum: 3
-          description: 표시 순서. 1·2·3 이 하나씩 온다.
+          description: 표시 순서(1~3). 꺼진 배너는 빠지므로 연속이 아닐 수 있다(v0.13).
         title:
           type: string
           description: 줄바꿈(\n)이 보존돼 있다.
@@ -1185,6 +1191,9 @@ components:
         mobileImageUrl:
           type: string
           description: 좁은 화면용.
+        visible:
+          type: boolean
+          description: 노출 여부(v0.13). 이 응답은 켜진 배너만 주므로 항상 true.
 
     NoticeCategory:
       type: string

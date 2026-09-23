@@ -3,6 +3,14 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
+# 2026-09-23 변경(히어로 배너 노출 ON/OFF S4-A3 — 스펙 선행, 백엔드 미구현):
+#   1. `HeroBanner`·`HeroBannerInput` 에 `visible`(boolean) 추가. 배너는 여전히 **3장 고정**(slot 1·2·3)이고,
+#      끄는 것은 삭제가 아니라 **숨김**이다 — 제목·이미지는 그대로 남아 다시 켜면 바로 돌아온다.
+#   2. **최소 1장은 켜져 있어야 한다.** 셋 다 끄면 400 `NO_VISIBLE_BANNER`(고객 랜딩 히어로가 비지 않게).
+#   3. 입력에서 `visible` 을 생략하면 true 로 본다(기존 클라이언트 호환).
+#   4. 공개 조회(slice1 `GET /content/banners`)는 **켜진 배너만** slot 순서로 준다 — 고객 랜딩 히어로와
+#      여행사 로그인 배경(S2-G1/G2)이 같이 따른다.
+#
 # 2026-09-21 변경(대시보드 S1-A1 — 스펙 선행):
 #   1. `GET /admin/dashboard` 신설. 지표 3개·재고 초과 날짜·오늘 방문 예약을 한 번에 준다.
 #   2. **지표 3개를 입금 단계로 가른다** — 신규 예약 = 입금대기, 입금확인 요청 = 접수(고객이
@@ -2030,6 +2038,9 @@ paths:
 
         새 이미지는 먼저 `POST /admin/content/images` 로 올리고, 받은 `imageUrl` 을
         여기 `pcImageUrl`·`mobileImageUrl` 에 넣는다.
+
+        장마다 `visible` 로 노출을 켜고 끈다(끈 배너도 제목·이미지는 필수 — 값을 보관해 두었다가 다시 켤 수 있게).
+        **최소 1장은 켜져 있어야 한다** — 셋 다 false 면 400 `NO_VISIBLE_BANNER`.
       requestBody:
         required: true
         content:
@@ -2044,13 +2055,21 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/HeroBanner' }
         '400':
-          description: 필수값 누락·형식 오류(`VALIDATION_ERROR`) 또는 slot 구성 오류(`INVALID_BANNERS`)
+          description: |
+            필수값 누락·형식 오류(`VALIDATION_ERROR`), slot 구성 오류(`INVALID_BANNERS`),
+            켜진 배너가 하나도 없음(`NO_VISIBLE_BANNER`)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example:
-                code: INVALID_BANNERS
-                message: 배너 1·2·3이 하나씩 있어야 합니다.
+              examples:
+                invalidBanners:
+                  value:
+                    code: INVALID_BANNERS
+                    message: 배너 1·2·3이 하나씩 있어야 합니다.
+                noVisibleBanner:
+                  value:
+                    code: NO_VISIBLE_BANNER
+                    message: 배너를 최소 1개는 켜 두어야 합니다.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3350,7 +3369,7 @@ components:
 
     HeroBanner:
       type: object
-      required: [slot, title, subtitle, pcImageUrl, mobileImageUrl]
+      required: [slot, title, subtitle, pcImageUrl, mobileImageUrl, visible]
       description: |
         랜딩(안 A) 히어로 배너 한 장(S4-A3). 고객앱 홈 캐러셀·여행사 로그인 배경에 쓰인다
         (그 두 화면은 아직 이 API에 연결 전 — 헤더 TODO 11).
@@ -3372,6 +3391,11 @@ components:
           description: 부제(선택). 비어 있으면 null.
         pcImageUrl: { type: string }
         mobileImageUrl: { type: string }
+        visible:
+          type: boolean
+          description: |
+            고객 랜딩 히어로·여행사 로그인 배경에 노출할지(2026-09-23). false 면 숨김 — 값은 그대로 남는다.
+            공개 조회(`GET /v1/content/banners`)는 true 인 배너만 준다.
 
     HeroBannerInput:
       type: object
@@ -3392,6 +3416,10 @@ components:
           type: string
           maxLength: 300
           pattern: '^/[A-Za-z0-9._/-]+$'
+        visible:
+          type: boolean
+          default: true
+          description: 노출 여부. 생략하면 true. 3장 중 **최소 1장은 true** 여야 한다(아니면 400 `NO_VISIBLE_BANNER`).
 
     HeroBannersUpdateRequest:
       type: object

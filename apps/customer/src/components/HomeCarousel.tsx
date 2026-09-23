@@ -70,9 +70,12 @@ export function HomeCarousel() {
     api.publicContent
       .banners()
       .then((banners) => {
+        // 관리자가 끈 배너(visible: false)는 서버가 이미 빼서 주지만(v0.13), 백엔드 반영 전에도
+        // 맞게 보이도록 여기서 한 번 더 거른다. 필드가 없으면(undefined) 켜진 것으로 본다.
+        const visible = banners.filter((b) => b.visible !== false);
         // 배너가 비어 있으면(운영 초기) 초기값을 그대로 둔다 — 빈 히어로를 띄우지 않는다.
-        if (active && banners.length > 0) {
-          setSlides(toSlides(banners));
+        if (active && visible.length > 0) {
+          setSlides(toSlides(visible));
           setIndex(0);
         }
       })
@@ -83,7 +86,11 @@ export function HomeCarousel() {
     };
   }, []);
 
+  // 배너를 1장만 켜 두면(관리자 S4-A3) 넘길 게 없으므로 자동재생·화살표·점 인디케이터를 모두 뺀다.
+  const multiple = slides.length > 1;
+
   useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, AUTOPLAY_MS);
@@ -142,6 +149,8 @@ export function HomeCarousel() {
         </div>
       </div>
 
+      {multiple && (
+      <>
       <button
         type="button"
         aria-label="이전 배너"
@@ -158,6 +167,8 @@ export function HomeCarousel() {
       >
         ›
       </button>
+      </>
+      )}
 
       {/* 아래로 스크롤 유도 — 마우스 모양 테두리 안에서 점이 아래로 튀며 사라지는 애니메이션
           (codepen.io/daveknispel/pen/aKdWaG 참고). 누르면 배너 바로 아래 콘텐츠까지
@@ -171,7 +182,8 @@ export function HomeCarousel() {
         <span className="h-1 w-0.5 animate-scroll-dot rounded-full bg-white group-hover:[animation-duration:0.7s]" />
       </button>
 
-      {/* 점 인디케이터 — 항상 화면 정가운데 */}
+      {/* 점 인디케이터 — 항상 화면 정가운데(배너가 2장 이상일 때만) */}
+      {multiple && (
       <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
         {slides.map((_, i) => (
           <button
@@ -183,6 +195,7 @@ export function HomeCarousel() {
           />
         ))}
       </div>
+      )}
     </div>
   );
 }

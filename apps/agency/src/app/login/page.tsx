@@ -90,9 +90,14 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
   // 배경 배너는 관리자 콘텐츠 관리(S4-A3)가 저장한 값을 읽는다. 장수가 바뀔 수 있으므로
   // 자동재생 주기와 점 인디케이터도 이 목록 길이를 따라간다.
   const slides = useAuthSlides();
-  const [slideIndex, setSlideIndex] = useState(0);
+  const [slideIndexRaw, setSlideIndex] = useState(0);
+  // 번들 초기값(3장)을 보여주다가 API 응답으로 장수가 줄면(관리자가 배너를 끈 경우) 인덱스가 범위를
+  // 벗어나 배경이 비어 보일 수 있다 — 항상 현재 장수 안으로 접어서 쓴다.
+  const slideIndex = slideIndexRaw % slides.length;
 
   useEffect(() => {
+    // 1장만 켜져 있으면 넘길 게 없다 — 자동재생도 점 인디케이터도 두지 않는다.
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setSlideIndex((i) => (i + 1) % slides.length);
     }, AUTH_SLIDES_AUTOPLAY_MS);
@@ -145,6 +150,7 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
       {/* 히어로 하단 점 인디케이터 — 자동재생과 별개로 눌러서 배너를 직접 넘길 수 있다.
           콘텐츠 레이어(위 div)보다 뒤에 그려서 그 위에 깔리지만, inset-x-0/bottom-6일
           뿐 높이가 없어 카드 클릭을 가리지는 않는다. */}
+      {slides.length > 1 && (
       <div className="absolute inset-x-0 bottom-6 z-10 flex justify-center gap-1.5">
         {slides.map((_, i) => (
           <button
@@ -158,6 +164,7 @@ function AuthScreenLayout({ children, heroMessage }: { children: ReactNode; hero
           />
         ))}
       </div>
+      )}
     </main>
   );
 }
