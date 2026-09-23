@@ -8,6 +8,7 @@ import { Banner, Title, Text, Stack, Button, Input, FormMessage, Alert } from "@
 import { CustomerAuthError, useCustomerAuth } from "@/context/CustomerAuthContext";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { AuthBackdrop } from "@/components/AuthBackdrop";
 
 /**
  * 회원가입 — 와이어프레임 S0-C1(소셜 로그인) → S0-C2(아이디 입력) 2단계 흐름. 화면 두 개를
@@ -52,10 +53,12 @@ function SignupContent() {
   };
 
   return (
-    <main>
+    // relative + min-h-[inherit]: 하단 배경 그림(AuthBackdrop)이 화면 바닥에 붙도록 한 화면 높이를 이어받는다.
+    // overflow-hidden: 그림이 main 밖으로 삐져나가 푸터를 덮지 않게.
+    <main className="relative min-h-[inherit] overflow-hidden">
       <Banner size="sm" title="회원가입" image="/banner-notice.png" />
 
-      <div className="mx-auto max-w-md p-6">
+      <div className="relative z-10 mx-auto max-w-md p-6">
         <ScrollReveal>
         <Stack direction="column" gap="lg">
           <Title size="lg" center>
@@ -110,6 +113,8 @@ function SignupContent() {
         </Stack>
         </ScrollReveal>
       </div>
+
+      <AuthBackdrop />
     </main>
   );
 }

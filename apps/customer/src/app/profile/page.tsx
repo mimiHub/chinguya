@@ -111,7 +111,9 @@ export default function ProfilePage() {
           <Card>
             <Stack direction="column" align="center" gap="sm" className="py-10 text-center">
               <Title size="lg" tone="secondary">로그인이 필요합니다</Title>
-              <Text >내정보·예약 내역·장바구니를 보려면 <br /> 로그인해 주세요.</Text>
+              {/* 구분선 폭 = 설명 문구 폭: Stack이 align="center"라 Text가 글자 폭만큼만 줄어들고,
+                  그 Text의 border-t가 곧 선이 된다(별도 hr을 두면 폭을 따로 맞춰야 함). */}
+              <Text className="border-t border-line pt-4">내정보·예약 내역·장바구니를 보려면 <br /> 로그인해 주세요.</Text>
               <Button href="/login?redirect=/profile" className="mt-2">
                 로그인하러 가기
               </Button>

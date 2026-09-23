@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Banner, Title, Text, Stack, Toast } from "@chinguya/ui";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { AuthBackdrop } from "@/components/AuthBackdrop";
 
 /**
  * 로그인 화면 — 와이어프레임 S0-C1(소셜 로그인)을 재사용한다. 이 앱은 소셜 로그인만 있고
@@ -22,10 +23,12 @@ function LoginContent() {
   const [failed, setFailed] = useState(() => params.get("error") === "kakao");
 
   return (
-    <main>
+    // relative + min-h-[inherit]: 하단 배경 그림(AuthBackdrop)이 화면 바닥에 붙도록 한 화면 높이를 이어받는다.
+    // overflow-hidden: 그림이 main 밖으로 삐져나가 푸터를 덮지 않게.
+    <main className="relative min-h-[inherit] overflow-hidden">
       <Banner size="sm" title="로그인" image="/banner-notice.png" />
 
-      <div className="mx-auto max-w-md p-6">
+      <div className="relative z-10 mx-auto max-w-md p-6">
         <ScrollReveal>
         <Stack direction="column" gap="lg">
           <Title size="lg" center>
@@ -43,6 +46,8 @@ function LoginContent() {
         </Stack>
         </ScrollReveal>
       </div>
+
+      <AuthBackdrop />
 
       <Toast
         open={failed}
