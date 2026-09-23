@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import type { Agency } from "@chinguya/types";
-import { Title, Text, Card, Stack, Badge, Toggle, Button, Alert, Toast, EmptyState } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Badge, Toggle, Button, Alert, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 import { invitationBadge } from "./invitationBadge";
 
 /**
@@ -135,7 +136,11 @@ export default function AdminAgenciesPage() {
                     <Badge variant={agency.active ? "success" : "gray"}>
                       {agency.active ? "활성화" : "비활성화"}
                     </Badge>
-                    <Button size="sm" variant="outline" onClick={() => router.push(`/agencies/${agency.agencyId}`)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/agencies/${agency.agencyId}`)}
+                    >
                       상세
                     </Button>
                   </Stack>
@@ -146,11 +151,15 @@ export default function AdminAgenciesPage() {
         })}
 
         {agencies !== null && agencies.length === 0 && (
-          <EmptyState variant="card">등록된 여행사가 없습니다.</EmptyState>
+          <EmptyStateCat message="등록된 여행사가 없습니다." />
         )}
       </Stack>
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
+      <Toast
+        open={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage ?? ""}
+      />
     </main>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { Stack, Text, EmptyState } from "@chinguya/ui";
+import { Stack, Text } from "@chinguya/ui";
+import { EmptyStateCat } from "./EmptyStateCat";
 
 /** 상태 태그에 칠할 색 톤 — 위쪽 수치 카드(Stat)와 같은 계열. 없으면 회색 태그. */
 export type VisitAccent = "primary" | "warning" | "error" | "info";
@@ -87,7 +88,13 @@ export function TodayVisitList({ items }: { items: TodayVisitItem[] }) {
   }, [items.length]);
 
   if (items.length === 0) {
-    return <EmptyState variant="card">오늘 방문 예약이 없습니다.</EmptyState>;
+    // 원래는 공용 EmptyState(variant="card")로 문구 한 줄만 보여줬는데, 이 화면(대시보드
+    // "오늘 방문 예약")에 하단에 자는 고양이 일러스트를 넣어달라는 요청이 있었다. 그 디자인이
+    // 마음에 든다고 해서 어드민 다른 화면들의 "데이터 없음"에도 그대로 쓰기로 하고
+    // EmptyStateCat으로 뽑아냈다 — 공용 EmptyState(packages/ui)는 3개 앱이 같이 쓰는
+    // 컴포넌트라 여기서 고양이를 넣으면 다른 앱에도 전부 나타나 버리기 때문에, 이 컴포넌트는
+    // apps/admin 안에만 둔다. 문구만 화면마다 바뀌고 디자인(카드 높이·고양이·Zz)은 항상 같다.
+    return <EmptyStateCat message="오늘 방문 예약이 없습니다." />;
   }
 
   return (

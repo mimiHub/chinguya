@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 import {
   Alert,
   Badge,
@@ -67,17 +68,62 @@ const GROUPS: { title: string; items: string[] }[] = [
   { title: "레이아웃", items: ["Stack", "Card", "Section", "Title", "Text"] },
   {
     title: "폼 · 입력",
-    items: ["Input", "Checkbox", "Radio", "Toggle", "Stepper", "Dropdown", "Chip", "LabeledBox", "Calendar"],
+    items: [
+      "Input",
+      "Checkbox",
+      "Radio",
+      "Toggle",
+      "Stepper",
+      "Dropdown",
+      "Chip",
+      "LabeledBox",
+      "Calendar",
+    ],
   },
   {
     title: "피드백 · 상태",
-    items: ["Alert", "Toast", "Badge", "StatusIcon", "FormMessage", "NoticeBox", "ComingSoon", "EmptyState", "Skeleton"],
+    items: [
+      "Alert",
+      "Toast",
+      "Badge",
+      "StatusIcon",
+      "FormMessage",
+      "NoticeBox",
+      "ComingSoon",
+      "EmptyState",
+      "EmptyStateCat",
+      "Skeleton",
+    ],
   },
   { title: "오버레이", items: ["Popup", "ConfirmPopup", "HelpTooltip", "Tooltip", "HoldTimer"] },
-  { title: "네비게이션 · 기타", items: ["Tab", "Link", "IconHamburger", "IconX", "CalendarIcon", "Table", "Kv", "Stat", "Banner", "Button"] },
+  {
+    title: "네비게이션 · 기타",
+    items: [
+      "Tab",
+      "Link",
+      "IconHamburger",
+      "IconX",
+      "CalendarIcon",
+      "Table",
+      "Kv",
+      "Stat",
+      "Banner",
+      "Button",
+    ],
+  },
 ];
 
-function Demo({ id, name, desc, children }: { id: string; name: string; desc?: string; children: ReactNode }) {
+function Demo({
+  id,
+  name,
+  desc,
+  children,
+}: {
+  id: string;
+  name: string;
+  desc?: string;
+  children: ReactNode;
+}) {
   return (
     <Card>
       <Stack direction="column" gap="sm">
@@ -93,7 +139,9 @@ function Demo({ id, name, desc, children }: { id: string; name: string; desc?: s
             </Text>
           )}
         </div>
-        <div className="rounded-md border border-dashed border-line bg-bg-light p-4">{children}</div>
+        <div className="rounded-md border border-dashed border-line bg-bg-light p-4">
+          {children}
+        </div>
       </Stack>
     </Card>
   );
@@ -148,6 +196,7 @@ export default function ComponentsGuidePage() {
         <NoticeBoxDemo />
         <ComingSoonDemo />
         <EmptyStateDemo />
+        <EmptyStateCatDemo />
         <SkeletonDemo />
         <PopupDemo />
         <ConfirmPopupDemo />
@@ -171,7 +220,11 @@ export default function ComponentsGuidePage() {
 
 function StackDemo() {
   return (
-    <Demo id="c-Stack" name="Stack" desc="direction·gap·align·justify로 flex 레이아웃을 대체하는 기본 컴포넌트">
+    <Demo
+      id="c-Stack"
+      name="Stack"
+      desc="direction·gap·align·justify로 flex 레이아웃을 대체하는 기본 컴포넌트"
+    >
       <Stack direction="column" gap="sm">
         <Text variant="sub">direction=&quot;row&quot; gap=&quot;sm&quot;</Text>
         <Stack gap="sm">
@@ -191,7 +244,11 @@ function StackDemo() {
 
 function CardDemo() {
   return (
-    <Demo id="c-Card" name="Card" desc="테두리·둥근 모서리 기본 컨테이너. tint·padding·width·shadow 옵션">
+    <Demo
+      id="c-Card"
+      name="Card"
+      desc="테두리·둥근 모서리 기본 컨테이너. tint·padding·width·shadow 옵션"
+    >
       <Stack gap="sm" wrap>
         <Card padding="sm" width="sm">
           <Text>기본</Text>
@@ -214,7 +271,9 @@ function SectionDemo() {
   return (
     <Demo id="c-Section" name="Section" desc="스크롤 진입 시 한 번 페이드인되는 페이지 콘텐츠 래퍼">
       <Section>
-        <Text>이 박스를 스크롤로 다시 지나치면 처음 진입할 때만 페이드/슬라이드 애니메이션이 보인다.</Text>
+        <Text>
+          이 박스를 스크롤로 다시 지나치면 처음 진입할 때만 페이드/슬라이드 애니메이션이 보인다.
+        </Text>
       </Section>
     </Demo>
   );
@@ -259,7 +318,11 @@ function TextDemo() {
 function InputDemo() {
   const [value, setValue] = useState("");
   return (
-    <Demo id="c-Input" name="Input" desc="size·error·as(textarea)·type=&quot;switch&quot; 옵션을 갖는 텍스트 입력">
+    <Demo
+      id="c-Input"
+      name="Input"
+      desc='size·error·as(textarea)·type="switch" 옵션을 갖는 텍스트 입력'
+    >
       <Stack direction="column" gap="sm">
         <Input placeholder="기본 입력" value={value} onChange={(e) => setValue(e.target.value)} />
         <Input placeholder="error 상태" error />
@@ -290,11 +353,19 @@ function RadioDemo() {
     { key: "c", label: "옵션 C" },
   ];
   return (
-    <Demo id="c-Radio" name="Radio" desc="controlled 전용 — 같은 name으로 묶어서 단일 선택 그룹으로 쓴다">
+    <Demo
+      id="c-Radio"
+      name="Radio"
+      desc="controlled 전용 — 같은 name으로 묶어서 단일 선택 그룹으로 쓴다"
+    >
       <Stack gap="md" align="center">
         {options.map((opt) => (
           <label key={opt.key} className="flex cursor-pointer items-center gap-1.5">
-            <Radio name="radio-demo" checked={value === opt.key} onChange={() => setValue(opt.key)} />
+            <Radio
+              name="radio-demo"
+              checked={value === opt.key}
+              onChange={() => setValue(opt.key)}
+            />
             <Text variant="sub">{opt.label}</Text>
           </label>
         ))}
@@ -354,7 +425,11 @@ function ChipDemo() {
   const [selected, setSelected] = useState("1일");
   const options = ["1일", "2일", "3일"];
   return (
-    <Demo id="c-Chip" name="Chip" desc="Chip.List로 감싼 가로 스크롤 토글 칩 목록(대여 기간 등 옵션 선택)">
+    <Demo
+      id="c-Chip"
+      name="Chip"
+      desc="Chip.List로 감싼 가로 스크롤 토글 칩 목록(대여 기간 등 옵션 선택)"
+    >
       <Chip.List>
         {options.map((opt) => (
           <Chip key={opt} on={selected === opt} onClick={() => setSelected(opt)}>
@@ -401,7 +476,11 @@ function CalendarDemo() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [selected, setSelected] = useState<number | undefined>(today.getDate());
   return (
-    <Demo id="c-Calendar" name="Calendar" desc="예약 가능일 등을 보여주는 달력. days 배열·월 이동은 호출부가 소유">
+    <Demo
+      id="c-Calendar"
+      name="Calendar"
+      desc="예약 가능일 등을 보여주는 달력. days 배열·월 이동은 호출부가 소유"
+    >
       <Card padding="sm" width="sm">
         <Calendar
           year={today.getFullYear()}
@@ -419,7 +498,11 @@ function CalendarDemo() {
 
 function AlertDemo() {
   return (
-    <Demo id="c-Alert" name="Alert" desc="status별 인라인 안내 박스. tone=&quot;dark&quot;는 항상 보이는 대시보드 배너용">
+    <Demo
+      id="c-Alert"
+      name="Alert"
+      desc='status별 인라인 안내 박스. tone="dark"는 항상 보이는 대시보드 배너용'
+    >
       <Stack direction="column" gap="sm">
         <Alert status="success" title="예약이 완료되었습니다">
           입금 확인 후 자동으로 상태가 바뀝니다.
@@ -452,7 +535,11 @@ function ToastDemo() {
 
 function BadgeDemo() {
   return (
-    <Demo id="c-Badge" name="Badge / StatusBadge" desc="일반 Badge와, 고객 예약 4상태 전용 StatusBadge">
+    <Demo
+      id="c-Badge"
+      name="Badge / StatusBadge"
+      desc="일반 Badge와, 고객 예약 4상태 전용 StatusBadge"
+    >
       <Stack direction="column" gap="sm">
         <Stack gap="sm" wrap>
           <Badge variant="primary">primary</Badge>
@@ -489,7 +576,11 @@ function StatusIconDemo() {
 
 function FormMessageDemo() {
   return (
-    <Demo id="c-FormMessage" name="FormMessage" desc="폼 필드 하단 메시지(LabeledBox 내부에서 주로 쓰임)">
+    <Demo
+      id="c-FormMessage"
+      name="FormMessage"
+      desc="폼 필드 하단 메시지(LabeledBox 내부에서 주로 쓰임)"
+    >
       <Stack direction="column" gap="xs">
         <FormMessage type="helper">도움말 메시지</FormMessage>
         <FormMessage type="error">에러 메시지</FormMessage>
@@ -516,7 +607,11 @@ function NoticeBoxDemo() {
 
 function ComingSoonDemo() {
   return (
-    <Demo id="c-ComingSoon" name="ComingSoon" desc="미구현 화면용 플레이스홀더 — default(인라인 안내) / splash(전체 화면 랜딩)">
+    <Demo
+      id="c-ComingSoon"
+      name="ComingSoon"
+      desc="미구현 화면용 플레이스홀더 — default(인라인 안내) / splash(전체 화면 랜딩)"
+    >
       <Stack direction="column" gap="sm">
         <Text variant="sub">variant=&quot;default&quot;</Text>
         <ComingSoon label="존재하지 않는 예약입니다" />
@@ -555,9 +650,32 @@ function EmptyStateDemo() {
   );
 }
 
+// EmptyStateCat은 @chinguya/ui가 아니라 apps/admin/src/components에만 있는 어드민 전용
+// 컴포넌트다(agency·customer 앱에는 없음) — 그래서 위 import도 다른 컴포넌트들처럼
+// "@chinguya/ui"가 아니라 "@/components/EmptyStateCat"에서 따로 가져온다. 대시보드
+// "오늘 방문 예약"에 넣은 자는 고양이 디자인이 마음에 든다고 해서, 어드민의 카드형
+// "데이터 없음" 자리 전반(상품·문의·인보이스·예약·FAQ·공지·여행사·자산 등)에 EmptyState
+// 대신 이걸 쓰기로 했다. 문구만 message prop으로 바뀌고 카드 높이·고양이·Zz 애니메이션은
+// 항상 고정이다.
+function EmptyStateCatDemo() {
+  return (
+    <Demo
+      id="c-EmptyStateCat"
+      name="EmptyStateCat"
+      desc="어드민 전용 — 카드형 EmptyState에 자는 고양이 일러스트를 더한 버전. message만 바뀜"
+    >
+      <EmptyStateCat message="표시할 데이터가 없습니다" />
+    </Demo>
+  );
+}
+
 function SkeletonDemo() {
   return (
-    <Demo id="c-Skeleton" name="Skeleton" desc="로딩 중 표시하는 셰이머 플레이스홀더. variant별 모양">
+    <Demo
+      id="c-Skeleton"
+      name="Skeleton"
+      desc="로딩 중 표시하는 셰이머 플레이스홀더. variant별 모양"
+    >
       <Stack direction="column" gap="sm">
         <Skeleton variant="title" />
         <Skeleton variant="text" count={2} />
@@ -585,7 +703,11 @@ function PopupDemo() {
 function ConfirmPopupDemo() {
   const [open, setOpen] = useState(false);
   return (
-    <Demo id="c-ConfirmPopup" name="ConfirmPopup" desc="삭제 등 되돌릴 수 없는 동작 확인용 Popup 래퍼">
+    <Demo
+      id="c-ConfirmPopup"
+      name="ConfirmPopup"
+      desc="삭제 등 되돌릴 수 없는 동작 확인용 Popup 래퍼"
+    >
       <Button size="sm" variant="danger" onClick={() => setOpen(true)}>
         삭제
       </Button>
@@ -609,7 +731,11 @@ function HelpTooltipDemo() {
 
 function TooltipDemo() {
   return (
-    <Demo id="c-Tooltip" name="Tooltip" desc="hover/focus 전용 한 줄 툴팁 — 트리거 요소 하나를 감싼다">
+    <Demo
+      id="c-Tooltip"
+      name="Tooltip"
+      desc="hover/focus 전용 한 줄 툴팁 — 트리거 요소 하나를 감싼다"
+    >
       <Tooltip label="한 줄 설명 텍스트">
         <Button size="sm" variant="outline">
           마우스를 올려보세요
@@ -621,7 +747,11 @@ function TooltipDemo() {
 
 function HoldTimerDemo() {
   return (
-    <Demo id="c-HoldTimer" name="HoldTimer" desc="남은 홀드 시간 표시(카운트다운 로직은 호출부 책임)">
+    <Demo
+      id="c-HoldTimer"
+      name="HoldTimer"
+      desc="남은 홀드 시간 표시(카운트다운 로직은 호출부 책임)"
+    >
       <HoldTimer seconds={125} />
     </Demo>
   );
@@ -637,7 +767,7 @@ function TabDemo() {
   const [capsule, setCapsule] = useState("a");
   const [segment, setSegment] = useState("a");
   return (
-    <Demo id="c-Tab" name="Tab" desc="controlled 탭. variant=&quot;underline&quot;|&quot;capsule&quot;|&quot;segment&quot;">
+    <Demo id="c-Tab" name="Tab" desc='controlled 탭. variant="underline"|"capsule"|"segment"'>
       <Stack direction="column" gap="md">
         <Tab items={items} activeKey={underline} onChange={setUnderline} variant="underline" />
         <Tab items={items} activeKey={capsule} onChange={setCapsule} variant="capsule" />
@@ -667,7 +797,11 @@ function LinkDemo() {
 function IconHamburgerDemo() {
   const [open, setOpen] = useState(false);
   return (
-    <Demo id="c-IconHamburger" name="IconHamburger" desc="열림 상태에 따라 X 모양으로 바뀌는 토글 버튼">
+    <Demo
+      id="c-IconHamburger"
+      name="IconHamburger"
+      desc="열림 상태에 따라 X 모양으로 바뀌는 토글 버튼"
+    >
       <IconHamburger open={open} onClick={() => setOpen((v) => !v)} />
     </Demo>
   );
@@ -688,7 +822,11 @@ function IconXDemo() {
 
 function CalendarIconDemo() {
   return (
-    <Demo id="c-CalendarIcon" name="CalendarIcon" desc="날짜 선택 트리거 등에 쓰는 순수 SVG 달력 아이콘">
+    <Demo
+      id="c-CalendarIcon"
+      name="CalendarIcon"
+      desc="날짜 선택 트리거 등에 쓰는 순수 SVG 달력 아이콘"
+    >
       <CalendarIcon className="h-6 w-6 text-ink" />
     </Demo>
   );
@@ -696,7 +834,11 @@ function CalendarIconDemo() {
 
 function TableDemo() {
   return (
-    <Demo id="c-Table" name="Table" desc="columns·rows 데이터로 그리는 표. rows가 비면 emptyMessage 표시">
+    <Demo
+      id="c-Table"
+      name="Table"
+      desc="columns·rows 데이터로 그리는 표. rows가 비면 emptyMessage 표시"
+    >
       <Table
         columns={[
           { key: "no", label: "예약번호", width: "120px" },
@@ -704,8 +846,16 @@ function TableDemo() {
           { key: "status", label: "상태", align: "right" },
         ]}
         rows={[
-          { no: "AG-27070011", product: "전기자전거 · 1일", status: <StatusBadge status="completed" /> },
-          { no: "AG-27070012", product: "일반자전거 · 1일", status: <StatusBadge status="received" /> },
+          {
+            no: "AG-27070011",
+            product: "전기자전거 · 1일",
+            status: <StatusBadge status="completed" />,
+          },
+          {
+            no: "AG-27070012",
+            product: "일반자전거 · 1일",
+            status: <StatusBadge status="received" />,
+          },
         ]}
       />
     </Demo>
@@ -728,7 +878,11 @@ function KvDemo() {
 
 function StatDemo() {
   return (
-    <Demo id="c-Stat" name="Stat" desc="관리자 대시보드 숫자 카드 그리드. tone으로 숫자·라벨 색 구분, large는 왼쪽 큰 카드">
+    <Demo
+      id="c-Stat"
+      name="Stat"
+      desc="관리자 대시보드 숫자 카드 그리드. tone으로 숫자·라벨 색 구분, large는 왼쪽 큰 카드"
+    >
       <Stat
         items={[
           { value: 4, label: "신규 예약", tone: "primary", large: true },
@@ -742,7 +896,7 @@ function StatDemo() {
 
 function BannerDemo() {
   return (
-    <Demo id="c-Banner" name="Banner" desc="상단 배경 이미지 배너. size=&quot;lg&quot;|&quot;sm&quot;">
+    <Demo id="c-Banner" name="Banner" desc='상단 배경 이미지 배너. size="lg"|"sm"'>
       <Banner size="sm" title="배너 제목 예시" image="/bike.png" />
     </Demo>
   );

@@ -1,8 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, EmptyState, Card, Tab, Stack, Button, Input, IconX, Popup, ConfirmPopup, LabeledBox, Alert, Tooltip, Toast } from "@chinguya/ui";
+import {
+  Title,
+  Text,
+  Card,
+  Tab,
+  Stack,
+  Button,
+  Input,
+  IconX,
+  Popup,
+  ConfirmPopup,
+  LabeledBox,
+  Alert,
+  Tooltip,
+  Toast,
+  Toggle,
+} from "@chinguya/ui";
 import type { ToastStatus } from "@chinguya/ui";
 import {
   createApiClient,
@@ -12,6 +28,7 @@ import {
   type HeroBanner,
 } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 
 const api = createApiClient();
 
@@ -145,8 +162,9 @@ function BannerSizeGuide() {
       </div>
       {expanded && (
         <p>
-          화면을 꽉 채우도록 잘라서 보여주는 방식이라(가운데/위쪽 기준으로 자름), 이 비율과 다르면 중요한 부분이
-          잘릴 수 있어요. PC는 가운데, 모바일은 위쪽을 기준으로 잘리니 핵심 요소는 그 쪽에 배치해 주세요.
+          화면을 꽉 채우도록 잘라서 보여주는 방식이라(가운데/위쪽 기준으로 자름), 이 비율과 다르면
+          중요한 부분이 잘릴 수 있어요. PC는 가운데, 모바일은 위쪽을 기준으로 잘리니 핵심 요소는 그
+          쪽에 배치해 주세요.
         </p>
       )}
     </Alert>
@@ -168,7 +186,8 @@ const SHOW_INTRO_SECTION: boolean = false;
 /**
  * S4-A1/A3 FAQ · 콘텐츠 관리(CMS-lite, a-cms). 두 구역으로 나뉜다:
  *  1) FAQ 등록/수정/삭제·노출 순서 관리 — 분류·검색 없음(기획서 명시)
- *  2) 랜딩(안 A) 히어로 배너 편집 — 배너 3장, 배너마다 PC/모바일 이미지가 따로 필요하다
+ *  2) 랜딩(안 A) 히어로 배너 편집 — 배너 3장, 배너마다 PC/모바일 이미지가 따로 필요하다. 장마다 노출
+ *     스위치로 끌 수 있다(숨김일 뿐 값은 남는다, 최소 1장은 켜 둬야 함 — 2026-09-23)
  *
  * 서비스 소개(S4-C2) 본문 편집 구역도 있었지만 지금은 숨겨져 있다({@link SHOW_INTRO_SECTION}).
  *
@@ -239,7 +258,8 @@ export default function AdminContentPage() {
     ])
       .then(([faqList, bannerList, intro]) => {
         setFaqs(faqList);
-        setBanners(bannerList);
+        // visible 이 없으면(백엔드가 아직 이 필드를 안 내려주는 동안) 켜진 것으로 본다 — 기존 동작과 같다.
+        setBanners(bannerList.map((b) => ({ ...b, visible: b.visible !== false })));
         setActiveBannerSlot(bannerList[0]?.slot ?? 1);
         if (intro) {
           setIntroBody(intro.body);
@@ -250,6 +270,17 @@ export default function AdminContentPage() {
   }, []);
 
   const editingIndex = faqs.findIndex((f) => f.faqId === editingId);
+
+  // FAQ 목록 스크롤 영역 — 새로 등록한 항목은 맨 뒤에 붙는데, 목록이 길어 영역 안에서 스크롤되는
+  // 상태면 방금 등록한 게 안 보인다. 등록 직후에만 맨 아래로 내려서 보여준다.
+  const faqListRef = useRef<HTMLDivElement>(null);
+  const [scrollFaqToEnd, setScrollFaqToEnd] = useState(false);
+  useEffect(() => {
+    if (!scrollFaqToEnd) return;
+    const el = faqListRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    setScrollFaqToEnd(false);
+  }, [scrollFaqToEnd]);
 
   const move = async (faqId: string, direction: -1 | 1) => {
     const idx = faqs.findIndex((f) => f.faqId === faqId);
@@ -294,6 +325,7 @@ export default function AdminContentPage() {
       if (formMode === "add") {
         const created = await api.faqs.create({ question, answer });
         setFaqs((prev) => [...prev, created]);
+        setScrollFaqToEnd(true);
       } else if (editingId) {
         const updated = await api.faqs.update(editingId, { question, answer });
         setFaqs((prev) => prev.map((f) => (f.faqId === updated.faqId ? updated : f)));
@@ -320,6 +352,18 @@ export default function AdminContentPage() {
 
   const updateBannerField = (slot: number, field: "title" | "subtitle", value: string) => {
     setBanners((prev) => prev.map((b) => (b.slot === slot ? { ...b, [field]: value } : b)));
+  };
+
+  // 노출 스위치. 끄는 건 삭제가 아니라 숨김이라 제목·이미지는 그대로 남는다(다시 켜면 바로 돌아옴).
+  // 마지막 남은 1장은 끌 수 없다 — 고객 랜딩 히어로·여행사 로그인 배경이 비면 안 되기 때문(서버도
+  // 400 NO_VISIBLE_BANNER로 막는다). 저장 전 화면 상태만 바뀌고 '배너 저장'을 눌러야 반영된다.
+  const visibleBannerCount = banners.filter((b) => b.visible).length;
+  const toggleBannerVisible = (slot: number, next: boolean) => {
+    if (!next && visibleBannerCount <= 1) {
+      showToast("배너는 최소 1개는 켜 두어야 합니다.", "error");
+      return;
+    }
+    setBanners((prev) => prev.map((b) => (b.slot === slot ? { ...b, visible: next } : b)));
   };
 
   // 브라우저 메모리에만 잠깐 띄우는 미리보기 URL이라, 새 파일을 고르거나 제거할 때
@@ -351,6 +395,11 @@ export default function AdminContentPage() {
   // 수 있어서다. 탭을 넘나들며 배너 여러 개를 고쳐도 banners는 하나의 배열 상태라 "배너
   // 저장" 한 번으로 3개 다 반영된다.
   const handleSaveBanners = async () => {
+    if (!banners.some((b) => b.visible)) {
+      showToast("배너는 최소 1개는 켜 두어야 합니다.", "error");
+      return;
+    }
+    // 꺼 둔 배너도 제목은 필요하다 — 값을 보관해 두었다가 다시 켤 수 있게 하는 구조라 서버가 3장 모두 검증한다.
     const untitled = banners.find((b) => !b.title.trim());
     if (untitled) {
       showToast(`배너 ${untitled.slot}의 제목을 입력해 주세요.`, "error");
@@ -370,7 +419,8 @@ export default function AdminContentPage() {
           mobileImageUrl: await uploadIfSelected(`${b.slot}:mobile`, b.mobileImageUrl),
         })),
       );
-      setBanners(await api.content.updateBanners(next));
+      const saved = await api.content.updateBanners(next);
+      setBanners(saved.map((b) => ({ ...b, visible: b.visible !== false })));
       Object.values(imagePreviews).forEach((p) => URL.revokeObjectURL(p.url));
       setImagePreviews({});
       showToast("배너가 저장되었습니다", "success");
@@ -431,11 +481,20 @@ export default function AdminContentPage() {
         <Stack direction="column" gap="lg" className="mt-4">
           <Stack direction="column" gap="sm">
             <Text weight="bold" leaf>
-              FAQ
+              FAQ{faqs.length > 0 && ` (${faqs.length})`}
             </Text>
+            {/* FAQ는 페이지네이션 없이 등록할수록 계속 쌓인다(분류·검색 없음 — 기획서). 그대로 두면 아래
+                배너 편집 구역이 끝없이 밀려나서, 목록에 최대 높이를 주고 넘치면 이 영역 안에서만 스크롤되게
+                했다(카드 5~6장 정도 높이). pr-1: 스크롤바가 카드 테두리에 딱 붙지 않게 한 칸 띄운다.
+                overscroll-contain: 목록 끝까지 스크롤한 뒤 페이지 전체가 이어서 딸려 내려가지 않게 한다. */}
+            <div ref={faqListRef} className="max-h-[30rem] overflow-y-auto overscroll-contain pr-1">
             <Stack direction="column" gap="sm">
               {faqs.map((faq, i) => (
-                <Card key={faq.faqId} padding="sm" onClick={isSuperAdmin ? () => openEdit(faq) : undefined}>
+                <Card
+                  key={faq.faqId}
+                  padding="sm"
+                  onClick={isSuperAdmin ? () => openEdit(faq) : undefined}
+                >
                   <Stack justify="between" align="center">
                     <Stack direction="column" gap="xs">
                       <Text weight="bold">
@@ -457,8 +516,9 @@ export default function AdminContentPage() {
                 </Card>
               ))}
 
-              {faqs.length === 0 && <EmptyState variant="card">등록된 FAQ가 없습니다.</EmptyState>}
+              {faqs.length === 0 && <EmptyStateCat message="등록된 FAQ가 없습니다." />}
             </Stack>
+            </div>
             <Text variant="sub">
               FAQ는 분류·검색 없이 위 순서 그대로 고객앱에 노출됩니다.
               {isSuperAdmin && " 항목을 눌러 순서를 바꿀 수 있어요."}
@@ -470,13 +530,18 @@ export default function AdminContentPage() {
               랜딩 히어로 배너 (3개)
             </Text>
             <Text variant="sub">
-              고객앱 홈 화면 상단에서 자동으로 넘어가는 배너예요. 배너마다 PC용·모바일용 이미지가 따로 필요합니다.
+              고객앱 홈 화면 상단에서 자동으로 넘어가는 배너예요. 배너마다 PC용·모바일용 이미지가
+              따로 필요합니다. 노출 스위치로 일부 배너만 꺼 둘 수 있어요(최소 1개는 켜져 있어야 해요).
             </Text>
             <BannerSizeGuide />
 
             <Tab
               variant="segment"
-              items={banners.map((b) => ({ key: String(b.slot), label: `배너 ${b.slot}` }))}
+              items={banners.map((b) => ({
+                key: String(b.slot),
+                // 꺼 둔 배너는 탭에서도 바로 보이게 표시한다(탭을 하나씩 열어 보지 않아도 되게).
+                label: b.visible ? `배너 ${b.slot}` : `배너 ${b.slot} (꺼짐)`,
+              }))}
               activeKey={String(activeBannerSlot)}
               onChange={(key) => setActiveBannerSlot(Number(key))}
             />
@@ -484,13 +549,36 @@ export default function AdminContentPage() {
             {activeBanner && (
               <Card padding="sm">
                 <Stack direction="column" gap="sm">
+                  {/* 스위치는 라벨과 같은 줄 오른쪽에 둔다(labelAction) — 라벨 아래 따로 두면 라벨과 떨어져
+                      보이고 줄도 하나 더 먹는다. 상태 설명은 도움말 한 줄로만 보여준다(스위치 옆 "노출 중"
+                      글자와 도움말이 같은 말을 두 번 하던 것을 하나로 정리). */}
+                  <LabeledBox
+                    label="배너 노출"
+                    emphasis
+                    labelAction={
+                      <Toggle
+                        aria-label={`배너 ${activeBanner.slot} 노출`}
+                        on={activeBanner.visible}
+                        disabled={!isSuperAdmin}
+                        onChange={(next) => toggleBannerVisible(activeBanner.slot, next)}
+                      />
+                    }
+                    helper={
+                      activeBanner.visible
+                        ? "고객앱 홈과 여행사 로그인 배경에 노출돼요."
+                        : "숨김 상태예요. 입력한 내용은 그대로 보관돼요."
+                    }
+                  />
+
                   <LabeledBox label="제목" emphasis>
                     <Input
                       as="textarea"
                       rows={2}
                       value={activeBanner.title}
                       disabled={!isSuperAdmin}
-                      onChange={(e) => updateBannerField(activeBanner.slot, "title", e.target.value)}
+                      onChange={(e) =>
+                        updateBannerField(activeBanner.slot, "title", e.target.value)
+                      }
                     />
                   </LabeledBox>
 
@@ -500,7 +588,9 @@ export default function AdminContentPage() {
                       rows={2}
                       value={activeBanner.subtitle ?? ""}
                       disabled={!isSuperAdmin}
-                      onChange={(e) => updateBannerField(activeBanner.slot, "subtitle", e.target.value)}
+                      onChange={(e) =>
+                        updateBannerField(activeBanner.slot, "subtitle", e.target.value)
+                      }
                     />
                   </LabeledBox>
 
@@ -526,7 +616,6 @@ export default function AdminContentPage() {
                 </Stack>
               </Card>
             )}
-
 
             {isSuperAdmin && (
               <Button fullWidth disabled={bannerSaving} onClick={() => void handleSaveBanners()}>
@@ -560,10 +649,18 @@ export default function AdminContentPage() {
         </Stack>
       )}
 
-      <Popup open={formOpen} onClose={() => setFormOpen(false)} title={formMode === "add" ? "FAQ 등록" : "FAQ 수정"}>
+      <Popup
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={formMode === "add" ? "FAQ 등록" : "FAQ 수정"}
+      >
         <Stack direction="column" gap="md">
           <LabeledBox label="질문" required>
-            <Input value={questionDraft} maxLength={200} onChange={(e) => setQuestionDraft(e.target.value)} />
+            <Input
+              value={questionDraft}
+              maxLength={200}
+              onChange={(e) => setQuestionDraft(e.target.value)}
+            />
           </LabeledBox>
           <LabeledBox label="답변" required>
             <Input
@@ -605,7 +702,6 @@ export default function AdminContentPage() {
             </LabeledBox>
           )}
 
-
           <Button
             fullWidth
             disabled={submitting || !questionDraft.trim() || !answerDraft.trim()}
@@ -623,7 +719,12 @@ export default function AdminContentPage() {
         onClose={() => setDeleteTarget(null)}
       />
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} status={toastStatus} />
+      <Toast
+        open={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage ?? ""}
+        status={toastStatus}
+      />
     </main>
   );
 }

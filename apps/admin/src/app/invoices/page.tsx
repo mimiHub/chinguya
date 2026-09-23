@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { Title, Text, EmptyState, Card, Stack, Badge, Chip, NoticeBox, Alert } from "@chinguya/ui";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 import { INVOICE_SETTLEMENT_LABEL } from "@chinguya/types";
 import { createApiClient, ApiError, type AdminInvoiceList } from "@chinguya/api-client";
 
@@ -43,7 +44,9 @@ export default function AdminInvoicesPage() {
 
   // 필터는 클라이언트에서 건다 — 전량 응답이라 왕복이 필요 없고, 칩을 눌렀을 때 즉시 반응한다.
   const pending = list?.pending ?? [];
-  const invoices = (list?.invoices ?? []).filter((invoice) => agencyFilter === null || invoice.agencyId === agencyFilter);
+  const invoices = (list?.invoices ?? []).filter(
+    (invoice) => agencyFilter === null || invoice.agencyId === agencyFilter,
+  );
 
   /** 필터 칩 목록 — 인보이스가 있거나 이번 달 사용 중인 여행사만 나온다. */
   const filterAgencies = [...(list?.pending ?? []), ...(list?.invoices ?? [])].reduce<
@@ -93,7 +96,9 @@ export default function AdminInvoicesPage() {
           ))}
 
           {pending.length === 0 && (
-            <EmptyState>{list === null && !loadError ? "불러오는 중…" : "사용 가능한 여행사가 없습니다."}</EmptyState>
+            <EmptyState>
+              {list === null && !loadError ? "불러오는 중…" : "사용 가능한 여행사가 없습니다."}
+            </EmptyState>
           )}
         </Card>
 
@@ -120,7 +125,11 @@ export default function AdminInvoicesPage() {
 
         <Stack direction="column" gap="sm">
           {invoices.map((invoice) => (
-            <NextLink key={invoice.invoiceId} href={`/invoices/${invoice.invoiceId}`} className="block">
+            <NextLink
+              key={invoice.invoiceId}
+              href={`/invoices/${invoice.invoiceId}`}
+              className="block"
+            >
               <Card padding="sm">
                 <Stack justify="between" align="center">
                   <Stack direction="column" gap="xs">
@@ -130,7 +139,9 @@ export default function AdminInvoicesPage() {
                     </Text>
                   </Stack>
                   <Badge variant={invoice.settled ? "success" : "warning"}>
-                    {invoice.settled ? INVOICE_SETTLEMENT_LABEL.settled : INVOICE_SETTLEMENT_LABEL.unsettled}
+                    {invoice.settled
+                      ? INVOICE_SETTLEMENT_LABEL.settled
+                      : INVOICE_SETTLEMENT_LABEL.unsettled}
                   </Badge>
                 </Stack>
               </Card>
@@ -138,15 +149,17 @@ export default function AdminInvoicesPage() {
           ))}
 
           {invoices.length === 0 && (
-            <EmptyState variant="card">
-              {list === null && !loadError ? "불러오는 중…" : "아직 발행된 인보이스가 없습니다."}
-            </EmptyState>
+            <EmptyStateCat
+              message={
+                list === null && !loadError ? "불러오는 중…" : "아직 발행된 인보이스가 없습니다."
+              }
+            />
           )}
         </Stack>
 
         <NoticeBox tone="gray">
-          인보이스는 매월 1일 전월 기준으로 자동 발행됩니다. 통화는 KRW(세금 라인 없음)이며, 정산(입금)
-          확인은 카드를 눌러 들어간 상세 화면에서 인보이스 단위로 합니다.
+          인보이스는 매월 1일 전월 기준으로 자동 발행됩니다. 통화는 KRW(세금 라인 없음)이며,
+          정산(입금) 확인은 카드를 눌러 들어간 상세 화면에서 인보이스 단위로 합니다.
         </NoticeBox>
       </Stack>
     </main>

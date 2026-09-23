@@ -2,10 +2,28 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, EmptyState, Card, Stack, Tab, Button, Badge, Toggle, Alert, Toast, type ToastStatus } from "@chinguya/ui";
+import {
+  Title,
+  Text,
+  Card,
+  Stack,
+  Tab,
+  Button,
+  Badge,
+  Toggle,
+  Alert,
+  Toast,
+  type ToastStatus,
+} from "@chinguya/ui";
 import { NOTICE_CATEGORY_LABEL } from "@chinguya/types";
-import { createApiClient, ApiError, type NoticeCategory, type NoticeSummary } from "@chinguya/api-client";
+import {
+  createApiClient,
+  ApiError,
+  type NoticeCategory,
+  type NoticeSummary,
+} from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 
 const api = createApiClient();
 
@@ -93,32 +111,29 @@ export default function AdminNoticesPage() {
   };
 
   /** 카드에서 바로 공개/숨김을 바꾼다. 서버 응답으로 그 줄만 갈아끼운다(목록을 다시 받지 않는다). */
-  const togglePublished = useCallback(
-    async (notice: NoticeSummary) => {
-      try {
-        const detail = await api.notices.detail(notice.noticeId);
-        const saved = await api.notices.update(notice.noticeId, {
-          category: detail.category,
-          title: detail.title,
-          content: detail.content,
-          published: !detail.published,
-          pinned: detail.pinned,
-          eventStartDate: detail.eventStartDate,
-          eventEndDate: detail.eventEndDate,
-          imageUrls: detail.imageUrls,
-        });
-        setNotices((prev) =>
-          prev.map((n) => (n.noticeId === saved.noticeId ? { ...n, published: saved.published } : n)),
-        );
-        setToastStatus("success");
-        setToastMessage(saved.published ? "공개로 바꿨습니다" : "숨김으로 바꿨습니다");
-      } catch (err) {
-        setToastStatus("error");
-        setToastMessage(errorMessage(err, "공개 상태를 바꾸지 못했습니다."));
-      }
-    },
-    [],
-  );
+  const togglePublished = useCallback(async (notice: NoticeSummary) => {
+    try {
+      const detail = await api.notices.detail(notice.noticeId);
+      const saved = await api.notices.update(notice.noticeId, {
+        category: detail.category,
+        title: detail.title,
+        content: detail.content,
+        published: !detail.published,
+        pinned: detail.pinned,
+        eventStartDate: detail.eventStartDate,
+        eventEndDate: detail.eventEndDate,
+        imageUrls: detail.imageUrls,
+      });
+      setNotices((prev) =>
+        prev.map((n) => (n.noticeId === saved.noticeId ? { ...n, published: saved.published } : n)),
+      );
+      setToastStatus("success");
+      setToastMessage(saved.published ? "공개로 바꿨습니다" : "숨김으로 바꿨습니다");
+    } catch (err) {
+      setToastStatus("error");
+      setToastMessage(errorMessage(err, "공개 상태를 바꾸지 못했습니다."));
+    }
+  }, []);
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -137,7 +152,11 @@ export default function AdminNoticesPage() {
       </Stack>
 
       <Stack direction="column" gap="md" className="mt-4">
-        <Tab items={CATEGORY_TABS} activeKey={category} onChange={(key) => changeCategory(key as NoticeCategory)} />
+        <Tab
+          items={CATEGORY_TABS}
+          activeKey={category}
+          onChange={(key) => changeCategory(key as NoticeCategory)}
+        />
 
         {loadError && (
           <Alert status="error" icon={true}>
@@ -166,7 +185,7 @@ export default function AdminNoticesPage() {
           ))}
 
           {!loading && !loadError && notices.length === 0 && (
-            <EmptyState variant="card">등록된 글이 없습니다.</EmptyState>
+            <EmptyStateCat message="등록된 글이 없습니다." />
           )}
           {loading && <Text variant="sub">불러오는 중…</Text>}
           {/* 바닥 감지용 — 화면에 들어오면 다음 페이지를 이어 붙인다. */}
@@ -174,7 +193,9 @@ export default function AdminNoticesPage() {
         </Stack>
 
         {!isSuperAdmin && (
-          <Text variant="sub">일반 관리자는 목록만 볼 수 있습니다. 등록·수정·삭제는 슈퍼어드민만 할 수 있어요.</Text>
+          <Text variant="sub">
+            일반 관리자는 목록만 볼 수 있습니다. 등록·수정·삭제는 슈퍼어드민만 할 수 있어요.
+          </Text>
         )}
       </Stack>
 

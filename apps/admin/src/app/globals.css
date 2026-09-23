@@ -1,6 +1,30 @@
 @import "tailwindcss";
 @import "@chinguya/tailwind-config/theme.css";
 
+/* 관리자 배경 밤하늘(components/NightSkyBackdrop.tsx)의 별똥별 — 관리자 앱에서만 쓰는 효과라
+   공용 theme.css가 아니라 여기 둔다. 별 반짝임은 공용 --animate-twinkle을 그대로 쓴다. */
+@theme {
+  --animate-shooting-star: shooting-star 14s ease-in infinite;
+}
+
+@keyframes shooting-star {
+  0% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(0);
+  }
+  1% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(-45vw);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(-45vw);
+  }
+}
+
 /*
  * 관리자 앱 전용 다크 테마 오버라이드.
  * packages/tailwind-config/theme.css의 색 토큰은 3개 앱(customer/admin/agency)이 공유하지만,
@@ -11,39 +35,47 @@
  * packages/ui 쪽에서 "bg-surface"로 바꿔뒀다 — surface 토큰도 아래서 다크로 재정의된다.)
  */
 :root {
-  /* 시맨틱 텍스트/배경/라인 — 크롬 다크 모드 설정 화면 톤 참고(따뜻한 브라운 대신 차분한
-     블루그레이 계열 무채색). */
+  /* 시맨틱 텍스트/배경/라인 — 햄버거 드로어·로그인 화면의 야경 사진(login-bg-mobile.jpg,
+     달밤의 남색 하늘)과 톤을 맞춘 **밤하늘 네이비** 계열. 예전엔 크롬 다크 모드의 무채색
+     블루그레이(#202124 등)였는데, 드로어를 열면 사진의 남색과 본문의 회색이 따로 놀아 보여서
+     바꿨다(2026-09-23). 색상각은 사진 하늘(약 220°)에 맞추되, 처음 값(채도 40%대)이 너무
+     푸르다는 피드백으로 채도를 20% 안팎까지 빼서 **차분한 네이비**로 눌렀다 — 어두운 배경일수록
+     채도를 조금 더 남기고(24%) 밝은 글자 쪽은 거의 무채색(10~14%)이다. */
   --color-ink: #e8eaed;
-  --color-muted: #9aa0a6;
-  --color-surface: #292a2d;
-  --color-bg: #202124;
-  --color-bg-light: #35363a;
-  --color-line: #5f6368;
+  --color-muted: #9da2af;
+  --color-surface: #1f232e;
+  --color-bg: #151923;
+  --color-bg-light: #2c323f;
+  --color-line: #49505f;
+
+  /* 배경 밤하늘 별(NightSkyBackdrop) — 순백 대신 달빛처럼 살짝 따뜻한 흰색, 큰 별엔 옅은 광채 */
+  --color-star: #f3f0e4;
+  --color-star-glow: rgb(243 240 228 / 0.6);
 
   /* Gray scale — 라이트 테마에서 0(밝음)→950(어두움)이던 방향을 다크에 맞게 뒤집었다
-     (0이 가장 어두운 배경, 950이 가장 밝은 텍스트가 되도록). 크롬 다크 모드와 같은
-     블루그레이 무채색 계열로 맞췄다. */
-  --color-gray-0: #202124;
-  --color-gray-50: #26272a;
-  --color-gray-100: #2d2e31;
-  --color-gray-200: #35363a;
-  --color-gray-300: #45474a;
-  --color-gray-400: #5f6368;
-  --color-gray-500: #80868b;
-  --color-gray-600: #9aa0a6;
-  --color-gray-700: #bdc1c6;
-  --color-gray-800: #dadce0;
+     (0이 가장 어두운 배경, 950이 가장 밝은 텍스트가 되도록). 위 시맨틱 색과 같은
+     밤하늘 네이비 계열로 맞췄다(어두운 쪽일수록 남색이 짙고, 밝은 쪽은 거의 무채색). */
+  --color-gray-0: #151923;
+  --color-gray-50: #1a1e28;
+  --color-gray-100: #232834;
+  --color-gray-200: #2c323f;
+  --color-gray-300: #3b414e;
+  --color-gray-400: #535a6a;
+  --color-gray-500: #737a8c;
+  --color-gray-600: #9da2af;
+  --color-gray-700: #bec2ca;
+  --color-gray-800: #dbdde1;
   --color-gray-900: #e8eaed;
-  --color-gray-950: #f1f3f4;
+  --color-gray-950: #f3f4f6;
 
-  /* 카드 배경 파스텔 톤도 같은 블루그레이 계열로 */
-  --color-card-primary: #2d2e31;
-  --color-card-secondary: #2b2c2f;
-  --color-card-tertiary: #303134;
+  /* 카드 배경 파스텔 톤도 같은 네이비 계열로 */
+  --color-card-primary: #232834;
+  --color-card-secondary: #212631;
+  --color-card-tertiary: #282d39;
 
   /* Card 테두리 — 라이트 테마의 흰색 테두리(배경과 거의 안 보이던 효과) 대신, 어두운 배경 위에서
-     카드 경계가 살짝 드러나도록 밝은 회색으로 지정 */
-  --color-card-border: #494a4d;
+     카드 경계가 살짝 드러나도록 한 톤 밝은 네이비로 지정 */
+  --color-card-border: #3b414e;
 
   /* CTA/강조 색 — 로고의 세이지그린 포인트 컬러로 지정 */
   --color-primary-500: #8ba286;
@@ -54,8 +86,8 @@
      (공용 accent 스케일 — theme.css 참고. 로고 세이지그린과 이어지는 색이라 브랜드 톤은 유지). */
   --color-toggle-on: var(--color-accent-700);
 
-  /* Toast 배경 — 공용 기본값(#1c1c1a)은 어두운 페이지 배경(#202124) 위에서 거의 안 보여서,
-     그림자로만 겨우 구분되는 문제가 있었다. gray-300(#45474a, surface보다 한 단계 밝은 톤)으로
+  /* Toast 배경 — 공용 기본값(#1c1c1a)은 어두운 페이지 배경 위에서 거의 안 보여서,
+     그림자로만 겨우 구분되는 문제가 있었다. gray-300(surface보다 한 단계 밝은 톤)으로
      살짝 띄워서 흰 글자와의 대비도 확보하고 페이지 배경과도 구분되게 했다. */
   --color-toast-bg: var(--color-gray-300);
 
@@ -72,7 +104,7 @@
   /* outline 버튼 테두리 — 다크 테마에선 예전 그대로 포인트색(primary-500). */
   --color-button-outline-border: var(--color-primary-500);
 
-  /* Badge "gray" variant — 공용 기본값(bg-gray-100)이 admin의 gray-100(#2d2e31)과 surface가
+  /* Badge "gray" variant — 공용 기본값(bg-gray-100)이 admin의 gray-100과 surface가
      거의 같은 색이라 배지가 배경에 묻혀 안 보이는 문제가 있었다. 배경은 한 톤 더 밝은
      gray-300, 글자는 ink로 올려서 눈에 띄게 했다. */
   --color-badge-gray-bg: var(--color-gray-300);
@@ -84,7 +116,7 @@
      무채색 흰 배경이라 유독 튄다), 크롬 다크 모드 정보 배너 톤(옅은 블루 글자 + 짙은 남색 배경)을
      참고해 이 앱에서만 다시 정의한다. */
   --color-info: #8ab4f8;
-  --color-info-light: #2b3a4d;
+  --color-info-light: #253346;
 
   /* Stat(대시보드 수치 카드)·오늘 방문 예약 태그의 포인트 색 — 카드 배경은 모두 같은 어두운 surface이고
      라벨 앞 점·세로 라인·태그만 색으로 구분한다. 어두운 배경 위에서 또렷하게 보이도록 밝은 파스텔

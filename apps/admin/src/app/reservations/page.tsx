@@ -10,7 +10,19 @@ import {
   type AdminBookingTab,
 } from "@chinguya/api-client";
 import type { CustomerReservationStatus } from "@chinguya/types";
-import { Title, Chip, Input, Card, Stack, Text, EmptyState, StatusBadge, Badge, Button, Alert } from "@chinguya/ui";
+import {
+  Title,
+  Chip,
+  Input,
+  Card,
+  Stack,
+  Text,
+  StatusBadge,
+  Badge,
+  Button,
+  Alert,
+} from "@chinguya/ui";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 
 /**
  * S1-A6 예약 관리 목록. 고객 예약을 탭(접수/완료/미입금/취소요청/취소)별로 조회·검색한다.
@@ -42,7 +54,9 @@ function StatusTag({ booking }: { booking: AdminBookingSummary }) {
 }
 
 function cardTitle(booking: AdminBookingSummary): string {
-  return booking.itemCount > 1 ? `${booking.productName} 외 ${booking.itemCount - 1}건` : booking.productName;
+  return booking.itemCount > 1
+    ? `${booking.productName} 외 ${booking.itemCount - 1}건`
+    : booking.productName;
 }
 
 function formatUseDates(dates: string[]): string {
@@ -99,7 +113,8 @@ function AdminReservationsPageInner() {
         setTotal(res.totalElements);
       })
       .catch((err: unknown) => {
-        if (active) setError(err instanceof ApiError ? err.message : "예약 목록을 불러오지 못했습니다.");
+        if (active)
+          setError(err instanceof ApiError ? err.message : "예약 목록을 불러오지 못했습니다.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -140,7 +155,9 @@ function AdminReservationsPageInner() {
 
         <Stack direction="column" gap="sm">
           {!loading && !error && bookings.length === 0 && (
-            <EmptyState variant="card">{query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}</EmptyState>
+            <EmptyStateCat
+              message={query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}
+            />
           )}
           {bookings.map((b) => (
             <NextLink
@@ -162,7 +179,8 @@ function AdminReservationsPageInner() {
                       </Text>
                     </Text>
                     <Text variant="sub">
-                      {b.passportName} · {formatUseDates(b.useDates)} · ₩ {b.activeTotalAmount.toLocaleString()}
+                      {b.passportName} · {formatUseDates(b.useDates)} · ₩{" "}
+                      {b.activeTotalAmount.toLocaleString()}
                     </Text>
                   </div>
                   <Stack gap="xs" align="center" className="shrink-0">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Title, Text, Card, Stack, Tab, Toggle, Link, Button, Alert, EmptyState, Toast } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Tab, Toggle, Link, Button, Alert, Toast } from "@chinguya/ui";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import type { AdminProduct, AssetCategory } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL, RENTAL_OPTION_LABEL } from "@chinguya/types";
@@ -66,11 +67,18 @@ export default function AdminProductsPage() {
     return [...byAsset.values()];
   }, [products]);
 
-  const toggleVisibility = async (product: AdminProduct, field: "customerVisible" | "agencyVisible") => {
+  const toggleVisibility = async (
+    product: AdminProduct,
+    field: "customerVisible" | "agencyVisible",
+  ) => {
     setPendingId(product.productId);
     try {
-      const updated = await api.products.setVisibility(product.productId, { [field]: !product[field] });
-      setProducts((prev) => prev?.map((p) => (p.productId === updated.productId ? updated : p)) ?? null);
+      const updated = await api.products.setVisibility(product.productId, {
+        [field]: !product[field],
+      });
+      setProducts(
+        (prev) => prev?.map((p) => (p.productId === updated.productId ? updated : p)) ?? null,
+      );
     } catch (err) {
       setToastMessage(errorMessage(err, "표출 상태를 바꾸지 못했습니다."));
     } finally {
@@ -110,7 +118,7 @@ export default function AdminProductsPage() {
       )}
 
       {products !== null && groups.length === 0 && (
-        <EmptyState variant="card" className="mt-4">등록된 상품이 없습니다.</EmptyState>
+        <EmptyStateCat message="등록된 상품이 없습니다." className="mt-4" />
       )}
 
       <Stack direction="column" gap="lg" className="mt-4">
@@ -160,7 +168,11 @@ export default function AdminProductsPage() {
         ))}
       </Stack>
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
+      <Toast
+        open={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage ?? ""}
+      />
     </main>
   );
 }

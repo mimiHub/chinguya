@@ -598,7 +598,7 @@ function AdminInventoryContent() {
                       <span className="text-muted">여행사 기준 할당 ·</span>
                       <span className="text-ink">
                         {allocatedAgencies.length > 0
-                          ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}`).join(" · ")
+                          ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}대`).join(" · ")
                           : "없음"}
                       </span>
                     </span>

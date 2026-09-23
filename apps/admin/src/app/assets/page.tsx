@@ -2,11 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title, Text, EmptyState, Card, Stack, Badge, Button, Popup, ConfirmPopup, LabeledBox, Input, Dropdown, Toast, Alert } from "@chinguya/ui";
+import {
+  Title,
+  Text,
+  Card,
+  Stack,
+  Badge,
+  Button,
+  Popup,
+  ConfirmPopup,
+  LabeledBox,
+  Input,
+  Dropdown,
+  Toast,
+  Alert,
+} from "@chinguya/ui";
 import { createApiClient, ApiError } from "@chinguya/api-client";
 import type { Asset, AssetCategory } from "@chinguya/types";
 import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 
 /**
  * 자산 관리(S1-A2) — 명칭·카테고리 마스터 · 모달 CRUD.
@@ -182,7 +197,9 @@ export default function AdminAssetsPage() {
     <main className="mx-auto max-w-2xl p-6">
       <Stack direction="column" gap="sm">
         <Title size="md">자산 관리</Title>
-        <Text variant="sub">자산 명칭만 관리합니다. 보유 수량은 날짜별 재고 현황에서 관리합니다.</Text>
+        <Text variant="sub">
+          자산 명칭만 관리합니다. 보유 수량은 날짜별 재고 현황에서 관리합니다.
+        </Text>
       </Stack>
 
       {loadError && (
@@ -229,7 +246,9 @@ export default function AdminAssetsPage() {
             </Stack>
           </Card>
         ))}
-        {assets !== null && activeAssets.length === 0 && <EmptyState variant="card">등록된 자산이 없습니다.</EmptyState>}
+        {assets !== null && activeAssets.length === 0 && (
+          <EmptyStateCat message="등록된 자산이 없습니다." />
+        )}
       </Stack>
 
       {deletedAssets.length > 0 && (
@@ -305,7 +324,11 @@ export default function AdminAssetsPage() {
             error={editError}
             helper="기존 명칭이 미리 채워집니다. 값을 바꾸지 않으면 저장 버튼이 비활성화됩니다."
           >
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} error={!!editError} />
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              error={!!editError}
+            />
           </LabeledBox>
           <LabeledBox label="카테고리" helper="등록 때 정한 값이라 수정할 수 없습니다.">
             <Text>{ASSET_CATEGORY_LABEL[editCategory]}</Text>
@@ -330,8 +353,8 @@ export default function AdminAssetsPage() {
       >
         <Stack direction="column" gap="md">
           <Text variant="sub">
-            &apos;{deleteTarget?.name}&apos;에 연결된 상품 <b>{deleteTarget?.productCount}개</b>를 먼저
-            삭제해야 합니다.
+            &apos;{deleteTarget?.name}&apos;에 연결된 상품 <b>{deleteTarget?.productCount}개</b>를
+            먼저 삭제해야 합니다.
           </Text>
           <Button variant="outline" size="sm" onClick={() => router.push("/products")}>
             상품 관리로 이동
@@ -356,8 +379,8 @@ export default function AdminAssetsPage() {
           deleteTarget ? (
             deleteTarget.hasInventoryRecords ? (
               <>
-                재고 세팅 이력이 있어 목록에 &apos;삭제됨&apos;으로 남습니다. 새 날짜의 재고 세팅은 할 수
-                없습니다.
+                재고 세팅 이력이 있어 목록에 &apos;삭제됨&apos;으로 남습니다. 새 날짜의 재고 세팅은
+                할 수 없습니다.
               </>
             ) : (
               <>
@@ -378,7 +401,11 @@ export default function AdminAssetsPage() {
             error={restoreError}
             helper="같은 명칭의 활성 자산이 이미 있으면 명칭 변경을 요구한 뒤 복원합니다."
           >
-            <Input value={restoreName} onChange={(e) => setRestoreName(e.target.value)} error={!!restoreError} />
+            <Input
+              value={restoreName}
+              onChange={(e) => setRestoreName(e.target.value)}
+              error={!!restoreError}
+            />
           </LabeledBox>
           <Stack gap="sm">
             <Button variant="outline" fullWidth onClick={() => setRestoreTarget(null)}>
@@ -391,7 +418,11 @@ export default function AdminAssetsPage() {
         </Stack>
       </Popup>
 
-      <Toast open={!!toastMessage} onClose={() => setToastMessage(null)} message={toastMessage ?? ""} />
+      <Toast
+        open={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage ?? ""}
+      />
     </main>
   );
 }

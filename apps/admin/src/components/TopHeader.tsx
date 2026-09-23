@@ -58,9 +58,13 @@ export function TopHeader() {
         </div>
       </header>
 
-      {/* 뒷배경 딤 처리 — 패널 바깥을 누르면 드로어가 닫힌다 */}
+      {/* 뒷배경 딤 처리 — 패널 바깥을 누르면 드로어가 닫힌다. z-index는 하단에 상시 떠 있는
+          재고 초과 토스트(z-[200])보다 위여야 한다 — 원래 z-[115]/[120]이라 드로어를 열면
+          토스트가 그 위에 그대로 겹쳐 보였다(전체 화면 내비게이션인데 페이지 알림이 더
+          앞에 뜨는 게 어색해서 드로어를 더 앞으로 올렸다). 다만 최상단 모달류(Popup의
+          z-[1000])보다는 낮게 둔다. */}
       <div
-        className={`fixed inset-0 z-[115] bg-black/50 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[210] bg-black/50 transition-opacity duration-200 ${
           menuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setMenuOpen(false)}
@@ -79,7 +83,7 @@ export function TopHeader() {
           absolute inset-0로 깔려면 실제 콘텐츠(헤더/로그인정보/내비/로그아웃)가 그 위에
           쌓이도록 별도 stacking context가 필요하기 때문이다. */}
       <div
-        className={`fixed inset-y-0 right-0 z-[120] w-[80%] max-w-xs overflow-hidden border-l border-line text-ink transition-transform duration-200 ${
+        className={`fixed inset-y-0 right-0 z-[220] w-[80%] max-w-xs overflow-hidden border-l border-line text-ink transition-transform duration-200 ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

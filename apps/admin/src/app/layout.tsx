@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TopHeader } from "@/components/TopHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { ContentArea } from "@/components/ContentArea";
+import { NightSkyBackdrop } from "@/components/NightSkyBackdrop";
 import { AdminAuthProvider } from "@/context/AdminAuthContext";
 import "./globals.css";
 
@@ -21,6 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body className="flex h-full flex-col overflow-hidden">
+        {/* 페이지 배경에만 깔리는 밤하늘 별(카드·헤더 위로는 안 올라온다) */}
+        <NightSkyBackdrop />
         <AdminAuthProvider>
           <TopHeader />
           <ContentArea>{children}</ContentArea>

@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { ApiError, createApiClient, type AdminInquiry } from "@chinguya/api-client";
-import { Title, Text, EmptyState, Card, Stack, Badge, Input, Button, Toast, Alert } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Badge, Input, Button, Toast, Alert } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EmptyStateCat } from "@/components/EmptyStateCat";
 
 const api = createApiClient();
 
@@ -127,7 +128,8 @@ export default function AdminInquiriesPage() {
                   답변
                 </Text>
                 <Text variant="sub" className="whitespace-pre-line">
-                  {selected.answer ?? "아직 답변이 없습니다. 답변 등록은 슈퍼어드민만 할 수 있습니다."}
+                  {selected.answer ??
+                    "아직 답변이 없습니다. 답변 등록은 슈퍼어드민만 할 수 있습니다."}
                 </Text>
               </Stack>
             </Card>
@@ -177,7 +179,9 @@ export default function AdminInquiriesPage() {
           </Card>
         ))}
 
-        {inquiries !== null && inquiries.length === 0 && <EmptyState variant="card">접수된 문의가 없습니다.</EmptyState>}
+        {inquiries !== null && inquiries.length === 0 && (
+          <EmptyStateCat message="접수된 문의가 없습니다." />
+        )}
       </Stack>
 
       <Toast open={toastOpen} onClose={() => setToastOpen(false)} message="답변이 등록되었습니다" />
