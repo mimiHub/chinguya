@@ -39,7 +39,7 @@ export function AgencyShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <Header open={sidebarOpen} onMenuClick={() => setSidebarOpen((v) => !v)} />
       {/* min-h-screen(최소 높이)만 쓰면, 표가 길어서 콘텐츠가 화면보다 커질 때 이 아래
           영역(사이드바+콘텐츠) 전체가 뷰포트보다 커지면서 사이드바까지 같이 길게 늘어나고,
@@ -58,7 +58,12 @@ export function AgencyShell({ children }: { children: React.ReactNode }) {
           aria-hidden="true"
         />
         <Sidebar open={sidebarOpen} onExpand={() => setSidebarOpen(true)} />
-        <div className="min-w-0 flex-1 overflow-y-auto p-8">{children}</div>
+        {/* min-h-0이 빠져 있어서(min-w-0만 있었음) 표(Table)가 길어지면 이 안에서
+            overflow-y-auto로 스크롤되는 대신 이 div 자체가 내용 높이만큼 늘어나 버렸고,
+            그게 그대로 페이지(body) 스크롤이 되면서 예약 목록·인보이스 등 표가 긴 화면에서
+            표가 부모 상자를 넘어가 보이는 문제가 있었다(2026-09-23). flex-1과 min-h-0을
+            같이 줘야 이 영역이 위 h-screen 높이 안으로 고정되고, 그 안에서만 스크롤된다. */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-8">{children}</div>
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import NextLink from "next/link";
-import { Title, Text, EmptyState, Table, StatusBadge, Card, Stack, IconFace, Alert } from "@chinguya/ui";
+import { Title, Text, EmptyState, Table, StatusBadge, Card, Stack, Alert } from "@chinguya/ui";
 import { RENTAL_OPTION_LABEL, type CustomerReservationStatus } from "@chinguya/types";
 import { createApiClient, ApiError, type AgencyDashboard } from "@chinguya/api-client";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
@@ -11,7 +10,7 @@ import { ScrollReveal } from "@/components/ScrollReveal";
 const api = createApiClient();
 
 /**
- * S2-G3 여행사 대시보드(`g-dash`). 신규 예약 지표와 오늘 이용자 명단을 보여준다.
+ * S2-G3 여행사 대시보드(`g-dash`). 오늘 이용자 명단을 보여준다.
  *
  * Core API(GET /v1/agency/dashboard)에 실연동돼 있다 — 계약은
  * packages/api-spec/openapi/chinguya-agency-api.yaml.
@@ -48,8 +47,6 @@ export default function AgencyDashboardPage() {
     void loadDashboard();
   }, [loadDashboard]);
 
-  const newCount = dashboard?.newReservationCount ?? 0;
-
   const tableEmptyMessage = loadError ? (
     <Alert status="error" icon={true}>
       {loadError}
@@ -63,33 +60,11 @@ export default function AgencyDashboardPage() {
   return (
     <main className="flex h-full min-h-0 flex-col">
       <Stack direction="column" gap="lg" className="h-full min-h-0">
-        {/* 여행사명(왼쪽) + 신규 예약 지표(오른쪽) 한 줄. 지표를 별도 큰 카드로 세로로 쌓으면 화면을 너무 차지해서,
-            알림 목록 항목 같은 가로 카드(표정 아이콘 타일 + 제목·보조 문구 두 줄)로 줄여 제목 오른쪽에 붙였다.
-            신규가 있으면 웃는 얼굴, 없으면 시무룩한 얼굴. 누르면 예약 목록으로 이동한다. */}
+        {/* 여행사명 — 예전엔 오른쪽에 "신규 예약 N건" 지표 타일을 같이 붙였는데, 여행사 쪽에서
+            그 수치를 볼 일이 없다고 해서 뺐다(2026-09-23). 신규 예약 확인은 예약 목록(g-list)
+            화면에서 하면 된다. */}
         <ScrollReveal className="shrink-0">
-          <Stack justify="between" align="center">
-            <Title size="lg">{session?.agencyName ?? ""}</Title>
-            <NextLink
-              href="/reservations"
-              className="flex shrink-0 items-center gap-3 rounded-lg bg-surface py-2.5 pl-3 pr-5 text-ink transition-colors hover:bg-bg-light"
-            >
-              {/* 알림 목록 항목 스타일 — 옅은 초록 정사각 타일 안에 표정 아이콘, 오른쪽에 굵은 제목 + 옅은 보조 문구 두 줄. */}
-              <span
-                aria-hidden="true"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-stat-primary/20 bg-success-light/60 text-stat-primary"
-              >
-                <IconFace mood={newCount > 0 ? "happy" : "sad"} className="h-5 w-5" />
-              </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold leading-tight">
-                  신규 예약 <span className="text-stat-primary">{newCount}</span>건
-                </span>
-                <span className="text-xs leading-tight text-muted">
-                  {newCount > 0 ? "확인이 필요한 예약이 있어요" : "새로 들어온 예약이 없어요"}
-                </span>
-              </span>
-            </NextLink>
-          </Stack>
+          <Title size="lg">{session?.agencyName ?? ""}</Title>
         </ScrollReveal>
 
         {/* 표 영역은 flex-1/min-h-0로 자기 안에서만 스크롤되는 레이아웃이라, ScrollReveal에도

@@ -2,9 +2,31 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Title, EmptyState, Table, Stepper, Kv, Button, Stack, Card, Toast, Calendar, type CalendarDay, CalendarIcon, Popup, Alert, HelpTooltip, type ToastStatus } from "@chinguya/ui";
+import {
+  Title,
+  EmptyState,
+  Table,
+  Stepper,
+  Kv,
+  Button,
+  Stack,
+  Card,
+  Toast,
+  Calendar,
+  type CalendarDay,
+  CalendarIcon,
+  Popup,
+  Alert,
+  HelpTooltip,
+  type ToastStatus,
+} from "@chinguya/ui";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { createApiClient, ApiError, type AgencyProduct, type AgencyProductList } from "@chinguya/api-client";
+import {
+  createApiClient,
+  ApiError,
+  type AgencyProduct,
+  type AgencyProductList,
+} from "@chinguya/api-client";
 import { RENTAL_OPTION_LABEL } from "@chinguya/types";
 
 const api = createApiClient();
@@ -54,7 +76,10 @@ function buildMonthDays(year: number, month: number): CalendarDay[] {
 
   const firstWeekday = new Date(year, month - 1, 1).getDay();
   const totalDays = new Date(year, month, 0).getDate();
-  const leading: CalendarDay[] = Array.from({ length: firstWeekday }, () => ({ date: "", status: "off" }));
+  const leading: CalendarDay[] = Array.from({ length: firstWeekday }, () => ({
+    date: "",
+    status: "off",
+  }));
   const days: CalendarDay[] = Array.from({ length: totalDays }, (_, i) => {
     const d = i + 1;
     const thisDate = new Date(year, month - 1, d);
@@ -114,7 +139,9 @@ export default function AgencyBookPage() {
 
   const parsedUseDate = parseDateInputValue(useDate);
   const selectedDay =
-    parsedUseDate.year === viewYear && parsedUseDate.month === viewMonth ? parsedUseDate.day : undefined;
+    parsedUseDate.year === viewYear && parsedUseDate.month === viewMonth
+      ? parsedUseDate.day
+      : undefined;
 
   const now = new Date();
   const monthOffset = (viewYear - now.getFullYear()) * 12 + (viewMonth - (now.getMonth() + 1));
@@ -189,7 +216,10 @@ export default function AgencyBookPage() {
     try {
       await api.agencyReservations.create({
         useDate,
-        items: selectedRows.map((row) => ({ productId: row.productId, quantity: qtyOf(row.productId) })),
+        items: selectedRows.map((row) => ({
+          productId: row.productId,
+          quantity: qtyOf(row.productId),
+        })),
       });
       setQtyByProduct({});
       setToastMessage("예약이 완료되었습니다");
@@ -220,72 +250,93 @@ export default function AgencyBookPage() {
         <ScrollReveal className="shrink-0">
           <Title size="md">상품 예약</Title>
         </ScrollReveal>
-        <Stack className="min-h-0 flex-1  flex gap-6">
-          <Stack direction="column" className="min-h-0 flex-1">
-
+        <Stack className="min-h-0 flex-1">
+          {/* 이 Stack이 부모(위의 flex-row Stack)의 유일한 자식이라 flex-1만으로 폭을
+              전부 채울 거라 생각했는데, 실제로는 자기 콘텐츠(내부의 표) 크기만큼만
+              차지해서 표가 부모 밖으로 넘쳐도 이 Stack 자체는 넘치지 않는 것처럼 보이는
+              문제가 있었다 — DevTools로 이 요소에 직접 width: 100%를 줘보니 바로
+              해결됨을 확인했다. w-full로 폭을 명시해서 고정. */}
+          <Stack direction="column" className="min-h-0 w-full flex-1">
             <ScrollReveal delay={80} className="shrink-0">
-            <Card className="shrink-0">
-              <Stack direction="column" gap="sm">
-                {/* 예약 가능 기간 안내는 화면에 늘 펼쳐 두지 않고, 제목 옆 "?"를 누르면 말풍선으로 보여 준다.
+              <Card className="shrink-0">
+                <Stack direction="column" gap="sm">
+                  {/* 예약 가능 기간 안내는 화면에 늘 펼쳐 두지 않고, 제목 옆 "?"를 누르면 말풍선으로 보여 준다.
                     className="flex": label은 기본이 inline이라 나뭇잎이 줄 높이를 밀어 "?"와 세로 중심이 어긋나는 걸 막는다. */}
-                <Stack align="center" gap="xs">
-                  <Title as="label" htmlFor="use-date" size="sm" leaf tone="secondary" className="flex">
-                    이용 날짜
-                  </Title>
-                  <HelpTooltip>예약 가능 기간은 오늘 +3일 ~ +3개월 입니다.</HelpTooltip>
-                </Stack>
-              {/* 관리자 앱 재고 세팅 화면(inventory/page.tsx)의 날짜 선택 버튼과 같은 모양 —
+                  <Stack align="center" gap="xs">
+                    <Title
+                      as="label"
+                      htmlFor="use-date"
+                      size="sm"
+                      leaf
+                      tone="secondary"
+                      className="flex"
+                    >
+                      이용 날짜
+                    </Title>
+                    <HelpTooltip>예약 가능 기간은 오늘 +3일 ~ +3개월 입니다.</HelpTooltip>
+                  </Stack>
+                  {/* 관리자 앱 재고 세팅 화면(inventory/page.tsx)의 날짜 선택 버튼과 같은 모양 —
                   알약형 버튼에 날짜 + CalendarIcon을 두고, 누르면 Popup(제목 + 기본 제공되는
                   닫기 X) 안에 Calendar를 띄운다. */}
-              <button
-                id="use-date"
-                type="button"
-                onClick={() => setDatePickerOpen(true)}
-                className="flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm text-ink"
-              >
-                {formatDisplayDate(useDate)}
-                <CalendarIcon />
-              </button>
-              <Popup open={datePickerOpen} onClose={() => setDatePickerOpen(false)} title="날짜 선택">
-                <Calendar
-                  year={viewYear}
-                  month={viewMonth}
-                  days={days}
-                  mode="single"
-                  selected={selectedDay}
-                  onSelect={(day) => {
-                    setUseDate(toDateInputValue(new Date(viewYear, viewMonth - 1, day)));
-                    setDatePickerOpen(false);
-                  }}
-                  onPrevMonth={goPrevMonth}
-                  onNextMonth={goNextMonth}
-                  canPrevMonth={canPrevMonth}
-                  canNextMonth={canNextMonth}
-                />
-              </Popup>
-              {productList?.closed ? (
-                <Alert status="warning" icon={true}>
-                  매장 휴무일이라 이 날짜는 예약할 수 없습니다.
-                </Alert>
-              ) : null}
-              </Stack>
-            </Card>
+                  <button
+                    id="use-date"
+                    type="button"
+                    onClick={() => setDatePickerOpen(true)}
+                    className="flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm text-ink"
+                  >
+                    {formatDisplayDate(useDate)}
+                    <CalendarIcon />
+                  </button>
+                  <Popup
+                    open={datePickerOpen}
+                    onClose={() => setDatePickerOpen(false)}
+                    title="날짜 선택"
+                  >
+                    <Calendar
+                      year={viewYear}
+                      month={viewMonth}
+                      days={days}
+                      mode="single"
+                      selected={selectedDay}
+                      onSelect={(day) => {
+                        setUseDate(toDateInputValue(new Date(viewYear, viewMonth - 1, day)));
+                        setDatePickerOpen(false);
+                      }}
+                      onPrevMonth={goPrevMonth}
+                      onNextMonth={goNextMonth}
+                      canPrevMonth={canPrevMonth}
+                      canNextMonth={canNextMonth}
+                    />
+                  </Popup>
+                  {productList?.closed ? (
+                    <Alert status="warning" icon={true}>
+                      매장 휴무일이라 이 날짜는 예약할 수 없습니다.
+                    </Alert>
+                  ) : null}
+                </Stack>
+              </Card>
             </ScrollReveal>
 
-            <Stack className="min-h-0 flex-1">
+            {/* lg 미만(모바일·태블릿)에서는 표 카드와 예약 요약 카드를 세로로 쌓는다 — 원래
+                항상 가로 배치였는데, 오른쪽 요약 패널이 w-64 고정폭이라 좁은 화면에서 표 폭을
+                절반도 안 되게 눌러버려서 "수량" 열의 +/- 스테퍼가 화면 밖으로 밀려 보이는
+                문제가 있었다(진짜 이 Stack이 그 분기점이다 — 처음엔 이 바로 바깥쪽 Stack의
+                방향을 바꿨는데 그건 자식이 하나뿐이라 아무 효과가 없었다). lg 이상(데스크톱)은
+                기존대로 가로 배치. */}
+            <Stack direction="column" gap="lg" className="min-h-0 flex-1 lg:flex-row">
               {/* 스크롤은 Card(둥근 모서리+테두리가 있는 바깥 박스)가 아니라 Table 자신의
                   안쪽(각 없는) div가 담당한다 — overflow-y-auto를 둥근 모서리 요소에 바로
                   주면 브라우저 스크롤바가 카드 모서리를 파고들어 보이는 문제가 있었다. Card는
                   overflow-hidden으로 둥근 모양대로 잘라내는 역할만 한다. */}
               <ScrollReveal delay={160} className="flex min-h-0 w-full flex-1 flex-col">
-              <Card className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+                <Card className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
                   <Table
                     className="min-h-0 flex-1 overflow-y-auto"
                     columns={[
                       { key: "product", label: "상품" },
                       { key: "price", label: "여행사가", width: "18%", align: "right" },
                       { key: "available", label: "가용(할당)", width: "16%", align: "center" },
-                      { key: "qty", label: "수량", width: "20%", align: "center" },
+                      { key: "qty", label: "수량", width: "148px", align: "center" },
                     ]}
                     emptyMessage={tableEmptyMessage}
                     rows={rows.map((row) => ({
@@ -302,47 +353,45 @@ export default function AgencyBookPage() {
                       ),
                     }))}
                   />
-              </Card>
+                </Card>
               </ScrollReveal>
-              <ScrollReveal delay={240} className="flex min-h-0 w-64 shrink-0 flex-col">
-              <Stack direction="column" className="min-h-0 w-64 flex-1 shrink-0">
-              <Card className="flex min-h-0 flex-1 flex-col">
-                <Stack direction="column" justify="between" className="min-h-0 flex-1">
-                   <Stack direction="column" gap="sm" className="min-h-0 overflow-y-auto">
-                    <Title leaf divider size="md">
-                      예약 요약
-                    </Title>
-                    {selectedRows.length === 0 ? (
-                      <EmptyState>담긴 상품이 없습니다.</EmptyState>
-                    ) : (
-                      <Kv
-                        items={[
-                          ...selectedRows.map((row) => ({
-                            key: `${productLabel(row, "·")} ×${qtyOf(row.productId)}`,
-                            value: `${(row.agencyPrice * qtyOf(row.productId)).toLocaleString()}`,
-                          })),
-                          { key: "합계", value: `₩${total.toLocaleString()}` },
-                        ]}
-                      />
-                    )}
-                   </Stack>
-                  {/* 위에 있는 예약 목록(overflow-y-auto)이 스크롤될 때, 버튼과 목록이
+              <ScrollReveal delay={240} className="flex min-h-0 w-full shrink-0 flex-col lg:w-64">
+                <Stack direction="column" className="min-h-0 w-full flex-1 shrink-0 lg:w-64">
+                  <Card className="flex min-h-0 flex-1 flex-col">
+                    <Stack direction="column" justify="between" className="min-h-0 flex-1">
+                      <Stack direction="column" gap="sm" className="min-h-0 overflow-y-auto">
+                        <Title leaf divider size="md">
+                          예약 요약
+                        </Title>
+                        {selectedRows.length === 0 ? (
+                          <EmptyState>담긴 상품이 없습니다.</EmptyState>
+                        ) : (
+                          <Kv
+                            items={[
+                              ...selectedRows.map((row) => ({
+                                key: `${productLabel(row, "·")} ×${qtyOf(row.productId)}`,
+                                value: `${(row.agencyPrice * qtyOf(row.productId)).toLocaleString()}`,
+                              })),
+                              { key: "합계", value: `₩${total.toLocaleString()}` },
+                            ]}
+                          />
+                        )}
+                      </Stack>
+                      {/* 위에 있는 예약 목록(overflow-y-auto)이 스크롤될 때, 버튼과 목록이
                       같은 평면처럼 붙어 보이지 않도록 버튼 쪽에 위로 향하는 그림자를 줘서
                       "목록 위에 버튼이 얹혀 있는" 레이어 차이를 낸다 — box-shadow의 y 오프셋을
                       음수로 주면 그림자가 위쪽으로 생긴다. */}
-                  <div className="shadow-[0_-6px_8px_-6px_rgba(0,0,0,0.18)]">
-                    <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
-                      {submitting ? "예약 중…" : "예약 (즉시 완료)"}
-                    </Button>
-                  </div>
+                      <div className="shadow-[0_-6px_8px_-6px_rgba(0,0,0,0.18)]">
+                        <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
+                          {submitting ? "예약 중…" : "예약 (즉시 완료)"}
+                        </Button>
+                      </div>
+                    </Stack>
+                  </Card>
                 </Stack>
-              </Card>
-              </Stack>
               </ScrollReveal>
             </Stack>
           </Stack>
-
-
         </Stack>
       </Stack>
 
@@ -355,7 +404,9 @@ export default function AgencyBookPage() {
         }}
         message={toastMessage ?? ""}
         status={toastStatus}
-        {...(toastStatus === "success" ? { actionLabel: "예약 목록 보기", actionHref: "/reservations" } : {})}
+        {...(toastStatus === "success"
+          ? { actionLabel: "예약 목록 보기", actionHref: "/reservations" }
+          : {})}
       />
     </main>
   );

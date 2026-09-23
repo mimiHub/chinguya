@@ -85,7 +85,7 @@ export default function AgencyReservationsPage() {
       action:
         r.status === "COMPLETED" ? (
           cancelable ? (
-            <Button size="sm" variant="secondary" onClick={() => setCancelTarget(r)}>
+            <Button size="sm" variant="danger" onClick={() => setCancelTarget(r)}>
               취소
             </Button>
           ) : (
