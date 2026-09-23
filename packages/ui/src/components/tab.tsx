@@ -46,8 +46,13 @@ export function Tab({
       // --color-ink 자체가 밝은 텍스트색으로 재정의돼 있어서(packages/ui는 앱마다 색 토큰이 다시
       // 정의되는 걸 전제로 한다) bg-ink를 배경으로 쓰면 흰 텍스트와 거의 같은 밝기가 되어 글자가
       // 안 보이는 문제가 있었다. 테마와 무관하게 항상 뚜렷한 강조색인 primary-500으로 바꿨다.
+      //
+      // 라운드는 트랙(rounded-lg = --radius-lg)에서 트랙 안쪽 여백(p-1 = 0.25rem)만큼 뺀 값이다 — 바깥 박스 안에
+      // 여백을 두고 박스를 하나 더 넣을 때는 "안쪽 반지름 = 바깥 반지름 − 여백"이어야 두 모서리 곡선이 같은
+      // 중심을 공유해서(동심원) 선택된 버튼이 트랙에 자연스럽게 들어맞는다. 예전엔 안쪽이 rounded-md(8px)라
+      // 16px 트랙 모서리에서 곡선 간격이 들쭉날쭉해 보였다. 트랙 라운드·여백을 바꾸면 이 식도 같이 맞춘다.
       return [
-        "flex-1 cursor-pointer rounded-md py-2 text-center text-sm font-medium whitespace-nowrap transition-colors",
+        "flex-1 cursor-pointer rounded-[calc(var(--radius-lg)-0.25rem)] py-2 text-center text-sm font-medium whitespace-nowrap transition-colors",
         active ? "bg-primary-500 text-white shadow-sm" : "text-muted hover:text-ink",
       ].join(" ");
     }

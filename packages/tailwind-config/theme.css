@@ -184,6 +184,13 @@
      둬서 계속 반짝이는 별과 달리 "생겼다 사라지고, 잠깐 쉬었다 다시 생기는" 리듬으로
      만들었다. */
   --animate-heart-pop: heart-pop 2.4s ease-in-out infinite;
+
+  /* 어드민 대시보드 "오늘 방문 예약이 없습니다" 빈 상태 — 하단 중앙에 자는 고양이
+     일러스트를 두고, 위에 뜬 "Zz" 글자가 위로 떠오르며 옅어지는 걸 반복해서 "잠들어
+     있다"는 느낌을 준다. 고양이 자체에도 아주 살짝 숨쉬듯 커졌다 작아지는 스케일을
+     줘서(cat-breathe) 완전한 정지 이미지가 아니라 살아서 자고 있는 느낌을 더했다. */
+  --animate-sleep-z: sleep-z 2.4s ease-in-out infinite;
+  --animate-cat-breathe: cat-breathe 3.2s ease-in-out infinite;
 }
 
 @keyframes skeleton-shimmer {
@@ -242,6 +249,35 @@
   100% {
     opacity: 0;
     transform: scale(0.3);
+  }
+}
+
+@keyframes sleep-z {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-9px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-13px) scale(1.1);
+  }
+}
+
+@keyframes cat-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.025);
   }
 }
 

@@ -22,6 +22,12 @@ export interface LabeledBoxProps {
    * emphasis처럼 굵고 큰 글씨를 쓰되, 점 대신 나뭇잎을 쓴다는 점만 다르다.
    */
   badge?: boolean;
+  /**
+   * 라벨 줄 오른쪽 끝에 붙일 요소(스위치·작은 버튼 등). 넘기면 라벨 줄이 [라벨 ··· 이 요소] 한 줄로
+   * 양끝 정렬된다. 스위치처럼 값 자체가 작은 필드는 라벨 아래 줄에 따로 두면 라벨과 떨어져 보이고
+   * 줄도 하나 더 먹어서(관리자 배너 노출 스위치 — 2026-09-23) 라벨과 같은 줄에 두려고 추가했다.
+   */
+  labelAction?: ReactNode;
   children?: ReactNode;
 }
 
@@ -34,6 +40,7 @@ export function LabeledBox({
   className = "",
   emphasis = false,
   badge = false,
+  labelAction,
   children,
 }: LabeledBoxProps) {
   const labelContent = (
@@ -53,7 +60,15 @@ export function LabeledBox({
 
   return (
     <div className={`flex flex-col ${emphasis || badge ? "gap-2" : "gap-1"} ${className}`}>
-      {label && labelContent}
+      {label &&
+        (labelAction ? (
+          <div className="flex items-center justify-between gap-2">
+            {labelContent}
+            {labelAction}
+          </div>
+        ) : (
+          labelContent
+        ))}
       {children}
       {error ? <FormMessage type="error">{error}</FormMessage> : <FormMessage type="helper">{helper}</FormMessage>}
     </div>
