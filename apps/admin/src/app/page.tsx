@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Title, Stat, Stack, Button, IconFace, Alert } from "@chinguya/ui";
+import { Title, Stat, Stack, Button, IconFace, Toast } from "@chinguya/ui";
 import { createApiClient, ApiError, type AdminDashboard } from "@chinguya/api-client";
 import { InventoryOverCapacityToast } from "@/components/InventoryOverCapacityToast";
 import { TodayVisitList, type TodayVisitItem, type VisitAccent } from "@/components/TodayVisitList";
@@ -34,9 +34,16 @@ export default function AdminDashboardPage() {
       setLoadError(null);
       setDashboard(response);
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : "대시보드를 불러오지 못했습니다.");
+      // 서버가 에러 코드와 문구를 보낸 경우만 그 문구를 쓴다. 코드가 없으면(500·네트워크 오류 등)
+      // api-client의 "요청 실패: /dashboard" 같은 개발용 문구라 사용자용 안내로 바꾼다.
+      setLoadError(
+        err instanceof ApiError && err.code ? err.message : "대시보드를 불러오지 못했습니다.",
+      );
     }
   }, []);
+
+  // Toast의 useEffect 의존성에 들어가므로 렌더마다 새 함수가 되지 않게 고정한다.
+  const clearLoadError = useCallback(() => setLoadError(null), []);
 
   useEffect(() => {
     void loadDashboard();
@@ -100,11 +107,14 @@ export default function AdminDashboardPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-6">
         <Stat items={stats} />
 
-        {loadError && (
-          <Alert status="error" icon={true}>
-            {loadError}
-          </Alert>
-        )}
+        {/* 불러오기 실패는 본문 자리를 차지하는 Alert 대신 하단 토스트로 잠깐 보여준다(3초 뒤 자동 닫힘).
+            실패 시 dashboard가 null이라 재고 초과 토스트는 안 떠서 두 토스트가 겹치지 않는다. */}
+        <Toast
+          open={loadError !== null}
+          onClose={clearLoadError}
+          message={loadError ?? ""}
+          status="error"
+        />
 
         <InventoryOverCapacityToast dates={dashboard?.overCapacityDates ?? null} />
 
