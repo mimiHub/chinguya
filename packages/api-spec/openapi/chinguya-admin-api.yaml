@@ -857,14 +857,20 @@ paths:
     get:
       tags: [admin-inventory]
       x-screens: [S1-A3]
-      summary: 현재(오늘 기준) 여행사별 기준 할당
+      summary: 그 날짜(기본 오늘) 기준 여행사별 기준 할당
       description: |
         삭제되지 않은 여행사 전부를 등록 순으로 돌려준다(할당이 없으면 `value` 0).
         기준 카드는 `value` > 0 인 여행사만 보여 주고, A3-M4 모달은 이 목록 전체를
-        여행사 선택지로 쓴다.
+        여행사 선택지로 쓴다. 화면은 캘린더에서 고른 날짜를 `date` 로 보낸다.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: 이 날짜에 적용되는 기준 할당. 비우면 오늘.
       responses:
         '200':
-          description: 여행사별 현재 기준 할당
+          description: 여행사별 그 날짜 기준 할당
           content:
             application/json:
               schema:

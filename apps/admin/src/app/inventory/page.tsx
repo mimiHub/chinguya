@@ -122,7 +122,7 @@ function AdminInventoryContent() {
   const [snapshot, setSnapshot] = useState<InventoryDaySnapshot[] | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [currentBaseline, setCurrentBaseline] = useState(0);
-  // 삭제되지 않은 여행사 전부의 오늘 기준 기준 할당(없으면 0). 기준 카드는 value > 0만 보여 주고,
+  // 삭제되지 않은 여행사 전부의 선택일(없으면 오늘) 기준 기준 할당(없으면 0). 기준 카드는 value > 0만 보여 주고,
   // A3-M4·재고 조정의 여행사 선택지는 이 목록 전체를 쓴다.
   const [allocations, setAllocations] = useState<AgencyAllocation[]>([]);
 
@@ -198,16 +198,11 @@ function AdminInventoryContent() {
     if (!assetId) return;
     let alive = true;
     setSnapshotError(null);
-    Promise.all([
-      api.inventory.snapshot(assetId, viewYear, viewMonth),
-      api.inventory.currentBaseline(assetId),
-      api.inventory.currentAllocations(assetId),
-    ])
-      .then(([snapshotResult, baselineResult, allocationResult]) => {
+    Promise.all([api.inventory.snapshot(assetId, viewYear, viewMonth), api.inventory.currentBaseline(assetId)])
+      .then(([snapshotResult, baselineResult]) => {
         if (!alive) return;
         setSnapshot(snapshotResult);
         setCurrentBaseline(baselineResult.value);
-        setAllocations(allocationResult);
       })
       .catch((err) => {
         if (alive) setSnapshotError(errorMessage(err, "재고 정보를 불러오지 못했습니다."));
@@ -216,6 +211,23 @@ function AdminInventoryContent() {
       alive = false;
     };
   }, [assetId, viewYear, viewMonth, refreshTick]);
+
+  // 여행사 기준 할당은 캘린더에서 고른 날짜 기준(선택 전이면 오늘 기준)으로 보여 준다.
+  useEffect(() => {
+    if (!assetId) return;
+    let alive = true;
+    api.inventory
+      .currentAllocations(assetId, selectedDateKey ?? undefined)
+      .then((result) => {
+        if (alive) setAllocations(result);
+      })
+      .catch((err) => {
+        if (alive) setSnapshotError(errorMessage(err, "재고 정보를 불러오지 못했습니다."));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [assetId, selectedDateKey, refreshTick]);
 
   useEffect(() => {
     if (!assetId || !selectedDateKey) {
@@ -328,13 +340,12 @@ function AdminInventoryContent() {
     if (!allocationAgencyId || !allocationStartDate) return;
     setAllocationSubmitting(true);
     try {
-      const result = await api.inventory.changeAllocation(assetId, {
+      await api.inventory.changeAllocation(assetId, {
         agencyId: allocationAgencyId,
         value: allocationInput,
         startDate: allocationStartDate,
         memo: allocationMemo.trim(),
       });
-      setAllocations(result);
       setAllocationOpen(false);
       setRefreshTick((t) => t + 1);
       setToastMessage("여행사 기준 할당이 저장되었습니다");

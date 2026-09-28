@@ -1274,8 +1274,11 @@ export function createApiClient(opts: ApiClientOptions = {}) {
           method: "POST",
           body: JSON.stringify({ value, startDate, memo }),
         }),
-      currentAllocations: (assetId: string) =>
-        request<AgencyAllocation[]>(`/inventory/assets/${assetId}/allocations/current`),
+      // date(YYYY-MM-DD)를 주면 그날 기준, 없으면 오늘 기준.
+      currentAllocations: (assetId: string, date?: string) =>
+        request<AgencyAllocation[]>(
+          `/inventory/assets/${assetId}/allocations/current${date ? `?date=${date}` : ""}`,
+        ),
       changeAllocation: (assetId: string, body: AllocationChangeRequest) =>
         request<AgencyAllocation[]>(`/inventory/assets/${assetId}/allocations`, {
           method: "POST",
