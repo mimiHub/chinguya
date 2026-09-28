@@ -22,6 +22,13 @@ function daysBetween(from: string, to: string): number {
   return Math.round((utc(to) - utc(from)) / (24 * 60 * 60 * 1000));
 }
 
+/** createdAt(ISO 일시) → "YYYY-MM-DD". 고객 예약 상세의 '예약일'과 같은 방식. */
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /**
  * S2-G6 여행사 예약 목록(`g-list`). 예약 내역을 보고 **즉시 취소**한다 — 고객처럼 '취소 요청 →
  * 관리자 승인'이 아니라 바로 확정되고, 재고도 서버에서 즉시 복원된다.
@@ -78,6 +85,7 @@ export default function AgencyReservationsPage() {
 
     return {
       id: r.reservationNumber,
+      createdAt: formatDate(r.createdAt),
       useDate: r.useDate,
       product: `${r.assetName} · ${RENTAL_OPTION_LABEL[r.optionType]} ×${r.quantity}`,
       amount: `₩${r.amount.toLocaleString()}`,
@@ -120,6 +128,7 @@ export default function AgencyReservationsPage() {
         className="min-h-0 flex-1 overflow-y-auto"
         columns={[
           { key: "id", label: "예약번호", width: "14%" },
+          { key: "createdAt", label: "예약일", width: "12%" },
           { key: "useDate", label: "이용일", width: "12%" },
           { key: "product", label: "상품·수량" },
           { key: "amount", label: "금액", width: "12%", align: "right" },
