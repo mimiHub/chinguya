@@ -33,6 +33,8 @@ import { EmptyStateCat } from "@/components/EmptyStateCat";
  * - 접수 탭 = 입금대기·접수 중 입금 기한(생성+24시간) 안. 입금대기는 카드 태그로 구분한다.
  * - 미입금 탭 = 입금대기·접수인데 기한이 지난 예약(서버 계산값 `unpaid`).
  * - 카드 제목은 예약번호 + "대표 상품명 외 N건", 일부 항목만 취소됐으면 '부분취소' 뱃지.
+ * - 완료 탭에는 여행사 예약(`kind: "AGENCY"`)도 섞여 온다. 관리자에 상세 화면이 없어 누를 수 없고,
+ *   여권명 자리에 여행사명을 쓰고 '여행사' 뱃지를 단다.
  */
 
 const api = createApiClient();
@@ -159,16 +161,8 @@ function AdminReservationsPageInner() {
               message={query ? "검색 결과가 없습니다." : "해당 상태의 예약이 없습니다."}
             />
           )}
-          {bookings.map((b) => (
-            <NextLink
-              key={b.bookingId}
-              href={
-                b.pendingCancellationId
-                  ? `/reservations/${b.bookingId}/cancel`
-                  : `/reservations/${b.bookingId}`
-              }
-              className="block"
-            >
+          {bookings.map((b) => {
+            const card = (
               <Card padding="sm">
                 <Stack justify="between" align="center">
                   <div className="min-w-0">
@@ -179,19 +173,36 @@ function AdminReservationsPageInner() {
                       </Text>
                     </Text>
                     <Text variant="sub">
-                      {b.passportName} · {formatUseDates(b.useDates)} · ₩{" "}
-                      {b.activeTotalAmount.toLocaleString()}
+                      {b.kind === "AGENCY" ? b.agencyName : b.passportName} ·{" "}
+                      {formatUseDates(b.useDates)} · ₩ {b.activeTotalAmount.toLocaleString()}
                     </Text>
                   </div>
                   <Stack gap="xs" align="center" className="shrink-0">
+                    {b.kind === "AGENCY" && <Badge variant="gray">여행사</Badge>}
                     <StatusTag booking={b} />
                     {b.partiallyCancelled && <Badge variant="warning">부분취소</Badge>}
                     {b.pendingCancellationId && <Badge variant="info">취소요청</Badge>}
                   </Stack>
                 </Stack>
               </Card>
-            </NextLink>
-          ))}
+            );
+            // 고객·여행사 예약의 id 는 따로 매겨 겹칠 수 있어 key 에 kind 를 붙인다.
+            const key = `${b.kind}-${b.bookingId}`;
+            if (b.kind === "AGENCY") return <div key={key}>{card}</div>;
+            return (
+              <NextLink
+                key={key}
+                href={
+                  b.pendingCancellationId
+                    ? `/reservations/${b.bookingId}/cancel`
+                    : `/reservations/${b.bookingId}`
+                }
+                className="block"
+              >
+                {card}
+              </NextLink>
+            );
+          })}
           {loading && <Text variant="sub">불러오는 중…</Text>}
           {!loading && bookings.length < total && (
             <Button variant="outline" fullWidth onClick={() => setPage((p) => p + 1)}>

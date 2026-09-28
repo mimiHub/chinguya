@@ -1374,7 +1374,9 @@ paths:
       summary: 예약 관리 목록 (S1-A6)
       description: |
         고객 예약(고객 문서 `Booking`)을 **탭별**로 조회·검색한다. 여행사 예약(S2-G4/G5)은
-        포함하지 않는다. 관리자 목록 중 유일하게 페이지네이션한다(페이지정의서 S1-A6).
+        **`COMPLETED` 탭에만** 함께 나온다(2026-09-28 결정 — 대시보드 '예약완료'가 여행사 예약도
+        세므로 눌러서 온 목록도 맞춘다). 항목의 `kind` 로 구분한다. 관리자 목록 중 유일하게
+        페이지네이션한다(페이지정의서 S1-A6).
 
         **탭 규칙** — 예약 상태(`BookingStatus`)와 입금 기한(`depositDueBy`)으로 가른다.
         - `RECEIVED`(접수): 상태가 `AWAITING_DEPOSIT`(입금대기) 또는 `RECEIVED`(접수)이고
@@ -1382,16 +1384,18 @@ paths:
         - `UNPAID`(미입금): 상태가 `AWAITING_DEPOSIT`·`RECEIVED`인데 입금 기한(생성+24시간)이
           **지난** 예약. 저장된 상태값이 아니라 계산 결과다 — 응답의 `unpaid`가 true.
           강제 취소(S1-A8) 대상이다.
-        - `COMPLETED` / `CANCELLED`: 상태가 그 값인 예약.
+        - `COMPLETED`: 상태가 완료인 고객 예약 + 완료 상태의 여행사 예약(취소된 여행사 예약은 빠진다).
+        - `CANCELLED`: 상태가 취소인 고객 예약.
         - `CANCEL_REQUESTED`(취소요청): **처리 안 된 취소 요청이 있는 예약**(`pendingCancellationId`가
           null이 아님). 전체 취소 요청(상태 `CANCEL_REQUESTED`)과 부분 취소 요청(상태 유지)을 모두 잡는다.
           그래서 부분 요청 예약은 원래 상태 탭과 이 탭 양쪽에 보인다.
         - 부분취소는 탭이 아니라 `partiallyCancelled` 뱃지다(유효 항목 기준 상태의 탭에 잡힌다).
 
-        **검색** — `keyword`가 예약번호 또는 여권 영문명에 포함(대소문자 무시)되는 예약만.
-        앞뒤 공백은 무시하고, 비었으면 검색하지 않는다.
+        **검색** — `keyword`가 예약번호 또는 여권 영문명(여행사 예약은 여행사명)에 포함(대소문자
+        무시)되는 예약만. 앞뒤 공백은 무시하고, 비었으면 검색하지 않는다.
 
-        정렬은 **최근 예약 먼저**(생성 시각 내림차순, 같으면 id 내림차순).
+        정렬은 **최근 예약 먼저**(생성 시각 내림차순, 같으면 id 내림차순). 여행사 예약도 같은 순서로
+        섞인다.
       parameters:
         - name: tab
           in: query
@@ -1402,7 +1406,7 @@ paths:
           in: query
           required: false
           schema: { type: string }
-          description: 예약번호·여권 영문명 부분 일치(대소문자 무시).
+          description: 예약번호·여권 영문명(여행사 예약은 여행사명) 부분 일치(대소문자 무시).
         - name: page
           in: query
           schema: { type: integer, minimum: 0, default: 0 }
@@ -3128,17 +3132,27 @@ components:
 
     AdminBookingSummary:
       type: object
-      required: [bookingId, bookingNumber, status, unpaid, customerLoginId, passportName, productName,
-                 itemCount, partiallyCancelled, useDates, activeTotalAmount, createdAt]
+      required: [kind, bookingId, bookingNumber, status, unpaid, customerLoginId, passportName, agencyName,
+                 productName, itemCount, partiallyCancelled, useDates, activeTotalAmount, createdAt]
       properties:
-        bookingId: { type: string }
-        bookingNumber: { type: string, example: FR-26090001 }
+        kind:
+          type: string
+          enum: [CUSTOMER, AGENCY]
+          description: |
+            고객 예약 / 여행사 예약. 여행사 예약은 `COMPLETED` 탭에만 나오고, 관리자에 상세 화면이
+            없어 카드를 누를 수 없다. 여행사 예약은 상품 한 줄이 한 예약이라 `itemCount` 는 1,
+            `status` 는 `COMPLETED`, `unpaid`·`partiallyCancelled` 는 false, 입금 기한·취소 요청은 null.
+        bookingId:
+          type: string
+          description: 예약 id. **`kind` 마다 따로 매기므로** 고객·여행사 예약의 값이 겹칠 수 있다.
+        bookingNumber: { type: string, example: FR-26090001, description: 예약번호(여행사는 AG-…) }
         status: { $ref: '#/components/schemas/BookingStatus' }
         unpaid:
           type: boolean
           description: 입금대기·접수인데 입금 기한이 지났다('미입금' 표시).
-        customerLoginId: { type: string, description: 고객 아이디 }
-        passportName: { type: string, description: 예약 시점 여권 영문명 }
+        customerLoginId: { type: [string, 'null'], description: 고객 아이디. 여행사 예약은 null }
+        passportName: { type: [string, 'null'], description: 예약 시점 여권 영문명. 여행사 예약은 null }
+        agencyName: { type: [string, 'null'], description: 여행사명. 고객 예약은 null }
         productName:
           type: string
           description: |

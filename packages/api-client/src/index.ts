@@ -785,13 +785,20 @@ export type AdminBookingTab = "RECEIVED" | "COMPLETED" | "UNPAID" | "CANCEL_REQU
 
 /** 예약 관리 목록(S1-A6) 카드 1장. 계약: chinguya-admin-api.yaml AdminBookingSummary. */
 export interface AdminBookingSummary {
+  /** 고객 예약 / 여행사 예약. 여행사 예약은 완료 탭에만 나오고 상세 화면이 없어 누를 수 없다. */
+  kind: "CUSTOMER" | "AGENCY";
+  /** kind 마다 따로 매기는 id — 고객·여행사 예약의 값이 겹칠 수 있다. */
   bookingId: string;
   bookingNumber: string;
   status: CustomerBookingStatus;
   /** 입금 기한이 지난 입금대기·접수 — '미입금' 표시 */
   unpaid: boolean;
-  customerLoginId: string;
-  passportName: string;
+  /** 여행사 예약은 null */
+  customerLoginId: string | null;
+  /** 여행사 예약은 null */
+  passportName: string | null;
+  /** 여행사명. 고객 예약은 null */
+  agencyName: string | null;
   productName: string;
   itemCount: number;
   partiallyCancelled: boolean;
