@@ -10,19 +10,69 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
  * 통로 역할만 한다.
  */
 const MENU_ITEMS: { label: string; href: string; description: string }[] = [
-  { label: "예약 관리", href: "/reservations", description: "예약 목록 조회 · 상태 변경 · 미입금 강제 취소" },
-  { label: "자산 관리", href: "/assets", description: "보유 자산(자전거/낚싯대) 종류 등록·수정·삭제" },
-  { label: "재고 세팅", href: "/inventory", description: "기준 보유량 · 날짜별 재고 조정 · 여행사 할당 · 고객 가용 수량 · 휴무 설정" },
+  {
+    label: "예약 관리",
+    href: "/reservations",
+    description: "예약 목록 조회 · 상태 변경 · 미입금 강제 취소",
+  },
+  {
+    label: "계좌 · 정책 설정",
+    href: "/settings",
+    description: "입금 계좌 정보, 취소 수수료율 등 정책값 관리",
+  },
+];
+
+const MENU_ITEMS02: { label: string; href: string; description: string }[] = [
+  {
+    label: "자산 관리",
+    href: "/assets",
+    description: "보유 자산(자전거/낚싯대) 종류 등록·수정·삭제",
+  },
+  {
+    label: "재고 세팅",
+    href: "/inventory",
+    description: "기준 보유량 · 날짜별 재고 조정 · 여행사 할당 · 고객 가용 수량 · 휴무 설정",
+  },
   { label: "상품 관리", href: "/products", description: "상품별 가격 · 고객앱/여행사앱 표출 설정" },
-  { label: "계좌 · 정책 설정", href: "/settings", description: "입금 계좌 정보, 취소 수수료율 등 정책값 관리" },
-  { label: "관리자 관리", href: "/admins", description: "관리자 계정 추가/삭제, 슈퍼어드민 권한 관리" },
-  { label: "여행사 관리", href: "/agencies", description: "여행사(거래처) 등록, 담당자 연락처, 활성/비활성 관리" },
-  { label: "인보이스 관리", href: "/invoices", description: "여행사별 인보이스 발행, 정산 여부 확인" },
+];
+const MENU_ITEMS03: { label: string; href: string; description: string }[] = [
+  {
+    label: "여행사 관리",
+    href: "/agencies",
+    description: "여행사(거래처) 등록, 담당자 연락처, 활성/비활성 관리",
+  },
+  {
+    label: "인보이스 관리",
+    href: "/invoices",
+    description: "여행사별 인보이스 발행, 정산 여부 확인",
+  },
+];
+const MENU_ITEMS04: { label: string; href: string; description: string }[] = [
+  {
+    label: "랜딩 배너 관리",
+    href: "/landing",
+    description: "고객앱 홈 히어로 배너 3장 편집·노출 설정",
+  },
+  {
+    label: "공지 · 이벤트",
+    href: "/notices",
+    description: "고객앱 공지사항·이벤트 글 등록·공개·상단 고정",
+  },
   { label: "문의 관리", href: "/inquiries", description: "고객 1:1 문의 확인 및 답변 등록" },
-  { label: "공지 · 이벤트", href: "/notices", description: "고객앱 공지사항·이벤트 글 등록·공개·상단 고정" },
   { label: "FAQ 관리", href: "/faq", description: "FAQ 등록/수정/삭제·노출 순서" },
-  { label: "랜딩 배너 관리", href: "/landing", description: "고객앱 홈 히어로 배너 3장 편집·노출 설정" },
-  { label: "컴포넌트 가이드", href: "/components", description: "@chinguya/ui 공통 컴포넌트 37종을 한 화면에서 모아 보기" },
+];
+
+const MENU_ITEMS05: { label: string; href: string; description: string }[] = [
+  {
+    label: "관리자 관리",
+    href: "/admins",
+    description: "관리자 계정 추가/삭제, 슈퍼어드민 권한 관리",
+  },
+  {
+    label: "컴포넌트 가이드",
+    href: "/components",
+    description: "@chinguya/ui 공통 컴포넌트 37종을 한 화면에서 모아 보기",
+  },
 ];
 
 export default function AdminMorePage() {
@@ -31,7 +81,6 @@ export default function AdminMorePage() {
   return (
     <main className="mx-auto max-w-2xl p-6">
       <Title size="md">더보기</Title>
-
       <Stack direction="column" gap="sm" className="mt-4">
         {MENU_ITEMS.map((item) => (
           <NextLink key={item.href} href={item.href} className="block">
@@ -48,8 +97,71 @@ export default function AdminMorePage() {
             </Card>
           </NextLink>
         ))}
+        <hr />
+        {MENU_ITEMS02.map((item) => (
+          <NextLink key={item.href} href={item.href} className="block">
+            <Card padding="sm">
+              <Stack justify="between" align="center">
+                <Stack direction="column" gap="xs">
+                  <Text weight="bold">{item.label}</Text>
+                  <Text variant="sub">{item.description}</Text>
+                </Stack>
+                <Text variant="sub" as="span">
+                  ›
+                </Text>
+              </Stack>
+            </Card>
+          </NextLink>
+        ))}
+        <hr />
+        {MENU_ITEMS03.map((item) => (
+          <NextLink key={item.href} href={item.href} className="block">
+            <Card padding="sm">
+              <Stack justify="between" align="center">
+                <Stack direction="column" gap="xs">
+                  <Text weight="bold">{item.label}</Text>
+                  <Text variant="sub">{item.description}</Text>
+                </Stack>
+                <Text variant="sub" as="span">
+                  ›
+                </Text>
+              </Stack>
+            </Card>
+          </NextLink>
+        ))}
+        <hr />
+        {MENU_ITEMS04.map((item) => (
+          <NextLink key={item.href} href={item.href} className="block">
+            <Card padding="sm">
+              <Stack justify="between" align="center">
+                <Stack direction="column" gap="xs">
+                  <Text weight="bold">{item.label}</Text>
+                  <Text variant="sub">{item.description}</Text>
+                </Stack>
+                <Text variant="sub" as="span">
+                  ›
+                </Text>
+              </Stack>
+            </Card>
+          </NextLink>
+        ))}
+        <hr />
+        {MENU_ITEMS05.map((item) => (
+          <NextLink key={item.href} href={item.href} className="block">
+            <Card padding="sm">
+              <Stack justify="between" align="center">
+                <Stack direction="column" gap="xs">
+                  <Text weight="bold">{item.label}</Text>
+                  <Text variant="sub">{item.description}</Text>
+                </Stack>
+                <Text variant="sub" as="span">
+                  ›
+                </Text>
+              </Stack>
+            </Card>
+          </NextLink>
+        ))}
       </Stack>
-
       {/* PC 모드(md 이상)에서는 헤더 햄버거 드로어에 이미 로그아웃이 있어서 중복이다 —
           모바일 폭에서만 보여준다. */}
       <Button onClick={() => void logout()} fullWidth className="mt-6 md:hidden">

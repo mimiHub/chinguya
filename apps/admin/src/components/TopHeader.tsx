@@ -12,7 +12,8 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 const MENU_ITEMS: { href: string; label: string }[] = [
   { href: "/", label: "홈" },
   { href: "/reservations", label: "예약" },
-  { href: "/products", label: "상품" },
+  { href: "/inventory", label: "재고 관리" },
+  { href: "/products", label: "상품 관리" },
   { href: "/more", label: "더보기" },
 ];
 

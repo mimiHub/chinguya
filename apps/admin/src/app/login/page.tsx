@@ -304,7 +304,7 @@ export default function AdminLoginPage() {
                             size="xs"
                             items={[
                               { key: "아이디", value: "admin" },
-                              { key: "비밀번호", value: "staff1234" },
+                              { key: "비밀번호", value: "ChinguyaAdmin!2026" },
                             ]}
                           />
                         </div>
