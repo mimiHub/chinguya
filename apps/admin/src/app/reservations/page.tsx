@@ -76,7 +76,7 @@ export default function AdminReservationsPage() {
 }
 
 function AdminReservationsPageInner() {
-  // 대시보드 지표 카드(신규예약/입금확인요청/취소요청)에서 넘어올 때 ?tab=unpaid 처럼
+  // 대시보드 지표 카드(예약완료/입금확인요청/취소요청)에서 넘어올 때 ?tab=unpaid 처럼
   // 쿼리스트링으로 어느 탭을 열어둘지 지정한다 — 값이 없거나 잘못된 값이면 기본값("접수") 사용.
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab")?.toUpperCase();

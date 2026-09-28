@@ -11,12 +11,12 @@ const api = createApiClient();
 /**
  * S1-A1 대시보드(`a-dash`). 계약: api-spec/openapi/chinguya-admin-api.yaml.
  *
- * 지표 3개(신규 예약/입금확인 요청/취소요청)·재고 초과 날짜·오늘 방문 예약을
+ * 지표 3개(예약완료/입금확인 요청/취소요청)·재고 초과 날짜·오늘 방문 예약을
  * `GET /admin/dashboard` 한 번으로 받는다.
  *
- * **지표 3개는 서로 겹치지 않는다** — 입금 단계로 가른다(2026-09-21 결정).
- * 신규 예약 = 입금대기(아직 입금 확인 요청 전), 입금확인 요청 = 접수(고객이 입금했다고 알림).
- * 둘 다 입금 기한이 지난 건은 빼므로, 미입금은 예약 관리의 미입금 탭에서 따로 본다.
+ * **예약완료 = 오늘(JST) 완료된 고객 예약 + 여행사 예약 합계**(2026-09-28 결정 — '신규 예약' 카드를 교체).
+ * 입금확인 요청 = 접수(고객이 입금했다고 알림). 입금 기한이 지난 건은 빼므로, 미입금은 예약 관리의
+ * 미입금 탭에서 따로 본다.
  *
  * **'오늘'과 건수를 화면에서 계산하지 않는다.** 예전에는 브라우저 시계로 JST 오늘을 만들고
  * 목업 배열을 세었는데, 이제 서버가 정한 값을 그대로 쓴다 — 자정 근처에서 어긋나지 않는다.
@@ -42,16 +42,16 @@ export default function AdminDashboardPage() {
     void loadDashboard();
   }, [loadDashboard]);
 
-  const newCount = dashboard?.newBookingCount ?? 0;
+  const completedCount = dashboard?.completedTodayCount ?? 0;
 
   const stats = [
     {
-      label: "신규 예약",
-      value: newCount,
-      href: "/reservations?tab=received",
+      label: "예약완료",
+      value: completedCount,
+      href: "/reservations?tab=completed",
       tone: "primary" as const,
       large: true,
-      icon: <IconFace mood={newCount > 0 ? "happy" : "sad"} className="h-8 w-8" />,
+      icon: <IconFace mood={completedCount > 0 ? "happy" : "sad"} className="h-8 w-8" />,
     },
     {
       label: "입금확인 요청",
@@ -68,7 +68,7 @@ export default function AdminDashboardPage() {
   ];
 
   // 예약 종류별 태그 색 — 위쪽 수치 카드(Stat)와 같은 계열로 맞췄다:
-  //   접수=초록(신규 예약) / 미입금=노랑(입금확인 요청) / 취소요청=빨강(취소요청) / 완료=블루.
+  //   접수=초록 / 미입금=노랑(입금확인 요청) / 취소요청=빨강(취소요청) / 완료=블루.
   // 카드 배경은 전부 같은 기본색이고 태그만 색이 다르다. 그 외(취소 등)는 회색 태그.
   const cardAccent = (visit: AdminDashboard["todayVisits"][number]): VisitAccent | undefined => {
     if (visit.unpaid) return "warning";

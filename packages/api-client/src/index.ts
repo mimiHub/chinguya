@@ -327,8 +327,8 @@ export interface AdminDashboardVisit {
 export interface AdminDashboard {
   /** 서버가 정한 '오늘'(**일본 기준**). 화면은 다시 계산하지 않는다. */
   today: string;
-  /** 입금대기 예약 수(기한 내). 0 이면 화면이 큰 카드의 표정을 슬픈 쪽으로 바꾼다. */
-  newBookingCount: number;
+  /** 오늘(JST) 예약완료된 고객 예약 + 여행사 예약 수(이후 전체 취소된 건 제외). 0 이면 큰 카드의 표정이 슬픈 쪽. */
+  completedTodayCount: number;
   /** 접수 예약 수(기한 내) — 고객이 입금했다고 알려 확인이 필요한 건. */
   depositRequestCount: number;
   /** 처리 안 된 취소 요청이 있는 예약 수. */
