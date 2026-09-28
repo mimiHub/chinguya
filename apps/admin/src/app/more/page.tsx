@@ -20,7 +20,8 @@ const MENU_ITEMS: { label: string; href: string; description: string }[] = [
   { label: "인보이스 관리", href: "/invoices", description: "여행사별 인보이스 발행, 정산 여부 확인" },
   { label: "문의 관리", href: "/inquiries", description: "고객 1:1 문의 확인 및 답변 등록" },
   { label: "공지 · 이벤트", href: "/notices", description: "고객앱 공지사항·이벤트 글 등록·공개·상단 고정" },
-  { label: "FAQ · 콘텐츠 관리", href: "/content", description: "FAQ 등록/수정/삭제·순서, 랜딩 배너 편집" },
+  { label: "FAQ 관리", href: "/faq", description: "FAQ 등록/수정/삭제·노출 순서" },
+  { label: "랜딩 배너 관리", href: "/landing", description: "고객앱 홈 히어로 배너 3장 편집·노출 설정" },
   { label: "컴포넌트 가이드", href: "/components", description: "@chinguya/ui 공통 컴포넌트 37종을 한 화면에서 모아 보기" },
 ];
 
