@@ -113,10 +113,11 @@ export default function AdminDashboardPage() {
   }));
 
   return (
-    // 페이지 전체가 스크롤되지 않도록 main을 화면(상단 헤더와 하단 메뉴 사이) 높이에 딱 맞추고(h-full), 남는
-    // 높이를 "오늘 방문 예약"·"오늘 질문 목록" 상자가 나눠 갖는다(flex-1). 상자 안에서는 목록만 스크롤된다
-    // (DashboardCardList). 화면이 아주 작아 상자가 min-h보다 줄어들 때만 페이지가 스크롤된다.
-    <main className="mx-auto flex h-full max-w-2xl flex-col px-6 pt-6">
+    // main은 최소 화면(상단 헤더와 하단 메뉴 사이) 높이이고(min-h-full), 남는 높이를 "오늘 방문 예약"·
+    // "오늘 질문 목록" 상자가 나눠 갖는다(flex-1). 상자 안에서는 목록만 스크롤된다(DashboardCardList).
+    // 화면이 낮아 두 상자가 min-h보다 줄어들면 main이 늘어나 페이지가 스크롤된다 — 높이를 고정(h-full)하면
+    // 상자가 main 밖으로 넘치고, 넘친 부분에는 스크롤 영역의 하단 메뉴 여백(pb-16)이 안 붙어 메뉴 뒤에 가려졌다.
+    <main className="mx-auto flex min-h-full max-w-2xl flex-col px-6 pt-6">
       <div className="flex min-h-0 flex-1 flex-col gap-6">
         <Stat items={stats} />
 
