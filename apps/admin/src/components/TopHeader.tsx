@@ -5,17 +5,11 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { IconHamburger, IconX } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { ADMIN_NAV_ITEMS, isNavActive } from "@/components/navItems";
 
-// BottomNav.tsx와 같은 4개 탭 — PC 고정폭 레이아웃이라 모바일 기기 실제 화면(좁은 뷰포트)에서
-// 보면 BottomNav 자체가 md:hidden 밖으로 밀려나 안 보이는 경우가 있다. 그럴 때도 내비게이션이
-// 막히지 않도록, 같은 목적지를 이 드로어 메뉴에도 넣어 햄버거 하나로 접근 가능하게 한다.
-const MENU_ITEMS: { href: string; label: string }[] = [
-  { href: "/", label: "홈" },
-  { href: "/reservations", label: "예약" },
-  { href: "/inventory", label: "재고 관리" },
-  { href: "/products", label: "상품 관리" },
-  { href: "/more", label: "더보기" },
-];
+// 드로어 메뉴는 BottomNav와 같은 목록(navItems.ts)을 쓴다 — PC 고정폭 레이아웃이라 모바일 기기
+// 실제 화면(좁은 뷰포트)에서 보면 BottomNav 자체가 md:hidden 밖으로 밀려나 안 보이는 경우가 있다.
+// 그럴 때도 내비게이션이 막히지 않도록, 같은 목적지를 햄버거 하나로 접근 가능하게 한다.
 
 /**
  * 모든 관리자 화면 상단에 공통으로 뜨는 헤더. 왼쪽엔 고객 사이트와 같은 나뭇잎 로고(누르면
@@ -119,8 +113,8 @@ export function TopHeader() {
 
           {/* BottomNav를 대신하는 내비게이션 — 좁은 화면에서 하단 탭바가 안 보일 때 여기로 이동한다. */}
           <nav className="flex flex-col border-b border-line py-2">
-            {MENU_ITEMS.map(({ href, label }) => {
-              const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            {ADMIN_NAV_ITEMS.map(({ href, label }) => {
+              const active = isNavActive(pathname, href);
               return (
                 <NextLink
                   key={href}

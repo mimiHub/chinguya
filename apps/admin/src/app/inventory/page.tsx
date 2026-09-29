@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Title, Text, Chip, Badge, Kv, Card, Stack, Calendar, type CalendarDay, Toggle, Input, Button, Popup, LabeledBox, Dropdown, Toast, Alert, HelpTooltip } from "@chinguya/ui";
 import {
@@ -125,6 +125,9 @@ function AdminInventoryContent() {
   // 삭제되지 않은 여행사 전부의 선택일(없으면 오늘) 기준 기준 할당(없으면 0). 기준 카드는 value > 0만 보여 주고,
   // A3-M4·재고 조정의 여행사 선택지는 이 목록 전체를 쓴다.
   const [allocations, setAllocations] = useState<AgencyAllocation[]>([]);
+  // 할당 조회는 달력 조회와 다른 effect(의존성: 선택일)라 에러 상태도 따로 둔다. 하나로 같이 쓰면
+  // 한쪽 effect가 다른 쪽 에러를 지우거나, 아무도 안 지워서 문구가 계속 남는다.
+  const [allocationsLoadError, setAllocationsLoadError] = useState<string | null>(null);
 
   const [dayDetail, setDayDetail] = useState<InventoryDayDetail | null>(null);
 
@@ -212,17 +215,28 @@ function AdminInventoryContent() {
     };
   }, [assetId, viewYear, viewMonth, refreshTick]);
 
+  // 날짜 선택 안내는 본문 문구 대신 토스트로 한 번만 띄운다 — 달력이 처음 그려졌는데 아직 고른 날짜가
+  // 없을 때. ref로 '이미 띄웠음'을 기억해서, 월을 넘기거나 선택을 풀어도 다시 뜨지 않게 한다
+  // (state가 아니라 ref인 이유: 이 값이 바뀌어도 화면을 다시 그릴 필요가 없다).
+  const dateHintShownRef = useRef(false);
+  useEffect(() => {
+    if (!snapshot || selectedDay != null || dateHintShownRef.current) return;
+    dateHintShownRef.current = true;
+    setToastMessage("날짜를 선택하면 재고 상세를 확인·조정할 수 있습니다.");
+  }, [snapshot, selectedDay]);
+
   // 여행사 기준 할당은 캘린더에서 고른 날짜 기준(선택 전이면 오늘 기준)으로 보여 준다.
   useEffect(() => {
     if (!assetId) return;
     let alive = true;
+    setAllocationsLoadError(null);
     api.inventory
       .currentAllocations(assetId, selectedDateKey ?? undefined)
       .then((result) => {
         if (alive) setAllocations(result);
       })
       .catch((err) => {
-        if (alive) setSnapshotError(errorMessage(err, "재고 정보를 불러오지 못했습니다."));
+        if (alive) setAllocationsLoadError(errorMessage(err, "여행사 기준 할당을 불러오지 못했습니다."));
       });
     return () => {
       alive = false;
@@ -562,6 +576,11 @@ function AdminInventoryContent() {
           {snapshotError}
         </Alert>
       )}
+      {allocationsLoadError && (
+        <Alert status="error" className="mt-4">
+          {allocationsLoadError}
+        </Alert>
+      )}
 
       <Stack direction="column" gap="md" className="mt-4">
         <Text weight="bold" leaf>자산 선택</Text>
@@ -748,9 +767,7 @@ function AdminInventoryContent() {
                   </Button>
                 )}
               </Stack>
-            ) : (
-              <Text variant="sub">날짜를 선택하면 재고 상세를 확인·조정할 수 있습니다.</Text>
-            )}
+            ) : null}
           </>
         )}
       </Stack>

@@ -9,6 +9,12 @@ const nextConfig = {
   // pnpm 워크스페이스라 추적 기준을 저장소 루트로 올려야 packages/* 심볼릭 링크를 따라간다.
   // 기본값(앱 디렉터리)이면 @chinguya/ui 같은 워크스페이스 패키지가 번들에서 빠진다.
   outputFileTracingRoot: path.join(import.meta.dirname, "../../"),
+  // S4-A1·S4-A3 분리(2026-09-28)로 없어진 옛 경로. 즐겨찾기·공유 링크가 404가 되지 않게 옮겨 준다.
+  // permanent: false(307)로 둔다 — 308은 브라우저가 영구 캐시해서, 나중에 /content 를 다른 용도로
+  // 되살리면 이미 한 번 들어온 사람은 계속 /landing 으로 튕긴다.
+  async redirects() {
+    return [{ source: "/content", destination: "/landing", permanent: false }];
+  },
 };
 
 export default nextConfig;
