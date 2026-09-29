@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { BOOKING_WINDOW, RENTAL_OPTION_LABEL, type RentalOptionKey } from "@chinguya/types";
@@ -96,6 +96,7 @@ export default function RentalDetailPage() {
   // 날짜를 안 고르고 담기/예약을 누르면 화면에 안내 박스를 늘 띄워 두는 대신 토스트로 알려 준다.
   const [startDateNotice, setStartDateNotice] = useState(false);
   const [infoTab, setInfoTab] = useState<ProductInfoTab>("info");
+  const dateSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -204,6 +205,9 @@ export default function RentalDetailPage() {
     const next = product.options.find((o) => o.optionType === key);
     if (!next?.crossRegionReturnAvailable) setOffSiteReturn(false);
     resetSelection();
+    // 옵션을 고르면 다음 단계인 날짜 선택으로 내려 준다(모바일은 시트 안에서, PC는 페이지에서 스크롤).
+    // 바로 부르면 옵션 변경으로 다시 그려지면서 부드러운 스크롤이 끊겨서, 다음 프레임에 부른다.
+    requestAnimationFrame(() => dateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
 
   const handleOffSiteReturnChange = (on: boolean) => {
@@ -357,8 +361,15 @@ export default function RentalDetailPage() {
                 </>
               )}
 
+              {/* 합계 위에 지금 고른 옵션·날짜·수량을 보여 준다 — 시트를 접어도 무엇을 골랐는지 알 수 있게. */}
               <Kv
                 items={[
+                  { key: "옵션", value: RENTAL_OPTION_LABEL[option.optionType] },
+                  {
+                    key: "날짜",
+                    value: !startKey ? "선택 전" : isMultiDay ? `${startKey} ~ ${endKey}` : startKey,
+                  },
+                  { key: "수량", value: `${qty}개` },
                   {
                     key: "합계",
                     value: (
@@ -464,6 +475,7 @@ export default function RentalDetailPage() {
         
 
         <ScrollReveal delay={150}>
+        <div ref={dateSectionRef} className="scroll-mt-24">
         <Stack direction="column" gap="sm" className="">
           <Title size="sm" leaf tone="secondary">
             날짜 선택
@@ -516,6 +528,7 @@ export default function RentalDetailPage() {
               </Text>
             ))}
         </Stack>
+        </div>
         </ScrollReveal>
 
         <ScrollReveal delay={200}>

@@ -18,9 +18,8 @@ import type { ReactNode } from "react";
  *     그래서 이 컴포넌트는 반드시 페이지 본문 컨테이너의 **마지막 자식**으로 둬야 한다(푸터 바로 앞).
  *   - PC(md 이상)     : 아무 꾸밈 없이 본문 흐름 안에 그대로 펼쳐진다(기존 그대로).
  *
- * 접기/펼치기: 핸들로 접고 편다. 접어도 footer(합계·버튼)는 남는다("완전히 접히지 않음"). 처음엔 **펼쳐져 있다** —
- * 주 사용자가 50대 이상이라, 접혀 있으면 옵션을 고르는 UI가 어디 있는지 찾기 어렵기 때문. 본문을 읽고 싶으면 핸들이나
- * 뒷배경을 눌러 접으면 된다.
+ * 접기/펼치기: 핸들로 접고 편다. 접어도 footer(합계·버튼)는 남는다("완전히 접히지 않음"). 처음엔 **접혀 있다** —
+ * 들어오자마자 시트가 본문을 가리지 않게 하기 위해서다. 핸들("옵션 · 날짜 선택")을 누르면 펼쳐진다.
  * 펼친 동안(모바일)에는 뒤의 페이지가 움직이지 않게 잠근다 — 페이지 스크롤(html overflow)을 막고, 시트 본문이
  * 끝에 닿아도 스크롤이 페이지로 넘어가지 않게(overscroll-contain) 하고, 시트 밖 영역의 터치 이동도 막고, 뒤쪽 화면 전체를
  * 덮는 반투명 배경을 깔아 뒤 컨텐츠의 클릭·탭도 받지 않게 한다(배경을 누르거나 Esc를 누르면 시트가 접힌다). 상단 내비·하단 탭바는
@@ -52,7 +51,7 @@ export interface BookingDockProps {
   children: ReactNode;
   /** 합계·버튼 — 접어도 항상 보인다. 팝업 모드인지 알려 줘서 간격을 다르게 줄 수 있다. */
   footer: (popup: boolean) => ReactNode;
-  /** 처음 상태. 기본은 펼침(옵션·날짜·수량이 바로 보임) — 접으려면 false. */
+  /** 처음 상태. 기본은 접힘(합계·버튼만 보임) — 펼치려면 true. */
   defaultOpen?: boolean;
   /**
    * 팝업(모바일) 모드에서만 패널에 덧붙는 클래스 — 부모 컨테이너의 좌우/아래 padding을 상쇄해 화면 폭 끝까지 펴거나
@@ -64,7 +63,7 @@ export interface BookingDockProps {
 export function BookingDock({
   children,
   footer,
-  defaultOpen = true,
+  defaultOpen = false,
   popupClassName = "",
 }: BookingDockProps) {
   const bodyId = useId();
