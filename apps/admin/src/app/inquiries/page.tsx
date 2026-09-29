@@ -43,13 +43,26 @@ export default function AdminInquiriesPage() {
 
   const load = () => {
     setLoadError(null);
-    api.inquiries
+    return api.inquiries
       .list()
-      .then(setInquiries)
-      .catch((err: unknown) => setLoadError(errorMessage(err, "문의 목록을 불러오지 못했습니다.")));
+      .then((items) => {
+        setInquiries(items);
+        return items;
+      })
+      .catch((err: unknown) => {
+        setLoadError(errorMessage(err, "문의 목록을 불러오지 못했습니다."));
+        return null;
+      });
   };
 
-  useEffect(load, []);
+  // 대시보드 '오늘 질문 목록' 카드는 `/inquiries?id=…` 로 들어온다 — 그 질문 상세를 바로 연다.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("id");
+    void load().then((items) => {
+      const target = id ? items?.find((q) => q.inquiryId === id) : undefined;
+      if (target) openDetail(target);
+    });
+  }, []);
 
   const list = inquiries ?? [];
   const answeredCount = list.filter((q) => q.status === "ANSWERED").length;
@@ -70,7 +83,7 @@ export default function AdminInquiriesPage() {
       .then(() => {
         setToastOpen(true);
         setSelected(null);
-        load();
+        void load();
       })
       .catch((err: unknown) => setAnswerError(errorMessage(err, "답변을 등록하지 못했습니다.")))
       .finally(() => setSubmitting(false));

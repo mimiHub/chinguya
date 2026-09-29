@@ -337,6 +337,8 @@ export interface AdminDashboard {
   overCapacityDates: string[];
   /** 오늘 이용을 시작하는 예약. 예약번호 오름차순. */
   todayVisits: AdminDashboardVisit[];
+  /** 오늘(JST) 등록된 질문 + 그 전에 등록됐지만 아직 답변이 없는 질문. 등록 최신순. */
+  todayInquiries: AdminInquiry[];
 }
 
 /**

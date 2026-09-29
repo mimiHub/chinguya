@@ -6,14 +6,18 @@ import { Stack, Text } from "@chinguya/ui";
 import { EmptyStateCat } from "./EmptyStateCat";
 
 /** 상태 태그에 칠할 색 톤 — 위쪽 수치 카드(Stat)와 같은 계열. 없으면 회색 태그. */
-export type VisitAccent = "primary" | "warning" | "error" | "info";
+export type CardAccent = "primary" | "warning" | "error" | "info";
 
-export interface TodayVisitItem {
+export interface DashboardCardItem {
   id: string;
-  product: string;
-  useDate: string;
-  accent?: VisitAccent;
-  /** 오른쪽 상태 태그에 적을 글자(접수·미입금·완료·취소요청…) */
+  /** 굵게 적는 첫 줄(예약번호·질문 제목) */
+  title: string;
+  /** 흐리게 적는 둘째 줄 */
+  sub: string;
+  /** 카드를 누르면 갈 곳 */
+  href: string;
+  accent?: CardAccent;
+  /** 오른쪽 상태 태그에 적을 글자(접수·미입금·완료·취소요청·답변완료…) */
   tagLabel: string;
 }
 
@@ -45,7 +49,7 @@ const tagClass = {
 } as const;
 
 /**
- * 대시보드 "오늘 방문 예약" 목록. 카드 5건 높이의 영역 안에 전부 담고, 5건을 넘으면 그 영역 안에서
+ * 대시보드 카드 목록 — "오늘 방문 예약"과 "오늘 질문 목록"이 같이 쓴다. 카드 5건 높이의 영역 안에 전부 담고, 5건을 넘으면 그 영역 안에서
  * 스크롤해서 나머지를 본다 — 예전에는 "더 보기" 버튼으로 펼쳤지만, 스크롤이 되면 버튼이 필요 없어서
  * 뺐다. 영역 높이가 늘지 않으니 화면 아래에 떠 있는 "재고 초과 날짜" 토스트와도 겹치지 않는다.
  *
@@ -58,7 +62,14 @@ const tagClass = {
  * 넘겨주므로, 여기는 그려주기와 높이 계산만 맡는다(그래서 "미입금" 같은 시간 기준 판정이 서버·클라이언트
  * 사이에서 어긋날 일이 없다).
  */
-export function TodayVisitList({ items }: { items: TodayVisitItem[] }) {
+export function DashboardCardList({
+  items,
+  emptyMessage,
+}: {
+  items: DashboardCardItem[];
+  /** 목록이 비었을 때 고양이 아래 적을 문구 */
+  emptyMessage: string;
+}) {
   // 5건 높이(px). null이면 높이를 제한하지 않는다(5건 이하이거나 아직 못 쟀을 때).
   const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +105,9 @@ export function TodayVisitList({ items }: { items: TodayVisitItem[] }) {
     // EmptyStateCat으로 뽑아냈다 — 공용 EmptyState(packages/ui)는 3개 앱이 같이 쓰는
     // 컴포넌트라 여기서 고양이를 넣으면 다른 앱에도 전부 나타나 버리기 때문에, 이 컴포넌트는
     // apps/admin 안에만 둔다. 문구만 화면마다 바뀌고 디자인(카드 높이·고양이·Zz)은 항상 같다.
-    return <EmptyStateCat message="오늘 방문 예약이 없습니다." />;
+    // 대시보드에는 목록 상자가 둘이라 상자 하나가 기본 높이(320px)보다 낮아질 수 있다. 상자 남는 높이를
+    // 채우되(flex-1) 고양이가 들어갈 만큼(150px)까지 줄어들게 해서 상자 밖으로 넘치지 않게 한다.
+    return <EmptyStateCat message={emptyMessage} className="min-h-[150px]! flex-1" />;
   }
 
   return (
@@ -120,14 +133,16 @@ export function TodayVisitList({ items }: { items: TodayVisitItem[] }) {
               // 바깥 상자(rounded-lg 16px) 안에 들어가므로 카드 모서리는 한 단계 작은 rounded-card(12px)로 둔다.
               <NextLink
                 key={r.id}
-                href={`/reservations/${r.id}`}
+                href={r.href}
                 className="block rounded-card border border-card-border bg-surface p-4 transition-colors hover:bg-bg-light"
               >
                 <Stack justify="between" align="center">
-                  <div>
-                    <Text weight="bold">{r.id}</Text>
-                    <Text variant="sub">
-                      {r.product} · {r.useDate}
+                  <div className="min-w-0">
+                    <Text weight="bold" className="truncate">
+                      {r.title}
+                    </Text>
+                    <Text variant="sub" className="truncate">
+                      {r.sub}
                     </Text>
                   </div>
                   <span

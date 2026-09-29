@@ -522,7 +522,8 @@ paths:
         '200':
           description: |
             대시보드 값. 오늘 방문 예약이 없으면 `todayVisits` 가 빈 배열이고, 초과가 없으면
-            `overCapacityDates` 가 빈 배열이다(둘 다 404 가 아니다 — 화면이 '0건'·'없습니다'를 쓴다).
+            `overCapacityDates` 가, 보여줄 질문이 없으면 `todayInquiries` 가 빈 배열이다
+            (모두 404 가 아니다 — 화면이 '0건'·'없습니다'를 쓴다).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AdminDashboard' }
@@ -3573,7 +3574,7 @@ components:
     # --- 대시보드 (S1-A1) ------------------------------------------------------
     AdminDashboard:
       type: object
-      required: [today, completedTodayCount, depositRequestCount, cancelRequestCount, overCapacityDates, todayVisits]
+      required: [today, completedTodayCount, depositRequestCount, cancelRequestCount, overCapacityDates, todayVisits, todayInquiries]
       description: S1-A1 대시보드. 저장된 문서가 아니라 예약·재고에서 집계한 값이다.
       properties:
         today:
@@ -3607,6 +3608,13 @@ components:
             (S1-A7/A8), **취소되지 않은 항목 중 이용일이 오늘인 것이 하나라도 있는** 예약을 뽑는다.
             전 항목이 취소된 예약은 방문하지 않으므로 자연히 빠진다. 예약번호 오름차순.
           items: { $ref: '#/components/schemas/AdminDashboardVisit' }
+        todayInquiries:
+          type: array
+          description: |
+            오늘 질문 목록. **오늘(JST) 등록된 질문 + 오늘 전에 등록됐지만 아직 답변이 없는 질문.**
+            오늘 등록된 질문은 답변 여부와 상관없이 나온다. 등록 최신순(created_at 내림차순).
+            답변 상태는 각 항목의 `status` 로 본다.
+          items: { $ref: '#/components/schemas/AdminInquiry' }
 
     AdminDashboardVisit:
       type: object
