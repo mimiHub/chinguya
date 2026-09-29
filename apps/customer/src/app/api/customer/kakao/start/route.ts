@@ -9,6 +9,7 @@ import {
   cookieOptions,
   coreBaseUrl,
   kakaoRedirectUri,
+  publicUrl,
   safeRedirect,
 } from "../../coreSession";
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   if (MOCK_AUTH) {
     // 목 모드: 카카오를 건너뛰고 바로 로그인 상태로 만든다.
-    const res = NextResponse.redirect(new URL(redirectTo, request.url));
+    const res = NextResponse.redirect(publicUrl(redirectTo, request));
     res.cookies.set(ACCESS_COOKIE, MOCK_TOKEN, cookieOptions(MOCK_MAX_AGE));
     return res;
   }
@@ -52,6 +53,6 @@ export async function GET(request: NextRequest) {
     return res;
   } catch (e) {
     console.error("[kakao/start]", e);
-    return NextResponse.redirect(new URL("/login?error=kakao", request.url));
+    return NextResponse.redirect(publicUrl("/login?error=kakao", request));
   }
 }

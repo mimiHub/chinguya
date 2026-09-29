@@ -7,6 +7,7 @@ import {
   cookieOptions,
   coreBaseUrl,
   kakaoRedirectUri,
+  publicUrl,
   readSetCookie,
   safeRedirect,
 } from "../../coreSession";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   const savedState = request.cookies.get(STATE_COOKIE)?.value;
   const redirectTo = safeRedirect(request.cookies.get(REDIRECT_COOKIE)?.value);
 
-  const fail = () => clearOAuthCookies(NextResponse.redirect(new URL("/login?error=kakao", request.url)));
+  const fail = () => clearOAuthCookies(NextResponse.redirect(publicUrl("/login?error=kakao", request)));
 
   // code 가 없으면 사용자가 동의를 취소한 경우다(카카오가 error 파라미터를 붙여 보낸다).
   if (!code || !state || state !== savedState) {
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     if (body.result === "LOGGED_IN") {
       const token = readSetCookie(core, ACCESS_COOKIE);
       if (!token) return fail();
-      const res = NextResponse.redirect(new URL(redirectTo, request.url));
+      const res = NextResponse.redirect(publicUrl(redirectTo, request));
       res.cookies.set(ACCESS_COOKIE, token.value, cookieOptions(token.maxAge));
       return clearOAuthCookies(res);
     }
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
     const signup = readSetCookie(core, SIGNUP_COOKIE);
     if (!signup) return fail();
     const res = NextResponse.redirect(
-      new URL(`/signup?step=id&redirect=${encodeURIComponent(redirectTo)}`, request.url),
+      publicUrl(`/signup?step=id&redirect=${encodeURIComponent(redirectTo)}`, request),
     );
     res.cookies.set(SIGNUP_COOKIE, signup.value, cookieOptions(signup.maxAge));
     return clearOAuthCookies(res);
