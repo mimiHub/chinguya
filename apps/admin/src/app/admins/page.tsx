@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import type { AdminRole } from "@chinguya/types";
 import { createApiClient, ApiError, type AdminAccount } from "@chinguya/api-client";
-import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Alert } from "@chinguya/ui";
+import { Title, Text, Card, Stack, Badge, Chip, Button, IconX, LabeledBox, Input, Popup, ConfirmPopup, Alert, HelpTooltip } from "@chinguya/ui";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 const api = createApiClient();
@@ -105,7 +105,14 @@ export default function AdminAccountsPage() {
           ← 더보기로
         </NextLink>
         <Stack justify="between" align="center">
-          <Title size="md">관리자 관리</Title>
+          {/* 권한 안내는 목록 아래 문구 대신 제목 옆 '?' 말풍선으로(인보이스·랜딩 배너·FAQ 관리와 같은 방식).
+              Title은 블록 제목이라 Text leaf처럼 안에 넣지 않고, 가로 Stack으로 나란히 둔다. */}
+          <Stack gap="xs" align="center">
+            <Title size="md">관리자 관리</Title>
+            <HelpTooltip label="관리자 권한 안내">
+              일반 관리자는 조회 전용입니다. 등록·수정·삭제는 슈퍼어드민만 할 수 있어요.
+            </HelpTooltip>
+          </Stack>
           {isSuperAdmin && loaded && (
             <Button size="sm" variant="subtle" onClick={() => openForm(null)}>
               + 등록
@@ -150,7 +157,6 @@ export default function AdminAccountsPage() {
             </Card>
           ))}
           {deleteError && <Alert status="error">{deleteError}</Alert>}
-          <Text variant="sub">일반 관리자는 조회 전용입니다. 등록·수정·삭제는 슈퍼어드민만 할 수 있어요.</Text>
         </Stack>
       )}
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, EmptyState, Card, Stack, Badge, Chip, NoticeBox, Alert } from "@chinguya/ui";
+import { Title, Text, EmptyState, Card, Stack, Badge, Chip, Alert, HelpTooltip } from "@chinguya/ui";
 import { EmptyStateCat } from "@/components/EmptyStateCat";
 import { INVOICE_SETTLEMENT_LABEL } from "@chinguya/types";
 import { createApiClient, ApiError, type AdminInvoiceList } from "@chinguya/api-client";
@@ -102,8 +102,14 @@ export default function AdminInvoicesPage() {
           )}
         </Card>
 
+        {/* 발행 규칙 안내는 목록 아래 상자 대신 제목 옆 '?' 말풍선으로 — 매번 읽을 필요 없는
+            참고 문구라 화면 공간을 차지하지 않게 했다. HelpTooltip은 전부 span이라 Text(<p>) 안에 둬도 된다. */}
         <Text weight="bold" leaf>
           발행된 인보이스
+          <HelpTooltip label="인보이스 발행 안내">
+            인보이스는 매월 1일 전월 기준으로 자동 발행됩니다. 통화는 KRW(세금 라인 없음)이며,
+            정산(입금) 확인은 카드를 눌러 들어간 상세 화면에서 인보이스 단위로 합니다.
+          </HelpTooltip>
         </Text>
 
         {filterAgencies.length > 0 && (
@@ -156,11 +162,6 @@ export default function AdminInvoicesPage() {
             />
           )}
         </Stack>
-
-        <NoticeBox tone="gray">
-          인보이스는 매월 1일 전월 기준으로 자동 발행됩니다. 통화는 KRW(세금 라인 없음)이며,
-          정산(입금) 확인은 카드를 눌러 들어간 상세 화면에서 인보이스 단위로 합니다.
-        </NoticeBox>
       </Stack>
     </main>
   );

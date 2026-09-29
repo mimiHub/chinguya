@@ -13,6 +13,7 @@ import {
   LabeledBox,
   Alert,
   Tooltip,
+  HelpTooltip,
   Toast,
   Toggle,
 } from "@chinguya/ui";
@@ -361,12 +362,13 @@ export default function AdminLandingPage() {
       {loaded && (
         <Stack direction="column" gap="lg" className="mt-4">
           <Stack direction="column" gap="sm">
+            {/* 배너 설명은 본문 대신 제목 옆 '?' 말풍선으로(인보이스 관리와 같은 방식). */}
             <Text weight="bold" leaf>
               랜딩 히어로 배너 (3개)
-            </Text>
-            <Text variant="sub">
-              고객앱 홈 화면 상단에서 자동으로 넘어가는 배너예요. 배너마다 PC용·모바일용 이미지가
-              따로 필요합니다. 노출 스위치로 일부 배너만 꺼 둘 수 있어요(최소 1개는 켜져 있어야 해요).
+              <HelpTooltip label="랜딩 히어로 배너 안내">
+                고객앱 홈 화면 상단에서 자동으로 넘어가는 배너예요. 배너마다 PC용·모바일용 이미지가
+                따로 필요합니다. 노출 스위치로 일부 배너만 꺼 둘 수 있어요(최소 1개는 켜져 있어야 해요).
+              </HelpTooltip>
             </Text>
             <BannerSizeGuide />
 

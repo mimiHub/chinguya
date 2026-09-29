@@ -14,6 +14,7 @@ import {
   ConfirmPopup,
   LabeledBox,
   Alert,
+  HelpTooltip,
   Toast,
 } from "@chinguya/ui";
 import type { ToastStatus } from "@chinguya/ui";
@@ -195,8 +196,14 @@ export default function AdminFaqPage() {
 
       {loaded && (
         <Stack direction="column" gap="sm" className="mt-4">
+          {/* 노출 규칙 안내는 목록 아래 문구 대신 제목 옆 '?' 말풍선으로(인보이스·랜딩 배너 관리와 같은 방식).
+              순서 변경 안내는 쓰기 권한이 있는 슈퍼어드민에게만 덧붙인다. */}
           <Text weight="bold" leaf>
             FAQ{faqs.length > 0 && ` (${faqs.length})`}
+            <HelpTooltip label="FAQ 노출 안내">
+              FAQ는 분류·검색 없이 목록 순서 그대로 고객앱에 노출됩니다.
+              {isSuperAdmin && " 항목을 눌러 순서를 바꿀 수 있어요."}
+            </HelpTooltip>
           </Text>
           {/* FAQ는 페이지네이션 없이 등록할수록 계속 쌓인다(분류·검색 없음 — 기획서). 목록에 최대 높이를
               주고 넘치면 이 영역 안에서만 스크롤되게 했다(카드 5~6장 정도 높이). pr-1: 스크롤바가 카드
@@ -234,10 +241,6 @@ export default function AdminFaqPage() {
             {faqs.length === 0 && <EmptyStateCat message="등록된 FAQ가 없습니다." />}
           </Stack>
           </div>
-          <Text variant="sub">
-            FAQ는 분류·검색 없이 위 순서 그대로 고객앱에 노출됩니다.
-            {isSuperAdmin && " 항목을 눌러 순서를 바꿀 수 있어요."}
-          </Text>
         </Stack>
       )}
 
