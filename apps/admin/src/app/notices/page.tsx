@@ -144,7 +144,7 @@ export default function AdminNoticesPage() {
         <Stack justify="between" align="center">
           <Title size="md">공지 · 이벤트</Title>
           {isSuperAdmin && (
-            <Button href="/notices/new" variant="subtle" size="sm">
+            <Button href={`/notices/new?category=${category}`} variant="subtle" size="sm">
               + 등록
             </Button>
           )}

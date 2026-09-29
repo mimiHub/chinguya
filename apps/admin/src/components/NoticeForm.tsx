@@ -48,11 +48,18 @@ function errorMessage(err: unknown, fallback: string): string {
  *
  * 작성일은 서버가 정한다(입력칸이 없다). 수정해도 작성일은 바뀌지 않는다.
  */
-export function NoticeForm({ noticeId }: { noticeId?: string }) {
+export function NoticeForm({
+  noticeId,
+  initialCategory = "NOTICE",
+}: {
+  noticeId?: string;
+  /** 등록 시 처음 고를 카테고리 — 목록에서 보던 탭을 이어받는다. */
+  initialCategory?: NoticeCategory;
+}) {
   const router = useRouter();
   const isEdit = Boolean(noticeId);
 
-  const [category, setCategory] = useState<NoticeCategory>("NOTICE");
+  const [category, setCategory] = useState<NoticeCategory>(initialCategory);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [published, setPublished] = useState(true);
