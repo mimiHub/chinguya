@@ -238,7 +238,23 @@ function ContactContent() {
             </Stack>
           ) : qnaView === "list" ? (
             <Stack direction="column" gap="sm">
-              <Title size="lg" subtitle="궁금하신 점을 알려주시면, 답변을 보내드릴게요.">
+              {/* 질문 작성 버튼은 목록 아래가 아니라 제목 줄 오른쪽 끝에 둔다 — 목록이 길어도 바로 보인다. */}
+              <Title
+                size="lg"
+                subtitle="궁금하신 점을 알려주시면, 답변을 보내드릴게요."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      resetWriteForm();
+                      setQnaError(null);
+                      setQnaView("write");
+                    }}
+                  >
+                    질문 작성
+                  </Button>
+                }
+              >
                 질문 목록
               </Title>
 
@@ -273,18 +289,6 @@ function ContactContent() {
                   </Card>
                   </ScrollReveal>
                 ))}
-              </Stack>
-
-              <Stack justify="center" className="mt-6">
-                <Button
-                  onClick={() => {
-                    resetWriteForm();
-                    setQnaError(null);
-                    setQnaView("write");
-                  }}
-                >
-                  질문 작성
-                </Button>
               </Stack>
             </Stack>
           ) : qnaView === "write" ? (
