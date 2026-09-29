@@ -601,13 +601,10 @@ function AdminInventoryContent() {
             <Card>
               <Stack justify="between" align="center">
                 {/* 아래 날짜 상세의 항목 라벨(Kv dot size="md" weight="semibold")과 같은 스타일 — 점 + 16px
-                    세미볼드. 제목은 회색, 값(3대)은 흰색으로 구분한다. */}
+                    세미볼드. 값은 표시하지 않는다(변경 모달에서 확인). */}
                 <span className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
                   <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
-                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                    <span className="text-muted">기준 보유량 ·</span>
-                    <span className="text-ink">{currentBaseline}대</span>
-                  </span>
+                  <span className="text-muted">기준 보유량</span>
                 </span>
                 {isSuperAdmin && (
                   <Button variant="outline" size="sm" onClick={openBaseline}>
@@ -623,15 +620,7 @@ function AdminInventoryContent() {
                 <Stack justify="between" align="center">
                   <span className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
                     <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
-                    {/* 제목(회색)과 값(흰색)을 색으로 구분 — 여행사 이름이 붙어도 어디까지가 제목인지 보이게 */}
-                    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                      <span className="text-muted">여행사 기준 할당 ·</span>
-                      <span className="text-ink">
-                        {allocatedAgencies.length > 0
-                          ? allocatedAgencies.map((a) => `${a.agencyName} ${a.value}대`).join(" · ")
-                          : "없음"}
-                      </span>
-                    </span>
+                    <span className="text-muted">여행사 기준 할당</span>
                   </span>
                   {isSuperAdmin && (
                     <Button variant="outline" size="sm" onClick={openAllocation}>
@@ -862,13 +851,9 @@ function AdminInventoryContent() {
                   value={adjustTarget}
                   onChange={(v) => setAdjustTarget(v)}
                 />
-                <Dropdown
-                  options={agencyOptions}
-                  value={adjustTarget === "agency" ? adjustAgencyId : null}
-                  onChange={setAdjustAgencyId}
-                  placeholder="여행사"
-                  disabled={adjustTarget !== "agency"}
-                />
+                {adjustTarget === "agency" && (
+                  <Dropdown options={agencyOptions} value={adjustAgencyId} onChange={setAdjustAgencyId} placeholder="여행사" />
+                )}
               </div>
             </LabeledBox>
           )}
