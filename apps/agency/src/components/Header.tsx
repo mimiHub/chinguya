@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { IconHamburger, IconX, Button } from "@chinguya/ui";
 import { useAgencyAuth } from "@/context/AgencyAuthContext";
 
@@ -23,7 +24,7 @@ import { useAgencyAuth } from "@/context/AgencyAuthContext";
  * 로그인 바로가기 버튼을 두지만, 보호된 화면은 미들웨어가 먼저 /login 으로 보내므로 실제로는
  * 세션이 만료된 직후에만 보인다(계정 등록은 관리자 초대 링크로만 들어가는 화면이라 바로가기를
  * 두지 않는다). 세션 조회 중에는 비워 둔다 — 로그인 버튼이 잠깐 번쩍이지 않게. 로그아웃은
- * 지금은 그대로 사이드바 하단 링크에 있다(이 메뉴는 별도 요청 전까지 정보 표시 + 확장용).
+ * 지금은 그대로 사이드바 하단 링크에 있다. 메뉴 항목은 비밀번호 변경(S2-G8) 하나다.
  *
  * z-[130] — 모바일·태블릿(lg 미만)에서는 사이드바가 fixed inset-y-0(화면 맨 위부터)로 뜨는
  * 오버레이라, 헤더보다 쌓임 순서가 낮으면 열렸을 때 이 헤더 전체가 사이드바 뒤로 가려져서
@@ -97,8 +98,16 @@ function UserMenu({ loginId }: { loginId: string }) {
               </span>
               <span className="truncate text-sm font-semibold text-ink">{loginId}</span>
             </div>
-            {/* 계정 관련 메뉴 항목이 늘어나면 여기(위 정보 영역 아래)에 구분선(border-t
-                border-line)과 함께 버튼/링크 목록으로 추가한다. */}
+            {/* 계정 관련 메뉴 항목. 늘어나면 이 목록에 이어 붙인다. */}
+            <div className="border-t border-line p-2">
+              <Link
+                href="/password"
+                onClick={() => setOpen(false)}
+                className="block rounded-md px-3 py-2 text-sm text-ink hover:bg-secondary-100"
+              >
+                비밀번호 변경
+              </Link>
+            </div>
           </div>
         </>
       )}

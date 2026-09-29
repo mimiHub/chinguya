@@ -253,6 +253,13 @@ export interface AgencyProductList {
   products: AgencyProduct[];
 }
 
+/** S2-G8 비밀번호 변경. 새 비밀번호 규칙은 계정 등록(S2-G1)과 같다(8~64자). */
+export interface AgencyPasswordChangeInput {
+  currentPassword: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+}
+
 export interface AgencyReservationInput {
   useDate: string;
   /** 같은 productId를 두 번 넣으면 400. 금액은 보내지 않는다(서버가 여행사가로 계산). */
@@ -1092,6 +1099,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       cancel: (reservationId: string) =>
         request<AgencyReservationResult>(`/agency/reservations/${reservationId}/cancel`, {
           method: "POST",
+        }),
+    },
+    agencyAuth: {
+      /**
+       * S2-G8 비밀번호 변경(204). 대상은 로그인한 계정이다. 현재 비밀번호가 틀리면 401 이 아니라
+       * 400(CURRENT_PASSWORD_MISMATCH) — 세션은 그대로 유지된다.
+       */
+      changePassword: (body: AgencyPasswordChangeInput) =>
+        request<void>("/agency/auth/password", {
+          method: "POST",
+          body: JSON.stringify(body),
         }),
     },
     /** S2-G4 이용 날짜별 예약 가능 상품. 여행사 앱 프록시가 `/v1` 프리픽스를 붙인다. */

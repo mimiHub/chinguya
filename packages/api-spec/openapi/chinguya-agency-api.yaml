@@ -4,7 +4,16 @@ openapi: 3.1.0
 # 친구야 — 여행사(G) 대상 Core API 명세 [v0.1]
 #
 # 범위: 계정 등록(초대 링크 수락, S2-G1), 로그인·로그아웃·세션 조회(S2-G2),
-#       대시보드(S2-G3), 상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6), 인보이스(S2-G7).
+#       대시보드(S2-G3), 상품 조회·예약(S2-G4/G5), 예약 목록·취소(S2-G6), 인보이스(S2-G7),
+#       비밀번호 변경(S2-G8).
+#
+# 2026-09-29 변경(비밀번호 변경 S2-G8 — 스펙 선행):
+#   1. `POST /agency/auth/password` 신설. 새 비밀번호 규칙은 계정 등록(S2-G1)과 같다(8~64자).
+#   2. **현재 비밀번호가 틀리면 401 이 아니라 400(`CURRENT_PASSWORD_MISMATCH`)이다.**
+#      여행사 앱 셸은 401 을 '세션 만료'로 보고 로그인 화면으로 보내는데, 로그인한 채
+#      입력을 잘못한 것뿐이므로 화면에 머물러야 한다.
+#   3. **변경 후에도 세션을 유지한다**(재로그인 요구 안 함). JWT 는 stateless 라 이미 발급된
+#      토큰을 무효화할 저장소가 없다. 와이어프레임이 '확정 대기'로 남긴 항목이라 여기서 정했다.
 #
 # 2026-09-21 변경(대시보드 S2-G3 — 스펙 선행):
 #   1. `GET /agency/dashboard` 신설.
@@ -268,6 +277,43 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AgencySessionResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AgencyInactive'
+
+  /agency/auth/password:
+    post:
+      tags: [agency-auth]
+      x-screens: [S2-G8]
+      summary: 비밀번호 변경 (S2-G8)
+      description: |
+        로그인한 담당자가 자기 계정의 비밀번호를 바꾼다. 대상 계정은 요청 본문이 아니라
+        **토큰의 계정**이다 — 남의 계정을 바꿀 길이 없다.
+
+        현재 비밀번호가 틀리면 **400(`CURRENT_PASSWORD_MISMATCH`)** 이다. 401 로 주면
+        여행사 앱 셸이 세션 만료로 보고 로그인 화면으로 튕긴다.
+
+        변경 후에도 **지금 세션은 그대로 유지된다**(쿠키를 다시 심지 않는다).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyPasswordChangeRequest' }
+      responses:
+        '204':
+          description: 변경 완료
+        '400':
+          description: |
+            입력값 오류(`VALIDATION_ERROR`) 또는 현재 비밀번호 불일치(`CURRENT_PASSWORD_MISMATCH`).
+            - 새 비밀번호 확인 불일치 → `fieldErrors[].field = newPasswordConfirm`
+            - 새 비밀번호가 현재와 같음 → `fieldErrors[].field = newPassword`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: CURRENT_PASSWORD_MISMATCH
+                message: 현재 비밀번호가 올바르지 않습니다.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -661,6 +707,24 @@ components:
         loginId: { type: string }
         password: { type: string, format: password }
 
+    AgencyPasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword, newPasswordConfirm]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 64
+          description: |
+            계정 등록(`InvitationCompleteRequest.password`)과 같은 규칙. 최대 64자인 이유도 같다.
+            현재 비밀번호와 같으면 400(`fieldErrors[].field = newPassword`).
+        newPasswordConfirm:
+          type: string
+          format: password
+          description: newPassword 와 같아야 한다. 다르면 400(`fieldErrors[].field = newPasswordConfirm`).
+
     AgencySessionResponse:
       type: object
       required: [agencyId, agencyName, accountId, loginId, expiresAt]
@@ -919,6 +983,9 @@ components:
             인증(S2-G2):
             - `INVALID_CREDENTIALS` — 아이디 없음·비밀번호 불일치·삭제된 여행사.
             - `AGENCY_INACTIVE` — 관리자가 사용 불가로 전환했다.
+
+            비밀번호 변경(S2-G8):
+            - `CURRENT_PASSWORD_MISMATCH` — 현재 비밀번호가 틀렸다(400 — 401 이 아니다).
 
             상품 조회·예약(S2-G4/G5):
             - `VALIDATION_ERROR` — 형식 오류(날짜 누락·빈 목록·수량 1 미만·같은 상품 중복).
