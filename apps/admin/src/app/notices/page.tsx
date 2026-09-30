@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
 import {
   Title,
@@ -54,10 +55,21 @@ function errorMessage(err: unknown, fallback: string): string {
  *
  * 쓰기(등록·공개 토글)는 슈퍼어드민만 — 버튼·토글 숨김은 정합성용이고 최종 차단은 서버 403이다.
  */
+// useSearchParams()는 Suspense 경계 안에 있어야 정적 빌드가 깨지지 않는다.
 export default function AdminNoticesPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminNoticesPageInner />
+    </Suspense>
+  );
+}
+
+function AdminNoticesPageInner() {
   const { isSuperAdmin } = useAdminAuth();
 
-  const [category, setCategory] = useState<NoticeCategory>("NOTICE");
+  // 첫 탭은 `?category=` 를 따른다 — 글 등록·수정·삭제 뒤 그 글의 탭으로 돌아오게.
+  const initialCategory: NoticeCategory = useSearchParams().get("category") === "EVENT" ? "EVENT" : "NOTICE";
+  const [category, setCategory] = useState<NoticeCategory>(initialCategory);
   const [notices, setNotices] = useState<NoticeSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);

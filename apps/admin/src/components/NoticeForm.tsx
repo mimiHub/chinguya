@@ -177,6 +177,9 @@ export function NoticeForm({
     [imageUrls.length],
   );
 
+  // 저장·삭제 뒤에는 그 글의 카테고리 탭 목록으로 돌아간다(이벤트를 고쳤는데 공지사항 탭이 뜨지 않게).
+  const listHref = `/notices?category=${category}`;
+
   const handleSave = async () => {
     setSubmitting(true);
     setFormError(null);
@@ -200,7 +203,7 @@ export function NoticeForm({
       } else {
         await api.notices.create(body);
       }
-      router.push("/notices");
+      router.push(listHref);
     } catch (err) {
       // 서버가 어느 칸이 틀렸는지 메시지로 알려준다(VALIDATION_ERROR).
       setFormError(errorMessage(err, "저장하지 못했습니다."));
@@ -214,7 +217,7 @@ export function NoticeForm({
     setSubmitting(true);
     try {
       await api.notices.remove(noticeId!);
-      router.push("/notices");
+      router.push(listHref);
     } catch (err) {
       setToastStatus("error");
       setToastMessage(errorMessage(err, "삭제하지 못했습니다."));
@@ -225,7 +228,7 @@ export function NoticeForm({
   if (loadError) {
     return (
       <main className="mx-auto max-w-2xl p-6">
-        <NextLink href="/notices" className="text-sm text-muted hover:underline">
+        <NextLink href={listHref} className="text-sm text-muted hover:underline">
           ← 공지 · 이벤트로
         </NextLink>
         <Alert status="error" icon={true} className="mt-4">
@@ -246,7 +249,7 @@ export function NoticeForm({
   return (
     <main className="mx-auto max-w-2xl p-6">
       <Stack direction="column" gap="sm">
-        <NextLink href="/notices" className="text-sm text-muted hover:underline">
+        <NextLink href={listHref} className="text-sm text-muted hover:underline">
           ← 공지 · 이벤트로
         </NextLink>
         <Stack justify="between" align="center">
