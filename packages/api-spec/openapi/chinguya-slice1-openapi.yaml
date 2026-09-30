@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.14]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.15]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,16 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.15 변경(2026-09-30 — 고객 홈 이벤트 팝업 `안 A`, 스펙 선행·백엔드 미구현):
+#   1. `GET /notices/home-popup` 신설. 관리자(S4-A4)가 **'홈 팝업 노출'(showOnHome)을 켠 이벤트** 중
+#      공개 글이고 **노출 기간 안**(시작일 ≤ 오늘 ≤ 종료일, 비운 쪽은 제한 없음, '오늘'은 일본 기준)인 글을
+#      **작성일 최신순 최대 3건**, 본문·첨부까지(NoticeDetail) 준다. 없으면 빈 배열.
+#   2. 기간 판단은 서버가 한다 — 시작일 전에는 안 나오고 종료일 다음 날 자동으로 빠진다(관리자가 끄지 않아도).
+#   3. 공지사항(NOTICE)은 팝업 대상이 아니다 — 고객 홈 맨 아래 섹션이 기존 `GET /notices?category=NOTICE` 를 쓴다.
+#   4. 라우팅 주의: `/notices/home-popup` 이 `/notices/{noticeId}` 보다 먼저 매칭돼야 한다.
+#   5. 공지사항 **세부 카테고리** `NoticeSummary.tag`(NoticeTag: 점검·안내·업데이트·긴급·장애) 추가.
+#      공지사항에만 값이 있고 이벤트는 null. 목록·상세·홈 팝업 응답 모두 같다.
 #
 # v0.14 변경(2026-09-29 — 재고 점유를 낮/야간 슬롯으로 분리, 응답 모양은 그대로):
 #   1. 하루를 **낮(10시 대여 ~ 15시 반납)**과 **야간(16시 대여 ~ 다음 날 10시 반납)** 슬롯으로 나눠
@@ -401,7 +411,8 @@ paths:
 
         정렬은 **고정 글 먼저, 그다음 작성일 내림차순**(같으면 id 내림차순) — 관리자 목록과 같은 순서다.
 
-        화면이 **무한 스크롤**이라 페이지를 이어 붙인다. 본문·첨부는 담지 않는다 — 목록이
+        화면은 **모바일 5개·PC 6개씩 페이지로 넘긴다**(2026-09-30 — `‹ 1 / N ›`, 무한 스크롤에서 변경). 전체 페이지 수는
+        `totalElements` 로 계산한다(계약 모양은 그대로). 본문·첨부는 담지 않는다 — 목록이
         무거워지고 첫 화면이 늦어지기 때문이다. 상세는 `GET /notices/{noticeId}` 로 받는다.
       security: []
       parameters:
@@ -427,6 +438,36 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+
+  /notices/home-popup:
+    get:
+      tags: [notice]
+      summary: 고객 홈 이벤트 팝업 (안 A, v0.15)
+      x-screens: [안 A]
+      description: |
+        관리자(S4-A4)가 **'홈 팝업 노출'을 켠 이벤트**를 고객 홈 팝업용으로 돌려준다. 비로그인 열람 허용.
+
+        조건(모두 만족): `category = EVENT` · 공개(`published`) · `showOnHome = true` ·
+        **노출 기간 안** — `eventStartDate ≤ 오늘 ≤ eventEndDate`(비운 쪽은 제한 없음, '오늘'은 **일본 기준**).
+        시작일 전에는 나오지 않고, 종료일 다음 날부터 자동으로 빠진다.
+
+        정렬은 **작성일 내림차순**(같으면 id 내림차순), **최대 3건**. 화면이 슬라이드로 넘기며 보여주고
+        '자세히 보기'는 공지사항 화면(S4-C6)의 그 글 상세로 보낸다. 팝업이 본문·대표 이미지를 그려야 해서
+        목록 요약이 아니라 **상세(NoticeDetail)** 를 담는다.
+
+        대상이 없으면 **200 + 빈 배열**(화면은 팝업을 띄우지 않는다).
+
+        ⚠ 라우팅: 이 경로가 `/notices/{noticeId}` 보다 먼저 매칭돼야 한다(`home-popup` 을 id 로 읽지 않게).
+      security: []
+      responses:
+        '200':
+          description: 팝업에 띄울 이벤트(0~3건)
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 3
+                items: { $ref: '#/components/schemas/NoticeDetail' }
 
   /notices/{noticeId}:
     get:
@@ -1215,6 +1256,14 @@ components:
       enum: [NOTICE, EVENT]
       description: 공지사항·이벤트 **2개 고정**. 화면의 캡슐 탭이 이 둘이다.
 
+    NoticeTag:
+      type: string
+      enum: [MAINTENANCE, INFO, UPDATE, URGENT, INCIDENT]
+      description: |
+        공지사항 **세부 카테고리**(2026-09-30) — 점검(MAINTENANCE)·안내(INFO)·업데이트(UPDATE)·
+        긴급(URGENT)·장애(INCIDENT) **고정 5종**. **공지사항(NOTICE)에만** 붙고 이벤트는 null.
+        화면 라벨·색은 packages/types·packages/ui(NoticeBadge)가 정한다.
+
     NoticeSummary:
       type: object
       required: [noticeId, category, title, createdAt, pinned]
@@ -1222,6 +1271,11 @@ components:
       properties:
         noticeId: { type: string, example: '12' }
         category: { $ref: '#/components/schemas/NoticeCategory' }
+        tag:
+          description: 공지사항 세부 카테고리(2026-09-30). 이벤트는 null. 화면은 카테고리 뱃지 자리에 이 값을 보여준다.
+          oneOf:
+            - { $ref: '#/components/schemas/NoticeTag' }
+            - { type: 'null' }
         title: { type: string }
         createdAt:
           type: string
@@ -1240,7 +1294,7 @@ components:
     NoticeListPage:
       type: object
       required: [content, page, size, totalElements]
-      description: 무한 스크롤이 이어 붙이는 한 페이지.
+      description: 목록 한 페이지(고객 S4-C6은 모바일 5개·PC 6개씩 페이지 이동, 홈 공지 섹션은 첫 페이지 5개).
       properties:
         content:
           type: array

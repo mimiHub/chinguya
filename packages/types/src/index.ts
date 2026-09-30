@@ -433,6 +433,23 @@ export const NOTICE_CATEGORY_LABEL: Record<NoticeCategoryKey, string> = {
 };
 
 /**
+ * 공지사항 **세부 카테고리**(2026-09-30) — 공지사항(NOTICE)에만 붙는다. 이벤트는 세부 카테고리가 없고
+ * '이벤트' 뱃지를 그대로 쓴다. 관리자가 추가·수정할 수 없는 **고정 5종**이다. 값 표기는 Core API 계약과 같다.
+ * 목록 순서가 관리자 폼의 선택 칩 순서다.
+ */
+export const NOTICE_TAGS = ["MAINTENANCE", "INFO", "UPDATE", "URGENT", "INCIDENT"] as const;
+export type NoticeTagKey = (typeof NOTICE_TAGS)[number];
+
+/** 세부 카테고리 화면 라벨. 관리자·고객 두 앱이 같은 문구를 쓴다. */
+export const NOTICE_TAG_LABEL: Record<NoticeTagKey, string> = {
+  MAINTENANCE: "점검",
+  INFO: "안내",
+  UPDATE: "업데이트",
+  URGENT: "긴급",
+  INCIDENT: "장애",
+};
+
+/**
  * 인보이스 정산(입금) 상태 라벨 — 관리자 목록(S2-A5)·상세(S2-A6) 공용.
  *
  * 인보이스 자체의 모양은 Core API 계약이 정한다(`@chinguya/api-client` 의 `AdminInvoiceSummary`·

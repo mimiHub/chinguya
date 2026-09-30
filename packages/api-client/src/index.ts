@@ -354,10 +354,18 @@ export interface AdminDashboard {
  */
 export type NoticeCategory = "NOTICE" | "EVENT";
 
+/**
+ * 공지사항 세부 카테고리(2026-09-30). 공지사항에만 붙고 이벤트는 null. 값·라벨은 packages/types 의
+ * NOTICE_TAGS·NOTICE_TAG_LABEL 이 단일 출처다(계약 enum 과 같은 표기).
+ */
+export type NoticeTag = "MAINTENANCE" | "INFO" | "UPDATE" | "URGENT" | "INCIDENT";
+
 /** 목록 한 줄. 본문·첨부는 없다 — 목록이 무거워지지 않게 상세에서 따로 받는다. */
 export interface NoticeSummary {
   noticeId: string;
   category: NoticeCategory;
+  /** 공지사항 세부 카테고리. 이벤트는 null. 백엔드 반영 전 응답에는 없어서 undefined — 화면은 '공지사항'으로 보인다. */
+  tag?: NoticeTag | null;
   title: string;
   /** 작성일(YYYY-MM-DD). 서버가 정하고 관리자가 고치지 않는다. */
   createdAt: string;
@@ -365,6 +373,11 @@ export interface NoticeSummary {
   published: boolean;
   /** true 면 목록 맨 위. 순서로 드러나므로 화면이 따로 표시하지 않아도 된다. */
   pinned: boolean;
+  /**
+   * 관리자(S4-A4) '홈 팝업 노출'(2026-09-30, 관리자 응답에만). 이벤트에만 켤 수 있다.
+   * 백엔드 반영 전에는 응답에 없어서 undefined — 화면은 `=== true` 로만 켜진 것으로 본다.
+   */
+  showOnHome?: boolean;
   /** 이벤트에만 값이 있다. 비우면 '상시'. */
   eventStartDate: string | null;
   /** 이 날짜가 지난 이벤트는 화면이 '종료'로 표시한다. */
@@ -383,7 +396,7 @@ export interface NoticeDetail extends NoticeSummary {
   updatedAt: string;
 }
 
-/** 무한 스크롤이 이어 붙이는 한 페이지. 관리자·고객이 같은 모양을 쓴다. */
+/** 목록 한 페이지. 관리자(무한 스크롤)·고객(모바일 5개·PC 6개씩 페이지 이동)이 같은 모양을 쓴다. */
 export interface NoticeListPage {
   content: NoticeSummary[];
   page: number;
@@ -395,10 +408,14 @@ export interface NoticeListPage {
 /** 등록·수정 요청. 수정은 이 값으로 **통째로 교체**한다(첨부 배열도 덮어쓴다). */
 export interface NoticeInput {
   category: NoticeCategory;
+  /** 공지사항이면 필수, 이벤트면 null(값을 보내면 400). */
+  tag?: NoticeTag | null;
   title: string;
   content: string;
   published: boolean;
   pinned: boolean;
+  /** 홈 팝업 노출(2026-09-30). 이벤트에만 true 가능 — 공지사항에 true 를 보내면 400. 생략하면 false. */
+  showOnHome?: boolean;
   /** 이벤트에만. 공지사항에 값을 보내면 400. */
   eventStartDate?: string | null;
   eventEndDate?: string | null;
@@ -1009,7 +1026,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
      * 숨긴 글은 상세도 404 다 — 주소를 직접 쳐도 보이지 않는다.
      */
     customerNotices: {
-      /** 무한 스크롤이 page 를 올려 가며 이어 붙인다. */
+      /** 공지사항 화면(S4-C6)은 모바일 5개·PC 6개씩 페이지로 넘기고, 홈 공지 섹션은 첫 페이지만 받는다. */
       list: (params: { category?: NoticeCategory; page?: number; size?: number } = {}) => {
         const query = new URLSearchParams({
           page: String(params.page ?? 0),
@@ -1019,6 +1036,11 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         return request<NoticeListPage>(`/notices?${query.toString()}`);
       },
       detail: (noticeId: string) => request<NoticeDetail>(`/notices/${noticeId}`),
+      /**
+       * 고객 홈 이벤트 팝업(slice1 v0.15). '홈 팝업 노출'을 켠 공개 이벤트 중 노출 기간 안(일본 기준)인 글을
+       * 최신순 최대 3건, 본문·첨부까지 준다. 기간 판단은 서버가 한다. 없으면 빈 배열.
+       */
+      homePopup: () => request<NoticeDetail[]>("/notices/home-popup"),
     },
     /**
      * 질문하기(S4-C4 목록 / S4-C5 상세·작성). 전부 고객 로그인 필요(비로그인 401).

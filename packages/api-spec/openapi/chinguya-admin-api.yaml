@@ -3,6 +3,16 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
+# 2026-09-30 변경(공지·이벤트 '홈 팝업 노출' S4-A4 — 스펙 선행, 백엔드 미구현):
+#   1. `NoticeInput`·`AdminNoticeSummary`(→ 상세)에 `showOnHome`(boolean) 추가. 켜면 고객 홈 이벤트 팝업에
+#      뜬다(고객 slice1 v0.15 `GET /notices/home-popup`).
+#   2. **이벤트에만** 켤 수 있다 — 공지사항(`NOTICE`)인데 true 면 400 `VALIDATION_ERROR`(InvalidNotice).
+#   3. 입력에서 생략하면 false(기존 클라이언트 호환). 켜 둬도 **숨김 글이거나 노출 기간 밖이면 팝업에 안 나온다**
+#      — 기간 판단은 고객 조회가 한다(관리자가 기간 끝난 글의 스위치를 꺼야 하는 게 아니다).
+#   4. 공지사항 **세부 카테고리** `tag`(NoticeTag: MAINTENANCE 점검·INFO 안내·UPDATE 업데이트·URGENT 긴급·
+#      INCIDENT 장애) 추가. **공지사항이면 필수, 이벤트면 null** — 어기면 400 `VALIDATION_ERROR`(InvalidNotice).
+#      기존 공지사항 글은 마이그레이션에서 INFO(안내)로 채운다.
+#
 # 2026-09-23 변경(히어로 배너 노출 ON/OFF S4-A3 — 스펙 선행, 백엔드 미구현):
 #   1. `HeroBanner`·`HeroBannerInput` 에 `visible`(boolean) 추가. 배너는 여전히 **3장 고정**(slot 1·2·3)이고,
 #      끄는 것은 삭제가 아니라 **숨김**이다 — 제목·이미지는 그대로 남아 다시 켜면 바로 돌아온다.
@@ -2423,7 +2433,8 @@ components:
       description: |
         입력이 규칙에 맞지 않다(`VALIDATION_ERROR`). 제목·본문이 비었거나 길이를 넘었을 때,
         공지사항인데 이벤트 기간을 보냈을 때, 종료일만 보냈을 때, 시작일 > 종료일일 때,
-        첨부가 5장을 넘을 때다.
+        첨부가 5장을 넘을 때, 공지사항인데 `showOnHome` 을 켰을 때, 공지사항인데 `tag` 가 없거나
+        이벤트인데 `tag` 를 보냈을 때(2026-09-30)다.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -3477,12 +3488,25 @@ components:
         **2개 고정**이다 — 관리자가 추가·수정할 수 없다. 고객 화면(S4-C6)의 탭이 이 둘에 맞춰져 있다.
         `NOTICE` = 공지사항, `EVENT` = 이벤트.
 
+    NoticeTag:
+      type: string
+      enum: [MAINTENANCE, INFO, UPDATE, URGENT, INCIDENT]
+      description: |
+        공지사항 **세부 카테고리**(2026-09-30) — 점검·안내·업데이트·긴급·장애 **고정 5종**(관리자가 추가·수정 불가).
+        **공지사항(NOTICE)에만** 붙고 이벤트는 null. 화면 라벨·색은 packages/types·packages/ui(NoticeBadge).
+
     NoticeInput:
       type: object
       required: [category, title, content, published, pinned]
       description: 등록·수정 공용. 수정은 이 값으로 **통째로 교체**한다.
       properties:
         category: { $ref: '#/components/schemas/NoticeCategory' }
+        tag:
+          description: |
+            공지사항 세부 카테고리(2026-09-30). **공지사항이면 필수**(없으면 400), **이벤트면 null**(값을 보내면 400).
+          oneOf:
+            - { $ref: '#/components/schemas/NoticeTag' }
+            - { type: 'null' }
         title:
           type: string
           minLength: 1
@@ -3504,6 +3528,13 @@ components:
         pinned:
           type: boolean
           description: true 면 목록 맨 위에 붙는다. 고정끼리는 작성일 내림차순.
+        showOnHome:
+          type: boolean
+          default: false
+          description: |
+            '홈 팝업 노출'(2026-09-30). true 면 고객 홈 이벤트 팝업에 뜬다(slice1 `GET /notices/home-popup`).
+            **이벤트에만** — 공지사항(`NOTICE`)인데 true 면 400. 생략하면 false.
+            공개(`published`)가 아니거나 노출 기간(`eventStartDate`~`eventEndDate`) 밖이면 켜 둬도 안 뜬다.
         eventStartDate:
           type: string
           format: date
@@ -3529,11 +3560,16 @@ components:
 
     AdminNoticeSummary:
       type: object
-      required: [noticeId, category, title, createdAt, published, pinned]
+      required: [noticeId, category, title, createdAt, published, pinned, showOnHome]
       description: 목록 카드 한 장(S4-A4). 본문·첨부는 없다 — 상세에서 받는다.
       properties:
         noticeId: { type: string, example: '12' }
         category: { $ref: '#/components/schemas/NoticeCategory' }
+        tag:
+          description: 공지사항 세부 카테고리(2026-09-30). 이벤트는 null.
+          oneOf:
+            - { $ref: '#/components/schemas/NoticeTag' }
+            - { type: 'null' }
         title: { type: string }
         createdAt:
           type: string
@@ -3541,6 +3577,9 @@ components:
           description: 작성일. 서버가 정한 값이고 관리자가 고치지 않는다.
         published: { type: boolean }
         pinned: { type: boolean }
+        showOnHome:
+          type: boolean
+          description: 홈 팝업 노출 여부(2026-09-30). 목록 카드에 '홈 팝업' 표시를 붙인다.
         eventStartDate: { type: string, format: date, nullable: true }
         eventEndDate: { type: string, format: date, nullable: true }
 
