@@ -3,6 +3,13 @@ openapi: 3.1.0
 # =============================================================================
 # 친구야 — 관리자 대상 Core API 명세 [v0.1]
 #
+# 2026-09-30 변경(랜딩 상품 배너 — 랜딩 배너 관리 화면 S4-A3 의 '상품 배너' 섹션):
+#   1. `GET·PUT /admin/content/product-banners` 신설. 고객 홈 Rental 카드(자전거·낚싯대)의 대표 이미지를
+#      카테고리마다 한 장씩 관리한다. 항상 2건(BICYCLE·FISHING_ROD)이고 등록·삭제는 없다.
+#   2. 저장은 2건을 통째로 — 카테고리가 하나씩 있어야 한다(아니면 400 `INVALID_PRODUCT_BANNERS`).
+#   3. 이미지는 히어로 배너와 같이 `POST /admin/content/images` 로 먼저 올린다. 쓰기는 슈퍼어드민만.
+#   4. 공개 조회는 slice1 v0.16 `GET /content/product-banners`.
+#
 # 2026-09-30 변경(공지·이벤트 '홈 팝업 노출' S4-A4 — 스펙 선행, 백엔드 미구현):
 #   1. `NoticeInput`·`AdminNoticeSummary`(→ 상세)에 `showOnHome`(boolean) 추가. 켜면 고객 홈 이벤트 팝업에
 #      뜬다(고객 slice1 v0.15 `GET /notices/home-popup`).
@@ -2098,6 +2105,59 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /admin/content/product-banners:
+    get:
+      tags: [admin-content]
+      x-screens: [S4-A3]
+      summary: 랜딩 상품 배너 조회 (S4-A3)
+      description: 고객 홈 Rental 카드 이미지. 카테고리마다 한 장씩, 항상 2건(BICYCLE → FISHING_ROD 순).
+      responses:
+        '200':
+          description: 상품 배너 2건
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductBanner' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [admin-content]
+      x-screens: [S4-A3]
+      summary: 랜딩 상품 배너 저장 (S4-A3)
+      description: |
+        2건을 **통째로** 저장한다. BICYCLE·FISHING_ROD 가 하나씩 있어야 한다 — 아니면 400
+        `INVALID_PRODUCT_BANNERS`. 새 이미지는 먼저 `POST /admin/content/images` 로 올리고 받은
+        `imageUrl` 을 넣는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductBannersUpdateRequest' }
+      responses:
+        '200':
+          description: 저장된 상품 배너 2건
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductBanner' }
+        '400':
+          description: 필수값 누락·형식 오류(`VALIDATION_ERROR`), 카테고리 구성 오류(`INVALID_PRODUCT_BANNERS`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                invalidProductBanners:
+                  value:
+                    code: INVALID_PRODUCT_BANNERS
+                    message: 자전거·낚싯대 배너가 하나씩 있어야 합니다.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /admin/content/intro:
     get:
       tags: [admin-content]
@@ -3464,6 +3524,30 @@ components:
           minItems: 3
           maxItems: 3
           items: { $ref: '#/components/schemas/HeroBannerInput' }
+
+    ProductBanner:
+      type: object
+      required: [category, imageUrl]
+      description: |
+        랜딩 상품 배너 한 장 — 고객 홈 Rental 카드(자전거·낚싯대)의 대표 이미지. 이미지 주소 규칙은
+        `HeroBanner` 와 같다.
+      properties:
+        category: { $ref: '#/components/schemas/AssetCategory' }
+        imageUrl:
+          type: string
+          maxLength: 300
+          pattern: '^/[A-Za-z0-9._/-]+$'
+          description: '`/` 로 시작하는 경로만 받는다(외부 주소·스크립트 주소 차단).'
+
+    ProductBannersUpdateRequest:
+      type: object
+      required: [banners]
+      properties:
+        banners:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: { $ref: '#/components/schemas/ProductBanner' }
 
     ServiceIntro:
       type: object

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 # =============================================================================
-# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.15]
+# 친구야 — Slice 1 (자전거 예약 MVP) · 고객 대상 Core API 명세 [v0.16]
 #
 # 범위: 고객 화면 7종 (S1-C1 상품조회 / S3-C1·S1-C2 상품 상세·예약 캘린더(통합) /
 #       S1-C3 예약확인 / S1-C4 입금안내 / S1-C5 내 예약목록 /
@@ -11,6 +11,11 @@ openapi: 3.1.0
 # 아키텍처: 프론트(Next.js)는 자체 Route Handler(BFF)를 거쳐 이 Core API를
 #           호출한다. JWT는 HttpOnly 쿠키로 BFF→Core에 그대로 전달된다.
 #           이 문서는 Core API(api.chinguya.co.kr) 계약을 정의한다.
+#
+# v0.16 변경(2026-09-30 — 랜딩 상품 배너 이미지 관리):
+#   1. `GET /content/product-banners` 신설. 고객 홈 Rental 카드(자전거·낚싯대)의 대표 이미지를 준다.
+#      관리자(랜딩 배너 관리 화면의 '상품 배너' 섹션)가 올린 값이다. 비로그인 열람 허용.
+#   2. 카테고리마다 한 장씩, 항상 2건(BICYCLE, FISHING_ROD 순). 이미지 주소 규칙은 히어로 배너와 같다.
 #
 # v0.15 변경(2026-09-30 — 고객 홈 이벤트 팝업 `안 A`, 스펙 선행·백엔드 미구현):
 #   1. `GET /notices/home-popup` 신설. 관리자(S4-A4)가 **'홈 팝업 노출'(showOnHome)을 켠 이벤트** 중
@@ -374,6 +379,27 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/HeroBanner' }
+
+  /content/product-banners:
+    get:
+      tags: [content]
+      summary: 랜딩 상품 배너 (안 A)
+      x-screens: [안 A]
+      description: |
+        고객 홈 Rental 섹션 카드(자전거·낚싯대)의 대표 이미지(v0.16). 관리자 랜딩 배너 관리 화면의
+        '상품 배너' 섹션에서 편집한다. 비로그인 열람 허용.
+
+        카테고리마다 한 장씩, 항상 2건이다(BICYCLE → FISHING_ROD 순). 이미지 주소 규칙은 히어로 배너와
+        같다 — `/content/images/…` 는 관리자가 올린 파일, 그 밖의 `/…` 는 웹앱 정적 파일(초기값).
+      security: []
+      responses:
+        '200':
+          description: 카테고리 2건
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductBanner' }
 
   /content/images/{fileName}:
     get:
@@ -1250,6 +1276,16 @@ components:
         visible:
           type: boolean
           description: 노출 여부(v0.13). 이 응답은 켜진 배너만 주므로 항상 true.
+
+    ProductBanner:
+      type: object
+      required: [category, imageUrl]
+      description: 랜딩 상품 배너 한 장(v0.16). 관리자 편집과 같은 모양이다.
+      properties:
+        category: { $ref: '#/components/schemas/ProductCategory' }
+        imageUrl:
+          type: string
+          description: '`/content/images/…`(관리자 업로드) 또는 `/…`(앱 정적 파일).'
 
     NoticeCategory:
       type: string

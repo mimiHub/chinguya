@@ -227,6 +227,15 @@ export interface HeroBanner {
 }
 
 /**
+ * 랜딩 상품 배너 — 고객 홈 Rental 카드(자전거·낚싯대)의 대표 이미지. 카테고리마다 한 장씩 항상 2건.
+ * 이미지 주소 규칙은 HeroBanner 와 같다.
+ */
+export interface ProductBanner {
+  category: AssetCategory;
+  imageUrl: string;
+}
+
+/**
  * 여행사 상품 조회·예약·예약 목록·취소(S2-G4/G5/G6) API 타입.
  * 계약 원본은 api-spec/openapi/chinguya-agency-api.yaml.
  *
@@ -1020,6 +1029,8 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     publicContent: {
       /** 히어로 배너 — 관리자가 켜 둔 것만(1~3장, slot 오름차순). */
       banners: () => request<HeroBanner[]>("/content/banners"),
+      /** 홈 Rental 카드 이미지 — BICYCLE·FISHING_ROD 2건. */
+      productBanners: () => request<ProductBanner[]>("/content/product-banners"),
     },
     /**
      * 고객 공지사항·이벤트(S4-C6). 비로그인 열람 허용이고 **공개 글만** 온다.
@@ -1440,13 +1451,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         request<AdminInquiry>(`/inquiries/${inquiryId}/answer`, { method: "PUT", body: JSON.stringify({ answer }) }),
     },
     /**
-     * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
+     * 콘텐츠 관리(S4-A3) — 랜딩 히어로 배너 3장·상품 배너 2장·서비스 소개 본문. 쓰기는 슈퍼어드민만(403).
      * 새 이미지는 uploadImage로 먼저 올리고, 받은 주소를 updateBanners에 넣어야 반영된다.
      */
     content: {
       banners: () => request<HeroBanner[]>("/content/banners"),
       updateBanners: (banners: HeroBanner[]) =>
         request<HeroBanner[]>("/content/banners", { method: "PUT", body: JSON.stringify({ banners }) }),
+      /** 홈 Rental 카드 이미지 2건(카테고리마다 한 장). 저장도 2건을 통째로. */
+      productBanners: () => request<ProductBanner[]>("/content/product-banners"),
+      updateProductBanners: (banners: ProductBanner[]) =>
+        request<ProductBanner[]>("/content/product-banners", { method: "PUT", body: JSON.stringify({ banners }) }),
       intro: () => request<{ body: string }>("/content/intro"),
       updateIntro: (body: string) =>
         request<{ body: string }>("/content/intro", { method: "PUT", body: JSON.stringify({ body }) }),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import NextLink from "next/link";
 import {
   Title,
@@ -18,11 +18,13 @@ import {
   Toggle,
 } from "@chinguya/ui";
 import type { ToastStatus } from "@chinguya/ui";
+import { ASSET_CATEGORY_LABEL } from "@chinguya/types";
 import {
   createApiClient,
   ApiError,
   DEFAULT_API_BASE_URL,
   type HeroBanner,
+  type ProductBanner,
 } from "@chinguya/api-client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -30,6 +32,8 @@ const api = createApiClient();
 
 /** 서버 한도(10MB)와 같다. 넘는 파일은 올리기 전에 막는다 — 서버가 큰 본문을 끊으면 오류 문구도 못 받는다. */
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+type PreviewMap = Record<string, ImagePreview>;
 
 interface ImagePreview {
   url: string;
@@ -182,6 +186,9 @@ const SHOW_INTRO_SECTION: boolean = false;
  * 이미지가 따로 필요하다. 장마다 노출 스위치로 끌 수 있다(숨김일 뿐 값은 남는다, 최소 1장은
  * 켜 둬야 함 — 2026-09-23). FAQ 관리(S4-A1)는 /faq 로 분리했다.
  *
+ * 그 아래 '상품 배너'는 고객 홈 Rental 카드(자전거·낚싯대)의 대표 이미지다 — 카테고리마다 한 장,
+ * 저장 버튼도 따로다.
+ *
  * 서비스 소개(S4-C2) 본문 편집 구역도 있었지만 지금은 숨겨져 있다({@link SHOW_INTRO_SECTION}).
  *
  * Core API에 실연동돼 있다(/admin/content/*) — 계약은
@@ -204,8 +211,13 @@ export default function AdminLandingPage() {
   const [activeBannerSlot, setActiveBannerSlot] = useState(1);
   const activeBanner = banners.find((b) => b.slot === activeBannerSlot) ?? null;
   // 키 형식: "<slot>:pc" | "<slot>:mobile" — 배너 3개 × 2장이라 배열보다 맵이 다루기 쉽다.
-  const [imagePreviews, setImagePreviews] = useState<Record<string, ImagePreview>>({});
+  const [imagePreviews, setImagePreviews] = useState<PreviewMap>({});
   const [bannerSaving, setBannerSaving] = useState(false);
+
+  const [productBanners, setProductBanners] = useState<ProductBanner[]>([]);
+  // 키: 카테고리("BICYCLE" | "FISHING_ROD"). 히어로 배너 미리보기와 따로 둬야 한쪽 저장이 다른 쪽 선택을 지우지 않는다.
+  const [productPreviews, setProductPreviews] = useState<PreviewMap>({});
+  const [productSaving, setProductSaving] = useState(false);
 
   const [introBody, setIntroBody] = useState("");
   const [introSaving, setIntroSaving] = useState(false);
@@ -223,12 +235,14 @@ export default function AdminLandingPage() {
     // 낼 이유가 없다. 다시 켜면(SHOW_INTRO_SECTION) 이 호출도 같이 살아난다.
     Promise.all([
       api.content.banners(),
+      api.content.productBanners(),
       SHOW_INTRO_SECTION ? api.content.intro() : Promise.resolve(null),
     ])
-      .then(([bannerList, intro]) => {
+      .then(([bannerList, productList, intro]) => {
         // visible 이 없으면(백엔드가 아직 이 필드를 안 내려주는 동안) 켜진 것으로 본다 — 기존 동작과 같다.
         setBanners(bannerList.map((b) => ({ ...b, visible: b.visible !== false })));
         setActiveBannerSlot(bannerList[0]?.slot ?? 1);
+        setProductBanners(productList);
         if (intro) {
           setIntroBody(intro.body);
         }
@@ -255,20 +269,21 @@ export default function AdminLandingPage() {
 
   // 브라우저 메모리에만 잠깐 띄우는 미리보기 URL이라, 새 파일을 고르거나 제거할 때
   // 이전 URL을 반드시 해제해야 한다(안 하면 탭을 오래 켜둘수록 메모리에 계속 쌓인다).
-  const selectBannerImage = (key: string, file: File) => {
+  // 히어로 배너·상품 배너가 같이 쓴다 — 미리보기 맵(setPreviews)만 다르다.
+  const selectImage = (setPreviews: Dispatch<SetStateAction<PreviewMap>>, key: string, file: File) => {
     if (file.size > IMAGE_MAX_BYTES) {
       showToast("이미지는 10MB까지 올릴 수 있습니다.", "error");
       return;
     }
-    setImagePreviews((prev) => {
+    setPreviews((prev) => {
       const old = prev[key];
       if (old) URL.revokeObjectURL(old.url);
       return { ...prev, [key]: { url: URL.createObjectURL(file), fileName: file.name, file } };
     });
   };
 
-  const clearBannerImage = (key: string) => {
-    setImagePreviews((prev) => {
+  const clearImage = (setPreviews: Dispatch<SetStateAction<PreviewMap>>, key: string) => {
+    setPreviews((prev) => {
       const old = prev[key];
       if (old) URL.revokeObjectURL(old.url);
       const next = { ...prev };
@@ -315,6 +330,27 @@ export default function AdminLandingPage() {
       showToast(errorMessage(err, "배너를 저장하지 못했습니다."), "error");
     } finally {
       setBannerSaving(false);
+    }
+  };
+
+  // 고른 이미지만 올리고, 받은 주소로 2건을 통째로 저장한다(히어로 배너 저장과 같은 방식).
+  const handleSaveProductBanners = async () => {
+    setProductSaving(true);
+    try {
+      const next = await Promise.all(
+        productBanners.map(async (b) => {
+          const preview = productPreviews[b.category];
+          return preview ? { ...b, imageUrl: (await api.content.uploadImage(preview.file)).imageUrl } : b;
+        }),
+      );
+      setProductBanners(await api.content.updateProductBanners(next));
+      Object.values(productPreviews).forEach((p) => URL.revokeObjectURL(p.url));
+      setProductPreviews({});
+      showToast("상품 배너가 저장되었습니다", "success");
+    } catch (err) {
+      showToast(errorMessage(err, "상품 배너를 저장하지 못했습니다."), "error");
+    } finally {
+      setProductSaving(false);
     }
   };
 
@@ -437,8 +473,8 @@ export default function AdminLandingPage() {
                     currentPath={activeBanner.pcImageUrl}
                     preview={imagePreviews[`${activeBanner.slot}:pc`] ?? null}
                     disabled={!isSuperAdmin}
-                    onSelect={(file) => selectBannerImage(`${activeBanner.slot}:pc`, file)}
-                    onClear={() => clearBannerImage(`${activeBanner.slot}:pc`)}
+                    onSelect={(file) => selectImage(setImagePreviews, `${activeBanner.slot}:pc`, file)}
+                    onClear={() => clearImage(setImagePreviews, `${activeBanner.slot}:pc`)}
                   />
 
                   <ImageAttachField
@@ -447,8 +483,8 @@ export default function AdminLandingPage() {
                     currentPath={activeBanner.mobileImageUrl}
                     preview={imagePreviews[`${activeBanner.slot}:mobile`] ?? null}
                     disabled={!isSuperAdmin}
-                    onSelect={(file) => selectBannerImage(`${activeBanner.slot}:mobile`, file)}
-                    onClear={() => clearBannerImage(`${activeBanner.slot}:mobile`)}
+                    onSelect={(file) => selectImage(setImagePreviews, `${activeBanner.slot}:mobile`, file)}
+                    onClear={() => clearImage(setImagePreviews, `${activeBanner.slot}:mobile`)}
                   />
                 </Stack>
               </Card>
@@ -457,6 +493,45 @@ export default function AdminLandingPage() {
             {isSuperAdmin && (
               <Button fullWidth disabled={bannerSaving} onClick={() => void handleSaveBanners()}>
                 {bannerSaving ? "저장 중…" : "배너 저장"}
+              </Button>
+            )}
+          </Stack>
+
+          <Stack direction="column" gap="sm">
+            <Text weight="bold" leaf>
+              상품 배너 (2개)
+              <HelpTooltip label="상품 배너 안내">
+                고객앱 홈 화면 Rental 섹션의 자전거·낚싯대 카드에 들어가는 이미지예요. 카드를 누르면 해당
+                상품 목록으로 이동해요.
+              </HelpTooltip>
+            </Text>
+            <Alert status="info" icon={false}>
+              <p>
+                [권장 사이즈] <br />
+                1200 × 900px(4:3) — 카드 비율에 맞춰 가운데 기준으로 잘려요.
+              </p>
+            </Alert>
+
+            <Card padding="sm">
+              <Stack direction="column" gap="sm">
+                {productBanners.map((b) => (
+                  <ImageAttachField
+                    key={b.category}
+                    id={`product-banner-${b.category}`}
+                    label={ASSET_CATEGORY_LABEL[b.category]}
+                    currentPath={b.imageUrl}
+                    preview={productPreviews[b.category] ?? null}
+                    disabled={!isSuperAdmin}
+                    onSelect={(file) => selectImage(setProductPreviews, b.category, file)}
+                    onClear={() => clearImage(setProductPreviews, b.category)}
+                  />
+                ))}
+              </Stack>
+            </Card>
+
+            {isSuperAdmin && (
+              <Button fullWidth disabled={productSaving} onClick={() => void handleSaveProductBanners()}>
+                {productSaving ? "저장 중…" : "상품 배너 저장"}
               </Button>
             )}
           </Stack>

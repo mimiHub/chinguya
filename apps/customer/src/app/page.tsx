@@ -13,9 +13,9 @@ import { HomeNoticeSection } from "@/components/HomeNoticeSection";
 
 const api = createApiClient();
 
-// 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지. 이미지는 캐러셀에 이미 쓰던
-// 배너 이미지를 재사용한다(banner-pc-2=자전거 코스, banner-pc-3=낚시 장면 — HomeCarousel.tsx
-// SLIDES 참고). 폴라로이드 카드는 워시테이프 장식만 쓰고 동그란 스티커는 붙이지 않는다(모든 폴라로이드 공통).
+// 홈 Rental 섹션 카드 2장 — 카테고리별 대표 이미지. 관리자가 '상품 배너'로 바꿀 수 있고
+// (GET /v1/content/product-banners), 여기 이미지는 응답 전·실패 대비 초기값이다(서버 초기값과 같다).
+// 폴라로이드 카드는 워시테이프 장식만 쓰고 동그란 스티커는 붙이지 않는다(모든 폴라로이드 공통).
 const RENTAL_CATEGORIES: { key: AssetCategory; image: string }[] = [
   { key: "BICYCLE", image: "/banner-pc-2.png" },
   { key: "FISHING_ROD", image: "/banner-pc-3.png" },
@@ -23,6 +23,11 @@ const RENTAL_CATEGORIES: { key: AssetCategory; image: string }[] = [
 
 // 카드 사진 위에 흩뿌릴 별 위치 — 장식용이라 고정값으로 충분 (cafe-next의 CategoryCard.jsx와
 // 동일한 좌표·딜레이를 그대로 옮겼다).
+/** 관리자가 올린 이미지는 Core 의 `/content/images/…` 라 프록시를 거친다(HomeCarousel 과 같다). */
+function imageSrc(url: string): string {
+  return url.startsWith("/content/images/") ? `/api/core${url}` : url;
+}
+
 const STARS = [
   { top: "14%", left: "16%", size: 6, delay: "0s" },
   { top: "24%", left: "60%", size: 4, delay: "0.7s" },
@@ -52,6 +57,21 @@ const STARS = [
 export default function Page() {
   // 카테고리별 최저가. 아직 못 받았으면 값이 없다(가격 줄을 비운다).
   const [priceFrom, setPriceFrom] = useState<Partial<Record<AssetCategory, number>>>({});
+  // 관리자가 바꾼 카드 이미지. 못 받으면 초기값(RENTAL_CATEGORIES.image)을 그대로 쓴다.
+  const [images, setImages] = useState<Partial<Record<AssetCategory, string>>>({});
+
+  useEffect(() => {
+    let active = true;
+    api.publicContent
+      .productBanners()
+      .then((banners) => {
+        if (active) setImages(Object.fromEntries(banners.map((b) => [b.category, imageSrc(b.imageUrl)])));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -110,7 +130,7 @@ export default function Page() {
                 <div className="relative overflow-hidden rounded-lg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={category.image}
+                    src={images[category.key] ?? category.image}
                     alt={ASSET_CATEGORY_LABEL[category.key]}
                     className="aspect-[4/3] w-full rounded-lg object-cover"
                   />
