@@ -865,8 +865,9 @@
       <div class="cap"><span class="id">S4-A4-M1</span><span class="nm">공지 · 이벤트 글 작성/수정</span><span class="dsc">본문 이미지 · 기간</span></div>
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>NOTICE EDIT</span></div><div class="vp">
         <div class="abar"><span class="mn">←</span><span class="ti">글 수정</span><span class="sp"></span><span class="btn sm dgr">삭제</span></div>
-        <div class="lbl">카테고리</div>
-        <div><span class="chip on">공지사항</span><span class="chip">이벤트</span></div>
+        <div class="tabs"><span class="on">공지사항</span><span>이벤트</span></div>
+        <div class="lbl">카테고리 <span class="tag b">공지사항만</span></div>
+        <div><span class="chip">점검</span><span class="chip on">안내</span><span class="chip">업데이트</span><span class="chip">긴급</span><span class="chip">장애</span></div>
         <div class="lbl">제목</div><div class="field">매장 오픈 안내</div>
         <div class="lbl">이벤트 기간 <span class="tag b">이벤트만</span></div>
         <div class="row"><div class="field" style="flex:1">2026-07-01</div><span style="align-self:center;color:var(--muted)">~</span><div class="field" style="flex:1">2026-07-31</div></div>
@@ -881,7 +882,11 @@
         </div>
         <div class="kv" style="margin-top:10px"><span class="k">공개</span><span class="v"><span class="toggle on"></span></span></div>
         <div class="kv"><span class="k">상단 고정</span><span class="v"><span class="toggle"></span></span></div>
+        <div class="kv"><span class="k">홈 팝업 노출 ?</span><span class="v"><span class="toggle on"></span></span></div>
         <a class="btn pri">저장</a>
+        <div class="note blue">맨 위 <b>공지사항/이벤트 탭</b>(2026-09-30)으로 종류를 고른다(이벤트 탭에서 저장하면 고객 공지사항의 이벤트 탭으로). <b>카테고리</b>(점검·안내·업데이트·긴급·장애, 기본 '안내')는 <b>공지사항 탭에서만</b> 보이는 필수 선택 — 계약상 이름은 세부 카테고리(tag). 고객 화면·관리자 목록 뱃지로 보이고 색은 점검·안내 = 블루/그레이, 이벤트·업데이트 = 브랜드 색, 긴급·장애 = 레드/오렌지.</div>
+        <div class="note blue"><b>홈 팝업 노출</b>(2026-09-30)은 <b>이벤트일 때만</b> 보인다. 켜면 고객 홈(안 A) 이벤트 팝업에 뜨고, <b>공개이고 이벤트 기간 안일 때만</b> 보인다 — 기간이 끝나면 스위치를 끄지 않아도 자동으로 내려간다. 여러 개면 최신 글부터 최대 3개를 슬라이드로. 목록 카드에 '홈 팝업' 뱃지.</div>
+        <div class="note blue"><b>고객 홈 긴급 공지 바</b>(2026-09-30, <i>임시 규칙 · 확정 대기</i>): 공지사항을 <b>카테고리 긴급·장애·점검</b>으로 저장하고 <b>상단 고정</b>을 켜면 고객 홈 맨 위 한 줄 바에 뜬다(여러 건이면 긴급 &gt; 장애 &gt; 점검 순 1건). 고정을 풀거나 비공개하면 내려간다. 별도 스위치 없음.</div>
         <div class="note"><b>본문에 이미지를 글 중간에 넣을 수 있다</b> — '이미지 올려 본문에 넣기'를 누르면 이미지를 올린 뒤 그 주소로 <code>![설명](주소)</code> 표기를 커서 위치에 끼워 넣는다. <b>이 이미지 표기 외의 마크다운 문법은 지원하지 않는다</b>(굵게·목록 등은 고객 화면에서 글자 그대로 보인다). 줄바꿈은 그대로 유지한다.</div>
         <div class="note"><b>이벤트 기간은 카테고리가 '이벤트'일 때만</b> 보인다(공지사항이면 이 줄이 사라진다). 선택 입력이라 비우면 '상시'이고, 넣으면 시작일 ≤ 종료일. 고객 화면은 <b>종료일이 지나면 '종료'</b>로 표시한다.</div>
         <div class="note">날짜는 <b>작성일 자동</b> — 관리자가 지정하거나 고치지 않는다. 첨부는 <b>이미지만</b>(PNG · JPG · WEBP, 1장당 10MB, 글당 최대 5장)이고 PDF · 문서는 범위 밖이다.</div>
@@ -892,7 +897,7 @@
         <dl>
           <dt>목적</dt><dd>공지사항 · 이벤트 글 <b>작성 · 수정 · 삭제</b></dd>
           <dt>진입</dt><dd>공지 · 이벤트 관리(S4-A4)의 + 등록 버튼 또는 글 카드</dd>
-          <dt>주요 요소</dt><dd>카테고리 칩(공지사항/이벤트), 제목, <b>이벤트 기간</b>(이벤트일 때만), 본문 + <b>이미지 올려 본문에 넣기</b>, 첨부 이미지(최대 5장), 공개 토글, 상단 고정 토글, 저장 · 삭제</dd>
+          <dt>주요 요소</dt><dd><b>공지사항/이벤트 탭</b>, <b>카테고리 칩</b>(점검·안내·업데이트·긴급·장애, 공지사항일 때만), 제목, <b>이벤트 기간</b>(이벤트일 때만), 본문 + <b>이미지 올려 본문에 넣기</b>, 첨부 이미지(최대 5장), 공개 토글, 상단 고정 토글, <b>홈 팝업 노출 토글</b>(이벤트일 때만), 저장 · 삭제</dd>
           <dt>규칙·로직</dt><dd>본문 이미지는 <b>마크다운 이미지 표기</b>로 글 중간에 삽입(그 외 문법 미지원) · 첨부는 <b>이미지만</b>(PNG · JPG · WEBP, 10MB, 최대 5장, 콘텐츠 이미지 업로드와 같은 저장소) · 날짜는 <b>작성일 자동</b> · <b>이벤트에만 기간</b>(선택 입력, 넣으면 시작일 ≤ 종료일) · 삭제는 <b>완전 삭제</b>(숨김은 공개 토글) · 쓰기는 <b>슈퍼어드민만</b></dd>
           <dt>화면 이동</dt><dd>저장 · 삭제 → 공지 · 이벤트 관리(S4-A4) 목록 반영 및 고객 공지사항(<b>S4-C6</b>)에 즉시 반영</dd>
         </dl>
