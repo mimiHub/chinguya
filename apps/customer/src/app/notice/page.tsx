@@ -263,7 +263,7 @@ function NoticePageInner() {
                 <EmptyState variant="card">등록된 글이 없습니다.</EmptyState>
               ) : (
                 // 글마다 개별 카드 — 상품 조회(S1-C1) 카드와 같은 모양(둥근 모서리·옅은 테두리·배경 3색 순환).
-                // 윗줄 = 뱃지 + 제목, 아랫줄 = 작성일(+ 종료).
+                // 윗줄 = 작성일(+ 이벤트 기간·종료), 아랫줄 = 뱃지 + 제목.
                 <div className="flex flex-col gap-3">
                   {items.map((item, i) => (
                     <ScrollReveal key={item.noticeId} delay={i * 60}>
@@ -272,11 +272,17 @@ function NoticePageInner() {
                         onClick={() => void openDetail(item.noticeId)}
                         className={`flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-gray-0 p-4 text-left ${CARD_BG[i % CARD_BG.length]}`}
                       >
-                        {/* 윗줄: 작성일(+종료) · 아랫줄: 카테고리 뱃지 + 제목 */}
+                        {/* 윗줄: 작성일(+이벤트 기간·종료) · 아랫줄: 카테고리 뱃지 + 제목 */}
                         <span className="flex items-center gap-2">
                           <Text as="span" variant="sub" size="xs">
                             {item.createdAt}
                           </Text>
+                          {item.category === "EVENT" && (
+                            <Text as="span" variant="sub" size="xs">
+                              · 기간{" "}
+                              {item.eventStartDate ? formatPeriod(item.eventStartDate, item.eventEndDate) : "상시"}
+                            </Text>
+                          )}
                           {isFinished(item, today) && <Badge variant="gray">종료</Badge>}
                         </span>
                         <span className="flex min-w-0 items-center gap-2">

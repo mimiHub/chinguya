@@ -193,7 +193,15 @@ function AdminNoticesPageInner() {
                       {notice.showOnHome === true && <Badge variant="secondary">홈 팝업</Badge>}
                       <Text weight="bold">{notice.title}</Text>
                     </Stack>
-                    <Text variant="sub">{notice.createdAt}</Text>
+                    <Text variant="sub">
+                      {notice.createdAt}
+                      {notice.category === "EVENT" &&
+                        ` · 기간 ${
+                          notice.eventStartDate
+                            ? `${notice.eventStartDate} ~${notice.eventEndDate ? ` ${notice.eventEndDate}` : ""}`
+                            : "상시"
+                        }`}
+                    </Text>
                   </Stack>
                 </NextLink>
                 {isSuperAdmin && (
