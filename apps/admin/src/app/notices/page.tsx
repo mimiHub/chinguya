@@ -10,6 +10,7 @@ import {
   Tab,
   Button,
   Badge,
+  NoticeBadge,
   Toggle,
   Alert,
   Toast,
@@ -116,10 +117,14 @@ export default function AdminNoticesPage() {
       const detail = await api.notices.detail(notice.noticeId);
       const saved = await api.notices.update(notice.noticeId, {
         category: detail.category,
+        // 수정은 통째로 교체라 세부 카테고리도 그대로 보낸다(공지사항이면 필수).
+        tag: detail.category === "NOTICE" ? (detail.tag ?? "INFO") : null,
         title: detail.title,
         content: detail.content,
         published: !detail.published,
         pinned: detail.pinned,
+        // 수정은 통째로 교체라, 빠뜨리면 공개를 바꿀 때마다 홈 팝업 노출이 꺼진다.
+        showOnHome: detail.showOnHome === true,
         eventStartDate: detail.eventStartDate,
         eventEndDate: detail.eventEndDate,
         imageUrls: detail.imageUrls,
@@ -171,7 +176,9 @@ export default function AdminNoticesPage() {
                 <NextLink href={`/notices/${notice.noticeId}`} className="min-w-0 flex-1">
                   <Stack direction="column" gap="xs">
                     <Stack gap="xs" align="center">
+                      <NoticeBadge category={notice.category} tag={notice.tag} className="shrink-0" />
                       {notice.pinned && <Badge variant="gray">고정</Badge>}
+                      {notice.showOnHome === true && <Badge variant="secondary">홈 팝업</Badge>}
                       <Text weight="bold">{notice.title}</Text>
                     </Stack>
                     <Text variant="sub">{notice.createdAt}</Text>

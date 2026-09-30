@@ -17,6 +17,7 @@ import {
   ComingSoon,
   ConfirmPopup,
   Dropdown,
+  EmergencyBar,
   EmptyState,
   FormMessage,
   HelpTooltip,
@@ -27,7 +28,9 @@ import {
   Kv,
   LabeledBox,
   Link,
+  NoticeBadge,
   NoticeBox,
+  Pagination,
   Popup,
   Radio,
   Section,
@@ -85,7 +88,9 @@ const GROUPS: { title: string; items: string[] }[] = [
     items: [
       "Alert",
       "Toast",
+      "EmergencyBar",
       "Badge",
+      "NoticeBadge",
       "StatusIcon",
       "FormMessage",
       "NoticeBox",
@@ -100,6 +105,7 @@ const GROUPS: { title: string; items: string[] }[] = [
     title: "네비게이션 · 기타",
     items: [
       "Tab",
+      "Pagination",
       "Link",
       "IconHamburger",
       "IconX",
@@ -112,6 +118,9 @@ const GROUPS: { title: string; items: string[] }[] = [
     ],
   },
 ];
+
+// 부제목의 "N종"은 위 인덱스 목록 개수로 센다 — 컴포넌트를 추가할 때 숫자를 따로 고치지 않아도 되게.
+const COMPONENT_COUNT = GROUPS.reduce((sum, g) => sum + g.items.length, 0);
 
 function Demo({
   id,
@@ -150,7 +159,7 @@ function Demo({
 export default function ComponentsGuidePage() {
   return (
     <main className="mx-auto max-w-5xl p-6">
-      <Title size="lg" subtitle="@chinguya/ui 공통 컴포넌트 37종 모음">
+      <Title size="lg" subtitle={`@chinguya/ui 공통 컴포넌트 ${COMPONENT_COUNT}종 모음`}>
         컴포넌트 가이드
       </Title>
 
@@ -190,7 +199,9 @@ export default function ComponentsGuidePage() {
         <CalendarDemo />
         <AlertDemo />
         <ToastDemo />
+        <EmergencyBarDemo />
         <BadgeDemo />
+        <NoticeBadgeDemo />
         <StatusIconDemo />
         <FormMessageDemo />
         <NoticeBoxDemo />
@@ -204,6 +215,7 @@ export default function ComponentsGuidePage() {
         <TooltipDemo />
         <HoldTimerDemo />
         <TabDemo />
+        <PaginationDemo />
         <LinkDemo />
         <IconHamburgerDemo />
         <IconXDemo />
@@ -529,6 +541,82 @@ function ToastDemo() {
         토스트 띄우기
       </Button>
       <Toast open={open} onClose={() => setOpen(false)} message="저장되었습니다" status="success" />
+    </Demo>
+  );
+}
+
+function EmergencyBarDemo() {
+  const [closed, setClosed] = useState(false);
+  return (
+    <Demo
+      id="c-EmergencyBar"
+      name="EmergencyBar"
+      desc="상단 한 줄 긴급 공지 바(고객 홈 맨 위). 높이 36px 고정, 길면 … 처리. tone: urgent(긴급)·incident(장애)·maintenance(점검)"
+    >
+      <Stack direction="column" gap="sm">
+        {closed ? (
+          <Button size="sm" variant="outline" onClick={() => setClosed(false)}>
+            다시 보기
+          </Button>
+        ) : (
+          <EmergencyBar
+            tone="urgent"
+            label="긴급"
+            message="오늘 오후 3시~5시 매장 임시 휴무 — 예약 고객께는 개별 연락드립니다"
+            action={<span className="cursor-pointer">자세히 ›</span>}
+            onClose={() => setClosed(true)}
+          />
+        )}
+        <EmergencyBar
+          tone="incident"
+          label="장애"
+          message="예약 알림 문자 발송이 지연되고 있어요 (복구 중)"
+          action={<span className="cursor-pointer">자세히 ›</span>}
+        />
+        <EmergencyBar
+          tone="maintenance"
+          label="점검"
+          message="10/5(일) 02:00~04:00 시스템 점검으로 예약이 잠시 중단됩니다. 문구가 아주 길면 한 줄을 넘지 않고 말줄임으로 잘립니다"
+        />
+        <Text variant="sub" size="xs">
+          action·onClose 는 선택 — 없으면 링크·닫기 버튼을 그리지 않는다(세 번째 예시). 위치(고정 등)는 놓는 쪽이 정한다.
+        </Text>
+      </Stack>
+    </Demo>
+  );
+}
+
+function NoticeBadgeDemo() {
+  return (
+    <Demo
+      id="c-NoticeBadge"
+      name="NoticeBadge"
+      desc="공지 카테고리 뱃지. 공지사항은 tag(점검·안내·업데이트·긴급·장애)별 색, 이벤트는 '이벤트'. tag 없으면 '안내'"
+    >
+      <Stack gap="sm" wrap>
+        <NoticeBadge category="NOTICE" tag="MAINTENANCE" />
+        <NoticeBadge category="NOTICE" tag="INFO" />
+        <NoticeBadge category="NOTICE" tag="UPDATE" />
+        <NoticeBadge category="NOTICE" tag="URGENT" />
+        <NoticeBadge category="NOTICE" tag="INCIDENT" />
+        <NoticeBadge category="EVENT" />
+      </Stack>
+    </Demo>
+  );
+}
+
+function PaginationDemo() {
+  const [page, setPage] = useState(0);
+  return (
+    <Demo
+      id="c-Pagination"
+      name="Pagination"
+      desc="‹ n / N › 페이지 이동. page 는 0부터. 1페이지뿐이어도 항상 보이고 양 끝에선 화살표가 흐려진다"
+    >
+      <Stack direction="column" gap="sm">
+        <Pagination page={page} totalPages={10} onChange={setPage} />
+        <Pagination page={0} totalPages={1} onChange={() => undefined} />
+      </Stack>
     </Demo>
   );
 }

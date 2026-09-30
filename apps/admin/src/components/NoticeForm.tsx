@@ -8,6 +8,7 @@ import {
   Text,
   Stack,
   Chip,
+  Tab,
   Button,
   Input,
   LabeledBox,
@@ -16,9 +17,10 @@ import {
   ConfirmPopup,
   Toast,
   IconX,
+  HelpTooltip,
   type ToastStatus,
 } from "@chinguya/ui";
-import { NOTICE_CATEGORY_LABEL } from "@chinguya/types";
+import { NOTICE_CATEGORY_LABEL, NOTICE_TAGS, NOTICE_TAG_LABEL, type NoticeTagKey } from "@chinguya/types";
 import { createApiClient, ApiError, type NoticeCategory, type NoticeInput } from "@chinguya/api-client";
 
 const api = createApiClient();
@@ -26,7 +28,11 @@ const api = createApiClient();
 /** 와이어프레임 a-noticeedit 의 '최대 5장'. 서버도 같은 값으로 막는다(400). */
 const MAX_IMAGES = 5;
 
-const CATEGORIES: NoticeCategory[] = ["NOTICE", "EVENT"];
+const NOTICE_TABS: { key: NoticeCategory; label: string }[] = [
+  { key: "NOTICE", label: NOTICE_CATEGORY_LABEL.NOTICE },
+  { key: "EVENT", label: NOTICE_CATEGORY_LABEL.EVENT },
+];
+
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -60,10 +66,15 @@ export function NoticeForm({
   const isEdit = Boolean(noticeId);
 
   const [category, setCategory] = useState<NoticeCategory>(initialCategory);
+  // 공지사항 세부 카테고리(2026-09-30). 공지사항이면 필수라 기본값을 '안내'로 둔다. 이벤트로 바꿔도 값은
+  // 기억해 두고(다시 공지사항으로 돌아오면 그대로), 저장할 때 이벤트면 null 로 보낸다.
+  const [tag, setTag] = useState<NoticeTagKey>("INFO");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [published, setPublished] = useState(true);
   const [pinned, setPinned] = useState(false);
+  // 홈 팝업 노출(2026-09-30) — 이벤트에만 켤 수 있다. 백엔드 반영 전엔 응답에 없어서 false 로 읽는다.
+  const [showOnHome, setShowOnHome] = useState(false);
   const [eventStartDate, setEventStartDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -93,10 +104,13 @@ export function NoticeForm({
       .then((detail) => {
         if (!active) return;
         setCategory(detail.category);
+        // 백엔드 반영 전 응답·예전 글은 값이 없다 — 기존 글 마이그레이션 기본값(안내)과 같게 채운다.
+        setTag(detail.tag ?? "INFO");
         setTitle(detail.title);
         setContent(detail.content);
         setPublished(detail.published);
         setPinned(detail.pinned);
+        setShowOnHome(detail.showOnHome === true);
         setEventStartDate(detail.eventStartDate ?? "");
         setEventEndDate(detail.eventEndDate ?? "");
         setImageUrls(detail.imageUrls);
@@ -110,12 +124,13 @@ export function NoticeForm({
     };
   }, [noticeId]);
 
-  /** 카테고리를 공지사항으로 바꾸면 기간을 비운다 — 남겨 두면 서버가 400 으로 막는다. */
+  /** 카테고리를 공지사항으로 바꾸면 기간·홈 팝업 노출을 비운다 — 남겨 두면 서버가 400 으로 막는다. */
   const changeCategory = (next: NoticeCategory) => {
     setCategory(next);
     if (next === "NOTICE") {
       setEventStartDate("");
       setEventEndDate("");
+      setShowOnHome(false);
     }
   };
 
@@ -167,10 +182,13 @@ export function NoticeForm({
     setFormError(null);
     const body: NoticeInput = {
       category,
+      tag: category === "NOTICE" ? tag : null,
       title,
       content,
       published,
       pinned,
+      // 홈 팝업은 이벤트에만 — 공지사항이면 서버가 true 를 거부한다.
+      showOnHome: category === "EVENT" && showOnHome,
       // 공지사항이면 서버가 값이 있는 걸 거부하므로 아예 보내지 않는다.
       eventStartDate: category === "EVENT" && eventStartDate ? eventStartDate : null,
       eventEndDate: category === "EVENT" && eventEndDate ? eventEndDate : null,
@@ -242,15 +260,27 @@ export function NoticeForm({
       </Stack>
 
       <Stack direction="column" gap="md" className="mt-4">
-        <LabeledBox label="카테고리" required>
-          <Chip.List>
-            {CATEGORIES.map((key) => (
-              <Chip key={key} on={key === category} onClick={() => changeCategory(key)}>
-                {NOTICE_CATEGORY_LABEL[key]}
-              </Chip>
-            ))}
-          </Chip.List>
-        </LabeledBox>
+        {/* 공지사항/이벤트는 탭으로 고른다 — 목록 화면(S4-A4)의 탭과 같은 모양. 이벤트 탭에서 저장하면
+            고객 공지사항(S4-C6)의 이벤트 탭으로 간다. */}
+        <Tab
+          items={NOTICE_TABS}
+          activeKey={category}
+          onChange={(key) => changeCategory(key as NoticeCategory)}
+        />
+
+        {/* 카테고리(= 계약상 세부 카테고리 tag)는 공지사항에만 있다 — 점검·안내·업데이트·긴급·장애 고정 5종.
+            고객 화면 뱃지로 보인다. */}
+        {category === "NOTICE" && (
+          <LabeledBox label="카테고리" required>
+            <Chip.List>
+              {NOTICE_TAGS.map((key) => (
+                <Chip key={key} on={key === tag} onClick={() => setTag(key)}>
+                  {NOTICE_TAG_LABEL[key]}
+                </Chip>
+              ))}
+            </Chip.List>
+          </LabeledBox>
+        )}
 
         <LabeledBox label="제목" required>
           <Input value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />
@@ -345,6 +375,16 @@ export function NoticeForm({
 
         <Toggle on={published} label="공개" onChange={setPublished} />
         <Toggle on={pinned} label="상단 고정" onChange={setPinned} />
+        {category === "EVENT" && (
+          <Stack gap="xs" align="center">
+            <Toggle on={showOnHome} label="홈 팝업 노출" onChange={setShowOnHome} />
+            <HelpTooltip label="홈 팝업 노출 안내">
+              켜면 고객앱 홈에 들어올 때 이벤트 팝업으로 뜹니다. 공개가 켜져 있고 이벤트 기간 안일 때만
+              보이며, 기간이 끝나면 자동으로 내려갑니다(스위치를 끄지 않아도 됩니다). 여러 개를 켜면 최신
+              글부터 최대 3개까지 넘겨 볼 수 있어요.
+            </HelpTooltip>
+          </Stack>
+        )}
 
         {formError && (
           <Alert status="error" icon={true}>
