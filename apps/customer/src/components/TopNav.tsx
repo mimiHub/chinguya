@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IconHamburger, IconX } from "@chinguya/ui";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { HomeEmergencyBar } from "@/components/HomeEmergencyBar";
 
 // 대메뉴 목록 — PC·모바일 구분 없이 항상 햄버거 버튼을 눌러 여는 드로어 메뉴에 쓰인다
 // (예전엔 PC에서 가로로 나열했지만, 항목이 늘면서 항상 햄버거로 통일했다). "메뉴" 탭은
@@ -86,6 +87,8 @@ export function TopNav() {
             className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b from-black/60 via-black/25 to-transparent"
           />
         )}
+        {/* 상단 한 줄 긴급 공지(홈에서만, 띄울 글이 있을 때만) — 네비 줄 위에 붙어 헤더와 같이 고정된다 */}
+        <HomeEmergencyBar />
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <NextLink href="/" className="flex items-center">
             {/* 모바일: 잎사귀 아이콘만 보여준다. 배너 위 투명 상태에서는 filter로 흰색

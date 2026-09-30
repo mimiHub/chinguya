@@ -8,6 +8,8 @@ import { Title, Text, Card, Button } from "@chinguya/ui";
 import { createApiClient } from "@chinguya/api-client";
 import { HomeCarousel } from "@/components/HomeCarousel";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { HomeNoticePopup } from "@/components/HomeNoticePopup";
+import { HomeNoticeSection } from "@/components/HomeNoticeSection";
 
 const api = createApiClient();
 
@@ -146,7 +148,15 @@ export default function Page() {
             </ScrollReveal>
           ))}
         </div>
+
+        {/* 맨 아래 공지사항 섹션 — 공지는 팝업이 아니라 여기서 보여준다(실제 공지 API) */}
+        <div className="mt-14">
+          <HomeNoticeSection />
+        </div>
       </div>
+
+      {/* 이벤트 팝업 — 관리자가 '홈 팝업 노출'을 켠 이벤트(GET /v1/notices/home-popup). Popup이 body로 포탈되므로 위치는 상관없다. */}
+      <HomeNoticePopup />
     </main>
   );
 }
