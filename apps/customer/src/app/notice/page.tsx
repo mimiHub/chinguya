@@ -263,7 +263,7 @@ function NoticePageInner() {
                 <EmptyState variant="card">등록된 글이 없습니다.</EmptyState>
               ) : (
                 // 글마다 개별 카드 — 상품 조회(S1-C1) 카드와 같은 모양(둥근 모서리·옅은 테두리·배경 3색 순환).
-                // 윗줄 = 작성일(+ 종료), 이벤트면 그 아래 기간, 아랫줄 = 뱃지 + 제목.
+                // 윗줄 = 작성일(+ 종료), 가운데 = 뱃지 + 제목, 이벤트면 맨 아래 기간.
                 <div className="flex flex-col gap-3">
                   {items.map((item, i) => (
                     <ScrollReveal key={item.noticeId} delay={i * 60}>
@@ -272,24 +272,24 @@ function NoticePageInner() {
                         onClick={() => void openDetail(item.noticeId)}
                         className={`flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-gray-0 p-4 text-left ${CARD_BG[i % CARD_BG.length]}`}
                       >
-                        {/* 윗줄: 작성일(+종료) · 이벤트 기간 · 아랫줄: 카테고리 뱃지 + 제목 */}
+                        {/* 윗줄: 작성일(+종료) · 카테고리 뱃지 + 제목 · 이벤트 기간 */}
                         <span className="flex items-center gap-2">
                           <Text as="span" variant="sub" size="xs">
                             {item.createdAt}
                           </Text>
                           {isFinished(item, today) && <Badge variant="gray">종료</Badge>}
                         </span>
-                        {item.category === "EVENT" && (
-                          <Text as="span" variant="sub" size="xs">
-                            기간 {item.eventStartDate ? formatPeriod(item.eventStartDate, item.eventEndDate) : "상시"}
-                          </Text>
-                        )}
                         <span className="flex min-w-0 items-center gap-2">
                           <NoticeBadge category={item.category} tag={item.tag} className="shrink-0" />
                           <Text as="span" weight="medium" className="min-w-0 flex-1 truncate">
                             {item.title}
                           </Text>
                         </span>
+                        {item.category === "EVENT" && (
+                          <Text as="span" variant="sub" size="xs">
+                            기간 {item.eventStartDate ? formatPeriod(item.eventStartDate, item.eventEndDate) : "상시"}
+                          </Text>
+                        )}
                       </button>
                     </ScrollReveal>
                   ))}
