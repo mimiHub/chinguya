@@ -104,3 +104,19 @@ export function NoticeBadge({ category, tag, className = "" }: NoticeBadgeProps)
     </Badge>
   );
 }
+
+/**
+ * 새 글 'N' 마크(2026-10-01) — 빨간 원 안에 흰 N. 제목 바로 뒤에 붙여 쓴다.
+ * 언제 보일지(새 글 기준)는 호출하는 쪽이 정한다 — 규칙은 @chinguya/types 의 isNewNotice.
+ * 화면 읽기 프로그램에는 'N' 대신 '새 글'로 읽힌다.
+ */
+export function NewMark({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-error text-[10px] font-bold leading-none text-white ${className}`}
+    >
+      <span aria-hidden="true">N</span>
+      <span className="sr-only">새 글</span>
+    </span>
+  );
+}

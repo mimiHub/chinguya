@@ -450,6 +450,18 @@ export const NOTICE_TAG_LABEL: Record<NoticeTagKey, string> = {
 };
 
 /**
+ * 공지사항·이벤트 **새 글(N) 표시** 기간(2026-10-01) — 작성일이 오늘(일본 기준) 포함 최근 3일 안이면 새 글.
+ * 예: 오늘이 10/1이면 9/29·9/30·10/1 작성 글. 고객 공지사항(S4-C6) 카드·홈 Notice 섹션이 같은 규칙을 쓴다.
+ */
+export const NOTICE_NEW_DAYS = 3;
+
+/** 작성일(YYYY-MM-DD)이 새 글 기간 안인지. today 도 YYYY-MM-DD(일본 기준)로 넘긴다. */
+export function isNewNotice(createdAt: string, today: string): boolean {
+  const days = (Date.parse(today) - Date.parse(createdAt)) / 86_400_000;
+  return days >= 0 && days < NOTICE_NEW_DAYS;
+}
+
+/**
  * 인보이스 정산(입금) 상태 라벨 — 관리자 목록(S2-A5)·상세(S2-A6) 공용.
  *
  * 인보이스 자체의 모양은 Core API 계약이 정한다(`@chinguya/api-client` 의 `AdminInvoiceSummary`·

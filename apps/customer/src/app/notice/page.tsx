@@ -2,8 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Banner, Tab, Card, Badge, NoticeBadge, Title, Text, EmptyState, Stack, Button, Alert, Pagination } from "@chinguya/ui";
-import { NOTICE_CATEGORY_LABEL } from "@chinguya/types";
+import { Banner, Tab, Card, Badge, NoticeBadge, NewMark, Title, Text, EmptyState, Stack, Button, Alert, Pagination } from "@chinguya/ui";
+import { NOTICE_CATEGORY_LABEL, isNewNotice } from "@chinguya/types";
 import {
   createApiClient,
   ApiError,
@@ -263,7 +263,7 @@ function NoticePageInner() {
                 <EmptyState variant="card">등록된 글이 없습니다.</EmptyState>
               ) : (
                 // 글마다 개별 카드 — 상품 조회(S1-C1) 카드와 같은 모양(둥근 모서리·옅은 테두리·배경 3색 순환).
-                // 윗줄 = 뱃지 + 제목, 이벤트면 그 아래 기간, 맨 아래 = 작성일(+ 종료).
+                // 맨 위 = 뱃지(이벤트면 오른쪽에 기간), 그 아래 제목(1줄), 맨 아래 = 작성일(+ 종료).
                 <div className="flex flex-col gap-3">
                   {items.map((item, i) => (
                     <ScrollReveal key={item.noticeId} delay={i * 60}>
@@ -272,18 +272,27 @@ function NoticePageInner() {
                         onClick={() => void openDetail(item.noticeId)}
                         className={`flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-gray-0 p-4 text-left ${CARD_BG[i % CARD_BG.length]}`}
                       >
-                        {/* 카테고리 뱃지 + 제목 · 이벤트 기간 · 작성일(+종료) */}
-                        <span className="flex min-w-0 items-center gap-2">
+                        {/* 위에서부터 카테고리 뱃지(+이벤트 기간) → 제목(1줄) → 작성일(+종료).
+                            뱃지를 제목 위 단독 줄로 올려(2026-10-01) 제목이 폭을 다 쓰고, 넘치면 한 줄에서 … 처리(truncate) */}
+                        {/* 맨 윗줄: 카테고리 뱃지 + (이벤트면) 바로 옆에 기간 뱃지 — 한 줄에 둬 카드 높이를 줄인다(2026-10-01) */}
+                        <span className="flex min-w-0 items-center gap-1.5">
                           <NoticeBadge category={item.category} tag={item.tag} className="shrink-0" />
-                          <Text as="span" weight="medium" className="min-w-0 flex-1 truncate">
+                          {item.category === "EVENT" && (
+                            // 기간도 뱃지 모양(회색 알약) — 왼쪽 카테고리 뱃지와 높이·모양을 맞춘다(2026-10-01)
+                            <Badge variant="gray" className="min-w-0 shrink">
+                              <span className="truncate">
+                                {item.eventStartDate ? formatPeriod(item.eventStartDate, item.eventEndDate) : "상시"}
+                              </span>
+                            </Badge>
+                          )}
+                        </span>
+                        {/* 제목 + 새 글 N 마크 — 제목은 남는 폭만큼만 쓰고 넘치면 …, N 은 항상 제목 바로 뒤에 보인다 */}
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Text as="span" weight="medium" className="min-w-0 truncate">
                             {item.title}
                           </Text>
+                          {isNewNotice(item.createdAt, today) && <NewMark />}
                         </span>
-                        {item.category === "EVENT" && (
-                          <Text as="span" variant="sub" size="xs">
-                            기간 {item.eventStartDate ? formatPeriod(item.eventStartDate, item.eventEndDate) : "상시"}
-                          </Text>
-                        )}
                         <span className="flex items-center gap-2">
                           <Text as="span" variant="sub" size="xs">
                             {item.createdAt}

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Title, Text, Card, NoticeBadge } from "@chinguya/ui";
+import { Title, Text, Card, NoticeBadge, NewMark } from "@chinguya/ui";
+import { isNewNotice } from "@chinguya/types";
 import { createApiClient, type NoticeSummary } from "@chinguya/api-client";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
@@ -21,6 +22,8 @@ const HOME_NOTICE_COUNT = 5;
  * 불러오는 중에는 섹션 틀만 두고, 실패하면 안내 한 줄만 보여준다 — 홈의 다른 영역을 막지 않는다.
  */
 export function HomeNoticeSection() {
+  // 새 글(N) 판단용 오늘 — 일본 기준(S4-C6 와 같다)
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
   const [notices, setNotices] = useState<NoticeSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -80,10 +83,14 @@ export function HomeNoticeSection() {
                   className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-card-primary/60"
                 >
                   <NoticeBadge category={notice.category} tag={notice.tag} className="shrink-0" />
-                  {/* 제목이 길면 한 줄로 자른다(truncate) — 날짜가 밀려나지 않게 min-w-0·flex-1 */}
-                  <Text className="min-w-0 flex-1 truncate transition-colors group-hover:text-primary-500">
-                    {notice.title}
-                  </Text>
+                  {/* 제목 + 새 글 N 마크. 제목이 길면 한 줄로 자른다(truncate) — 날짜가 밀려나지 않게 min-w-0·flex-1,
+                      N 은 제목 바로 뒤에 붙어 있고 잘리지 않는다(shrink-0) */}
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <Text className="min-w-0 truncate transition-colors group-hover:text-primary-500">
+                      {notice.title}
+                    </Text>
+                    {isNewNotice(notice.createdAt, today) && <NewMark />}
+                  </span>
                   <Text variant="sub" as="span" className="shrink-0">
                     {notice.createdAt}
                   </Text>
