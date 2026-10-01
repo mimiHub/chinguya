@@ -213,7 +213,7 @@
         <div class="card2"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px">2026-09-28</div><div class="row" style="align-items:center"><span class="tag b">점검</span><div style="flex:1" class="line w5"></div></div></div>
         <div class="card2"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px">2026-09-20</div><div class="row" style="align-items:center"><span class="tag">안내</span><div style="flex:1" class="line w5"></div></div></div>
         <div style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);margin:6px 0">‹ &nbsp;1 / 2&nbsp; ›</div>
-        <div class="note blue">(2026-09-30) 글마다 <b>개별 카드</b>(상품 조회처럼 3색 순환) — 윗줄 <b>작성일</b>(끝난 이벤트면 '종료'), 아랫줄 <b>카테고리 뱃지 + 제목</b>. 한 페이지 <b>모바일 5개 · PC(768px~) 6개</b>, 아래 <b>‹ 1 / N ›</b> 로 이동(항상 표시). 보고 있는 탭을 다시 누르면 목록 유지(상세면 목록으로).</div>
+        <div class="note blue">(2026-10-01) 글마다 <b>개별 카드</b>(상품 조회처럼 3색 순환) — 위에서부터 <b>카테고리 뱃지</b>(이벤트면 옆에 <b>기간 뱃지</b>) → <b>제목 1줄</b>(넘치면 …) + 최근 3일 새 글이면 빨간 <b>N</b> → <b>작성일</b>(끝난 이벤트면 '종료'). 한 페이지 <b>모바일 5개 · PC(768px~) 6개</b>, 아래 <b>‹ 1 / N ›</b> 로 이동(항상 표시). 보고 있는 탭을 다시 누르면 목록 유지(상세면 목록으로).</div>
         <div class="note">행을 탭하면 <b>같은 화면 안에서</b> 상세(본문 전체 + '목록으로' 버튼)로 바뀐다(별도 페이지 이동 아님). 지금은 화면 자체 목업 데이터이고, 실제로는 관리자 콘텐츠 관리에서 등록한 글로 대체될 자리다.</div>
       </div></div>
       <div class="desc">
@@ -376,11 +376,13 @@
       <div class="phone"><div class="bar"><i></i><i></i><i></i><span>MY BOOKINGS</span></div><div class="vp">
         <div class="appbar"><span class="ic"></span><span class="logo" style="font-size:12px">내 예약</span></div>
         <div class="tabs"><span class="on">전체</span><span>접수</span><span>완료</span><span>취소</span></div>
+        <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag">입금대기</span></div></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag y">접수</span></div></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag g">완료</span></div></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag b">취소요청</span></div></div>
         <div class="card2"><div class="row"><div style="flex:1"><div class="line w5" style="margin:0"></div><div class="line w7"></div></div><span class="tag r">취소</span></div></div>
-        <div class="note">상태: 접수 → 완료(입금확인) → 취소요청 → 취소.</div>
+        <div class="note">상태: 입금대기 → 접수 → 완료(입금확인) → 취소요청 → 취소.</div>
+        <div class="note blue"><b>탭별 포함 상태</b>(2026-08-19 확정): 전체 = 모든 상태 · 접수 = 접수만 · 완료 = 완료만 · 취소 = 취소만. <b>입금대기·취소요청은 별도 탭 없이 전체 탭에서 뱃지로만</b> 보인다(접수·취소 탭에 포함되지 않음). 부분취소도 뱃지만.</div>
         <div class="note">목록이 비면 카드 자리에 <b>안내 카드</b>를 보여준다('아직 예약 내역이 없습니다.' / 상태 탭 결과가 없으면 '해당 상태의 예약이 없습니다.'). 불러오기에 실패하면 하단 <b>오류 토스트</b>로 알리고, 토스트는 곧 사라지므로 목록 자리에도 '예약 목록을 불러오지 못했습니다.' 안내 카드를 남긴다.</div>
       </div></div>
       <div class="desc">
@@ -388,8 +390,8 @@
         <dl>
           <dt>목적</dt><dd>내 예약을 <b>상태별</b>로 조회</dd>
           <dt>진입</dt><dd>하단 탭 '내정보' → 내 예약, 입금 확인 요청 후</dd>
-          <dt>주요 요소</dt><dd>상태 탭(전체/접수/완료/취소), 예약 카드(상태 태그), 빈 목록·오류 안내 카드, 오류 토스트</dd>
-          <dt>규칙·로직</dt><dd>상태 흐름: <b>접수 → 완료(입금확인) → 취소요청 → 취소</b> · 목록이 비면 <b>안내 카드</b>(전체 탭: '아직 예약 내역이 없습니다.', 상태 탭: '해당 상태의 예약이 없습니다.') · 불러오기 실패 시 <b>오류 토스트 + 목록 자리 안내 카드</b>('예약 목록을 불러오지 못했습니다.')</dd>
+          <dt>주요 요소</dt><dd>상태 탭(전체/접수/완료/취소), 예약 카드(상태 태그 — 입금대기·접수·완료·취소요청·취소), 빈 목록·오류 안내 카드, 오류 토스트</dd>
+          <dt>규칙·로직</dt><dd>상태 흐름: <b>입금대기 → 접수 → 완료(입금확인) → 취소요청 → 취소</b>(예약 직후 입금대기, 입금 확인 요청 시 접수) · <b>탭별 포함 상태</b>: 입금대기·취소요청은 <b>전체 탭에서만 뱃지로</b> 보이고 접수·취소 탭에는 포함되지 않는다(접수·완료·취소 탭은 각각 그 상태만, 2026-08-19 확정) · 목록이 비면 <b>안내 카드</b>(전체 탭: '아직 예약 내역이 없습니다.', 상태 탭: '해당 상태의 예약이 없습니다.') · 불러오기 실패 시 <b>오류 토스트 + 목록 자리 안내 카드</b>('예약 목록을 불러오지 못했습니다.')</dd>
           <dt>화면 이동</dt><dd>예약 카드 → 예약 상세·바우처</dd>
         </dl>
       </div>
