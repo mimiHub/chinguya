@@ -102,6 +102,9 @@ export default function MyPage() {
   }, [authLoading, session, tab, page]);
 
   const changeTab = (key: CustomerBookingListStatus) => {
+    // 이미 보고 있는 탭을 또 누르면 아무것도 하지 않는다. 예전엔 여기서도 목록을 비웠는데,
+    // tab·page 값이 그대로라 불러오기 effect가 다시 돌지 않아 '예약 없음' 화면이 떠 버렸다(공지사항 S4-C6과 같은 버그).
+    if (key === tab) return;
     setTab(key);
     setPage(0);
     setBookings([]);
